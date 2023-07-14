@@ -9,4 +9,4 @@ fi
 
 docker build -t gepetto .
 
-docker run --restart=on-failure -p 8000:8000 -e OPENAI_API_KEY="${OPENAI_API_KEY}" -e DISCORD_API_KEY="${DISCORD_API_KEY}" gepetto
+docker run --restart=on-failure -e OPENAI_API_KEY="${OPENAI_API_KEY}" -e DISCORD_SERVER_ID="${DISCORD_SERVER_ID}" -e DISCORD_BOT_TOKEN="${DISCORD_BOT_TOKEN}" gepetto
