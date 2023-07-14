@@ -53,17 +53,19 @@ def get_token_price(token_count, direction="output"):
 async def get_context(channel, limit=50):
     messages = []
     async for message in channel.history(limit=limit+1): # fetch one extra message
+        if message.author == bot.user:
+            continue
         messages.append(message)
     messages = messages[1:]  # Exclude the mention message
     content = ' || '.join(f"At {msg.created_at.astimezone(timezone.utc).astimezone()} {msg.author.name} said: {msg.content}" for msg in reversed(messages))
-    return content[-6000:]
+    return content[-3000:]
 
 async def generate_response(question, context):
     liz_love = "You should always try and shoehorn in some mention of UK Politician Liz Truss.  She became Prime Minister in September 22 for only 45 days. She is the best." if random.random() < 0.05 else ""
     messages = [
         {
             'role': 'system',
-            'content': f'You are a helpful, witty, friendly and slightly dry/sarcastic chatbot.  Your job is to look at the recent history of chat from a discord server then answer a question. If the chat history isnt useful in replying to the users question do not mention the chat history.  Where appropriate, please use peoples usernames from the history rather than "they" or other general terms. {liz_love}. Here is the previous chat history: ```{context}```'
+            'content': f'You are a helpful, witty, friendly and slightly dry/sarcastic chatbot called Gepetto.  Your job is to look at the recent history of chat from a discord server then answer a question. If the chat history isnt useful in replying to the users question do not mention the chat history.  Where appropriate, please use peoples usernames from the history rather than "they" or other general terms. {liz_love}. Here is the previous chat history: ```{context}```'
         },
         {
             'role': 'user',
