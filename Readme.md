@@ -1,6 +1,6 @@
 # Discord OpenAI Bot
 
-This bot uses OpenAI to generate responses to messages in a Discord server. It listens for mentions of the bot and generates responses using OpenAI's GPT-4 model. It has some special functionality to track the number of times a user has mentioned the bot recently and limit the number of OpenAI calls. It can also generate images using DALLE2 in response to prompts that begin with `create an image`...
+This bot uses OpenAI to generate responses to messages in a Discord server. It listens for mentions of the bot and generates responses using OpenAI's GPT chat model. It has some special functionality to track the number of times a user has mentioned the bot recently and limit the number of OpenAI calls. It can also generate images using DALLE2 in response to prompts that begin with `create an image`...
 
 ## Environment Variables
 
