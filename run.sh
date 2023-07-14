@@ -9,4 +9,5 @@ fi
 
 docker build -t gepetto .
 
-docker run --restart=on-failure -e OPENAI_API_KEY="${OPENAI_API_KEY}" -e DISCORD_SERVER_ID="${DISCORD_SERVER_ID}" -e DISCORD_BOT_TOKEN="${DISCORD_BOT_TOKEN}" gepetto
+# put your various environment variables in a file named .env
+docker run --restart=on-failure --env-file=.env gepetto
