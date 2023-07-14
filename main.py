@@ -53,8 +53,6 @@ def get_token_price(token_count, direction="output"):
 async def get_context(channel, limit=50):
     messages = []
     async for message in channel.history(limit=limit+1): # fetch one extra message
-        if message.author == bot.user:
-            continue
         messages.append(message)
     messages = messages[1:]  # Exclude the mention message
     content = ' || '.join(f"At {msg.created_at.astimezone(timezone.utc).astimezone()} {msg.author.name} said: {msg.content}" for msg in reversed(messages))
