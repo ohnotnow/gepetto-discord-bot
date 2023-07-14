@@ -99,6 +99,10 @@ async def generate_image(prompt):
 
 @bot.event
 async def on_message(message):
+    # ignore direct messages
+    if message.guild is None:
+        return
+
     # Ignore messages not sent by our server
     if str(message.guild.id) != server_id:
         return
