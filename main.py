@@ -139,6 +139,7 @@ async def on_message(message):
 
         # get the openai response
         question = message.content.split(' ', 1)[1][:500].replace('\r', ' ').replace('\n', ' ')
+        await message.channel.typing()
         try:
             if question.lower().startswith("create an image"):
                 base64_image = await generate_image(question)
