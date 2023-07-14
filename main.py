@@ -134,7 +134,7 @@ async def on_message(message):
         # If the user has mentioned the bot more than 10 times recently
         if len(mention_counts[user_id]) > 10:
             # Send an abusive response
-            await message.channel.send(f"{random.choice(abusive_responses)}.", mention_author=True)
+            await message.reply(f"{random.choice(abusive_responses)}.", mention_author=True)
             return
 
         # get the openai response
@@ -142,15 +142,15 @@ async def on_message(message):
         try:
             if question.lower().startswith("create an image"):
                 base64_image = await generate_image(question)
-                await message.channel.send(f'{message.author.mention}\n_[Estimated cost: US$0.018]_', file=base64_image, mention_author=True)
+                await message.reply(f'{message.author.mention}\n_[Estimated cost: US$0.018]_', file=base64_image, mention_author=True)
             else:
                 context = await get_context(message.channel)
                 response = await generate_response(question, context)
                 # send the response as a reply and mention the person who asked the question
-                await message.channel.send(f'{message.author.mention} {response}', mention_author=True)
+                await message.reply(f'{message.author.mention} {response}', mention_author=True)
         except Exception as e:
             logger.error(f'Error generating response: {e}')
-            await message.channel.send(f'{message.author.mention} I tried, but my attempt was as doomed as Liz Truss.  Please try again later.', mention_author=True)
+            await message.reply(f'{message.author.mention} I tried, but my attempt was as doomed as Liz Truss.  Please try again later.', mention_author=True)
 
 # Run the bot
 bot.run(os.getenv("DISCORD_BOT_TOKEN", 'not_set'))
