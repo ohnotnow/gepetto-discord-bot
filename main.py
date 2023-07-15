@@ -95,7 +95,6 @@ async def generate_response(question, context="", extended_messages=[]):
     tokens = response['usage']['total_tokens']
     usage = f"_[tokens used: {tokens} | Estimated cost US${get_token_price(tokens, 'output')}]_"
     logger.info(f'OpenAI usage: {usage}')
-    logger.info(response['choices'][0]['message']['content'].strip()[:1900])
     return response['choices'][0]['message']['content'].strip()[:1900] + "\n" + usage
 
 async def generate_image(prompt):
