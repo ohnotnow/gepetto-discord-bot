@@ -96,6 +96,8 @@ async def generate_response(question, context="", extended_messages=[]):
     tokens = response['usage']['total_tokens']
     usage = f"_[tokens used: {tokens} | Estimated cost US${get_token_price(tokens, 'output')}]_"
     logger.info(f'OpenAI usage: {usage}')
+    # sometimes the response includes formatting to match what was in the formatted chat history
+    # so we want to remove it as it looks rubbish and is confusing
     message = re.sub(r'\[tokens used: \d+ \| Estimated cost US\$\d+\.\d+\]', '', response['choices'][0]['message']['content'])
     message = re.sub(r"Gepetto' said: ", '', message)
     return message.strip()[:1900] + "\n" + usage
