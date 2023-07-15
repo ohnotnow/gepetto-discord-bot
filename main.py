@@ -4,6 +4,7 @@ from discord.ext import commands
 from discord import File
 import os
 import io
+import re
 from collections import defaultdict
 from datetime import datetime, timedelta, timezone
 import logging
@@ -95,7 +96,9 @@ async def generate_response(question, context="", extended_messages=[]):
     tokens = response['usage']['total_tokens']
     usage = f"_[tokens used: {tokens} | Estimated cost US${get_token_price(tokens, 'output')}]_"
     logger.info(f'OpenAI usage: {usage}')
-    return response['choices'][0]['message']['content'].strip()[:1900] + "\n" + usage
+    message = re.sub(r'\[tokens used: \d+ \| Estimated cost US\$\d+\.\d+\]', '', response['choices'][0]['message']['content'])
+    message = re.sub(r"Gepetto' said: ", '', message)
+    return message.strip()[:1900] + "\n" + usage
 
 async def generate_image(prompt):
     response = openai.Image.create(
