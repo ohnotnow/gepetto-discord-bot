@@ -100,7 +100,7 @@ async def generate_response(question, context="", extended_messages=[], temperat
     # so we want to remove it as it looks rubbish and is confusing
     message = re.sub(r'\[tokens used: \d+ \| Estimated cost US\$\d+\.\d+\]', '', response['choices'][0]['message']['content'], flags=re.MULTILINE)
     message = re.sub(r"Gepetto' said: ", '', message, flags=re.MULTILINE)
-    message = re.sub(r"^.*At \d{4}-\d{2}-\d{2} \d{2}:\d{2}.+said:", "", message, flags=re.MULTILINE)
+    message = re.sub(r"^.*At \d{4}-\d{2}.+said?", "", message, flags=re.MULTILINE)
     return message.strip()[:1900] + "\n" + usage
 
 async def generate_image(prompt):
