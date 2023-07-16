@@ -87,7 +87,6 @@ async def generate_response(question, context="", extended_messages=[], temperat
         },
     )
 
-    logger.info(f"openai temperature is {temperature}")
     response = openai.ChatCompletion.create(
         model=model_engine,
         messages=extended_messages,
@@ -172,7 +171,7 @@ async def on_message(message):
             temperature = 0.1
         else:
             temperature = 1
-        logger.info(temperature)
+
         try:
             if question.lower().startswith("create an image"):
                 base64_image = await generate_image(question)
