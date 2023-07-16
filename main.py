@@ -72,7 +72,7 @@ async def get_history_as_openai_messages(channel):
     # We reverse the list to make it in chronological order
     return messages[::-1]
 
-async def generate_response(question, context="", extended_messages=[]):
+async def generate_response(question, context="", extended_messages=[], temperature=1):
     liz_love = "You should always try and shoehorn in some mention of UK Politician Liz Truss.  She became Prime Minister in September 22 for only 45 days. She is the best." if random.random() < 0.05 else ""
     extended_messages.insert(0,
         {
@@ -87,10 +87,11 @@ async def generate_response(question, context="", extended_messages=[]):
         },
     )
 
+    logger.info(f"openai temperature is {temperature}")
     response = openai.ChatCompletion.create(
         model=model_engine,
         messages=extended_messages,
-        temperature=1,
+        temperature=float(temperature),
         max_tokens=1024,
     )
     tokens = response['usage']['total_tokens']
@@ -166,13 +167,19 @@ async def on_message(message):
 
         # get the openai response
         question = message.content.split(' ', 1)[1][:500].replace('\r', ' ').replace('\n', ' ')
+        if "--strict" in question.lower():
+            question = question.lower().replace("--strict", "")
+            temperature = 0.1
+        else:
+            temperature = 1
+        logger.info(temperature)
         try:
             if question.lower().startswith("create an image"):
                 base64_image = await generate_image(question)
                 await message.channel.send(f'{message.author.mention}\n_[Estimated cost: US$0.018]_', file=base64_image, mention_author=True)
             else:
                 context = await get_history_as_openai_messages(message.channel)
-                response = await generate_response(question, "", context)
+                response = await generate_response(question, "", context, temperature)
                 # send the response as a reply and mention the person who asked the question
                 await message.channel.send(f'{message.author.mention} {response}')
         except Exception as e:
