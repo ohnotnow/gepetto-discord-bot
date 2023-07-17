@@ -61,7 +61,7 @@ async def get_history_as_openai_messages(channel):
         role = 'assistant' if msg.author == bot.user else 'user'
         message_content = f"At {msg.created_at.astimezone(timezone.utc).astimezone()} '{msg.author.name}' said: {msg.content}"
         message_length = len(message_content)
-        if total_length + message_length > 3800:
+        if total_length + message_length > 3200:
             break
         messages.append({
             "role": role,
