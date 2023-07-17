@@ -179,7 +179,6 @@ async def on_message(message):
 
 
         # get the openai response
-        logger.info(message.content)
         if not any(char.isalpha() for char in message.content.strip()):
             await message.channel.send(f'{message.author.mention} {random.choice(abusive_responses)}.')
             return
