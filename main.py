@@ -176,15 +176,15 @@ async def on_message(message):
             await message.channel.send(f"{message.author.mention} {random.choice(abusive_responses)}.")
             return
 
-
-
         # get the openai response
         if not any(char.isalpha() for char in message.content.strip()):
             await message.channel.send(f'{message.author.mention} {random.choice(abusive_responses)}.')
             return
+
         question = message.content.split(' ', 1)[1][:500].replace('\r', ' ').replace('\n', ' ')
         if not any(char.isalpha() for char in question):
             await message.channel.send(f'{message.author.mention} {random.choice(abusive_responses)}.')
+
         if "--strict" in question.lower():
             question = question.lower().replace("--strict", "")
             temperature = 0.1
@@ -193,13 +193,15 @@ async def on_message(message):
 
         try:
             if question.lower().startswith("create an image"):
-                base64_image = await generate_image(question)
-                await message.channel.send(f'{message.author.mention}\n_[Estimated cost: US$0.018]_', file=base64_image, mention_author=True)
+                async with message.channel.typing():
+                    base64_image = await generate_image(question)
+                    await message.channel.send(f'{message.author.mention}\n_[Estimated cost: US$0.018]_', file=base64_image, mention_author=True)
             else:
-                context = await get_history_as_openai_messages(message.channel)
-                response = await generate_response(question, "", context, temperature)
-                # send the response as a reply and mention the person who asked the question
-                await message.channel.send(f'{message.author.mention} {response}')
+                async with message.channel.typing():
+                    context = await get_history_as_openai_messages(message.channel)
+                    response = await generate_response(question, "", context, temperature)
+                    # send the response as a reply and mention the person who asked the question
+                    await message.channel.send(f'{message.author.mention} {response}')
         except Exception as e:
             logger.error(f'Error generating response: {e}')
             await message.channel.send(f'{message.author.mention} I tried, but my attempt was as doomed as Liz Truss.  Please try again later.', mention_author=True)
