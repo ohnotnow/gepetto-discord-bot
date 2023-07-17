@@ -10,7 +10,7 @@ from datetime import datetime, timedelta, timezone
 import logging
 import random
 import base64
-import tiktoken
+#import tiktoken
 from enum import Enum
 
 AVATAR_PATH="avatar.png"
@@ -54,9 +54,9 @@ def get_token_price(token_count, direction="output"):
         return round(token_price_input * token_count, 4)
     return round(token_price_output * token_count, 4)
 
-def get_token_count(string):
-    encoding = tiktoken.encoding_for_model(model_engine)
-    return len(encoding.encode(string))
+#def get_token_count(string):
+#    encoding = tiktoken.encoding_for_model(model_engine)
+#    return len(encoding.encode(string))
 
 async def get_history_as_openai_messages(channel):
     messages = []
@@ -69,18 +69,18 @@ async def get_history_as_openai_messages(channel):
         message_length = len(message_content)
         if total_length + message_length > 3800:
             break
-        token_length = get_token_count(message_content)
-        if total_tokens + token_length > 3500:
-            break
+        # token_length = get_token_count(message_content)
+        # if total_tokens + token_length > 3500:
+        #     break
         messages.append({
             "role": role,
             "content": message_content,
         })
         total_length += message_length
-        total_tokens += token_length
+        # total_tokens += token_length
     messages = messages[1:]  # Exclude the mention message
     # We reverse the list to make it in chronological order
-    logger.info(f"Total tokens: {total_tokens}")
+    # logger.info(f"Total tokens: {total_tokens}")
     return messages[::-1]
 
 async def generate_response(question, context="", extended_messages=[], temperature=1):
