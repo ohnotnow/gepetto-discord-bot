@@ -1,2 +1,4 @@
 discord.py==2.3.0
 openai==0.27.8
+tiktoken
+

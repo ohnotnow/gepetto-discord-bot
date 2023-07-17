@@ -10,6 +10,7 @@ from datetime import datetime, timedelta, timezone
 import logging
 import random
 import base64
+import tiktoken
 from enum import Enum
 
 AVATAR_PATH="avatar.png"
@@ -53,23 +54,33 @@ def get_token_price(token_count, direction="output"):
         return round(token_price_input * token_count, 4)
     return round(token_price_output * token_count, 4)
 
+def get_token_count(string):
+    encoding = tiktoken.encoding_for_model(model_engine)
+    return len(encoding.encode(string))
+
 async def get_history_as_openai_messages(channel):
     messages = []
     total_length = 0
+    total_tokens = 0
     async for msg in channel.history(limit=150):
         # The role is 'assistant' if the author is the bot, 'user' otherwise
         role = 'assistant' if msg.author == bot.user else 'user'
         message_content = f"At {msg.created_at.astimezone(timezone.utc).astimezone()} '{msg.author.name}' said: {msg.content}"
         message_length = len(message_content)
-        if total_length + message_length > 3200:
+        if total_length + message_length > 3800:
+            break
+        token_length = get_token_count(message_content)
+        if total_tokens + token_length > 3500:
             break
         messages.append({
             "role": role,
             "content": message_content,
         })
         total_length += message_length
+        total_tokens += token_length
     messages = messages[1:]  # Exclude the mention message
     # We reverse the list to make it in chronological order
+    logger.info(f"Total tokens: {total_tokens}")
     return messages[::-1]
 
 async def generate_response(question, context="", extended_messages=[], temperature=1):
@@ -162,11 +173,19 @@ async def on_message(message):
         # If the user has mentioned the bot more than 10 times recently
         if len(mention_counts[user_id]) > 10:
             # Send an abusive response
-            await message.channel.send(f"{random.choice(abusive_responses)}.", mention_author=True)
+            await message.channel.send(f"{message.author.mention} {random.choice(abusive_responses)}.")
             return
 
+
+
         # get the openai response
+        logger.info(message.content)
+        if not any(char.isalpha() for char in message.content.strip()):
+            await message.channel.send(f'{message.author.mention} {random.choice(abusive_responses)}.')
+            return
         question = message.content.split(' ', 1)[1][:500].replace('\r', ' ').replace('\n', ' ')
+        if not any(char.isalpha() for char in question):
+            await message.channel.send(f'{message.author.mention} {random.choice(abusive_responses)}.')
         if "--strict" in question.lower():
             question = question.lower().replace("--strict", "")
             temperature = 0.1
