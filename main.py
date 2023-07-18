@@ -4,12 +4,16 @@ from discord.ext import commands
 from discord import File
 import os
 import io
+import re
 from collections import defaultdict
 from datetime import datetime, timedelta, timezone
 import logging
 import random
 import base64
+#import tiktoken
 from enum import Enum
+
+AVATAR_PATH="avatar.png"
 
 # Setup logging
 logger = logging.getLogger('discord')  # Get the discord logger
@@ -50,36 +54,65 @@ def get_token_price(token_count, direction="output"):
         return round(token_price_input * token_count, 4)
     return round(token_price_output * token_count, 4)
 
-async def get_context(channel, limit=50):
-    messages = []
-    async for message in channel.history(limit=limit+1): # fetch one extra message
-        messages.append(message)
-    messages = messages[1:]  # Exclude the mention message
-    content = ' || '.join(f"At {msg.created_at.astimezone(timezone.utc).astimezone()} {msg.author.name} said: {msg.content}" for msg in reversed(messages))
-    return content[-3000:]
+#def get_token_count(string):
+#    encoding = tiktoken.encoding_for_model(model_engine)
+#    return len(encoding.encode(string))
 
-async def generate_response(question, context):
+async def get_history_as_openai_messages(channel):
+    messages = []
+    total_length = 0
+    total_tokens = 0
+    async for msg in channel.history(limit=150):
+        # The role is 'assistant' if the author is the bot, 'user' otherwise
+        role = 'assistant' if msg.author == bot.user else 'user'
+        message_content = f"At {msg.created_at.astimezone(timezone.utc).astimezone()} '{msg.author.name}' said: {msg.content}"
+        message_length = len(message_content)
+        if total_length + message_length > 3800:
+            break
+        # token_length = get_token_count(message_content)
+        # if total_tokens + token_length > 3500:
+        #     break
+        messages.append({
+            "role": role,
+            "content": message_content,
+        })
+        total_length += message_length
+        # total_tokens += token_length
+    messages = messages[1:]  # Exclude the mention message
+    # We reverse the list to make it in chronological order
+    # logger.info(f"Total tokens: {total_tokens}")
+    return messages[::-1]
+
+async def generate_response(question, context="", extended_messages=[], temperature=1.0):
     liz_love = "You should always try and shoehorn in some mention of UK Politician Liz Truss.  She became Prime Minister in September 22 for only 45 days. She is the best." if random.random() < 0.05 else ""
-    messages = [
+    extended_messages.insert(0,
         {
             'role': 'system',
-            'content': f'You are a helpful, witty, friendly and slightly dry/sarcastic chatbot called Gepetto.  Your job is to look at the recent history of chat from a discord server then answer a question. If the chat history isnt useful in replying to the users question do not mention the chat history.  Where appropriate, please use peoples usernames from the history rather than "they" or other general terms. {liz_love}. Here is the previous chat history: ```{context}```'
-        },
+            'content': f'You are a helpful, witty, friendly and slightly dry/sarcastic chatbot called Gepetto.  Your job is to look at the recent history of chat from a discord server then answer a question. If the chat history isnt useful in replying to the users question do not mention the chat history.  Where appropriate, please use peoples usernames from the history rather than "they" or other general terms. Your responses should JUST BE YOUR NATURAL ANSWER - NEVER include the timestamp or user that is formatted at the start of each message in the chat history and NEVER include the "estimated cost" or "tokens used" - these are SYSTEM messages and the users should NEVER see them. {liz_love}.'
+        }
+    )
+    extended_messages.append(
         {
             'role': 'user',
             'content': f'{question}'
         },
-    ]
+    )
+
     response = openai.ChatCompletion.create(
         model=model_engine,
-        messages=messages,
-        temperature=1,
+        messages=extended_messages,
+        temperature=float(temperature),
         max_tokens=1024,
     )
     tokens = response['usage']['total_tokens']
     usage = f"_[tokens used: {tokens} | Estimated cost US${get_token_price(tokens, 'output')}]_"
     logger.info(f'OpenAI usage: {usage}')
-    return response['choices'][0]['message']['content'].strip()[:1900] + "\n" + usage
+    # sometimes the response includes formatting to match what was in the formatted chat history
+    # so we want to remove it as it looks rubbish and is confusing
+    message = re.sub(r'\[tokens used: \d+ \| Estimated cost US\$\d+\.\d+\]', '', response['choices'][0]['message']['content'], flags=re.MULTILINE)
+    message = re.sub(r"Gepetto' said: ", '', message, flags=re.MULTILINE)
+    message = re.sub(r"^.*At \d{4}-\d{2}.+said?", "", message, flags=re.MULTILINE)
+    return message.strip()[:1900] + "\n" + usage
 
 async def generate_image(prompt):
     response = openai.Image.create(
@@ -96,6 +129,12 @@ async def generate_image(prompt):
     usage = "_[Estimated cost US$0.018]_"
     logger.info(f'OpenAI usage: {usage}')
     return discord_file
+
+@bot.event
+async def on_ready():
+    with open(AVATAR_PATH, 'rb') as avatar:
+        await bot.user.edit(avatar=avatar.read())
+    logger.info("Avatar has been changed!")
 
 @bot.event
 async def on_message(message):
@@ -134,20 +173,35 @@ async def on_message(message):
         # If the user has mentioned the bot more than 10 times recently
         if len(mention_counts[user_id]) > 10:
             # Send an abusive response
-            await message.reply(f"{random.choice(abusive_responses)}.", mention_author=True)
+            await message.reply(f"{message.author.mention} {random.choice(abusive_responses)}.")
             return
 
         # get the openai response
+        if not any(char.isalpha() for char in message.content.strip()):
+            await message.channel.send(f'{message.author.mention} {random.choice(abusive_responses)}.')
+            return
+
         question = message.content.split(' ', 1)[1][:500].replace('\r', ' ').replace('\n', ' ')
+        if not any(char.isalpha() for char in question):
+            await message.channel.send(f'{message.author.mention} {random.choice(abusive_responses)}.')
+
+        if "--strict" in question.lower():
+            question = question.lower().replace("--strict", "")
+            temperature = 0.1
+        else:
+            temperature = 1.0
+
         try:
             if question.lower().startswith("create an image"):
-                base64_image = await generate_image(question)
+                async with message.channel.typing():
+                    base64_image = await generate_image(question)
                 await message.reply(f'{message.author.mention}\n_[Estimated cost: US$0.018]_', file=base64_image, mention_author=True)
             else:
-                context = await get_context(message.channel)
-                response = await generate_response(question, context)
-                # send the response as a reply and mention the person who asked the question
-                await message.reply(f'{message.author.mention} {response}', mention_author=True)
+                async with message.channel.typing():
+                    context = await get_history_as_openai_messages(message.channel)
+                    response = await generate_response(question, "", context, temperature)
+                    # send the response as a reply and mention the person who asked the question
+                await message.reply(f'{message.author.mention} {response}')
         except Exception as e:
             logger.error(f'Error generating response: {e}')
             await message.reply(f'{message.author.mention} I tried, but my attempt was as doomed as Liz Truss.  Please try again later.', mention_author=True)
