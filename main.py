@@ -197,8 +197,8 @@ async def on_message(message):
         elif "--wild" in question.lower():
             question = question.lower().replace("--wild", "")
             temperature = 1.5
-        elif "--crazy" in question.lower():
-            question = question.lower().replace("--crazy", "")
+        elif "--tripping" in question.lower():
+            question = question.lower().replace("--tripping", "")
             temperature = 1.9
         else:
             temperature = 1.0
