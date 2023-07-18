@@ -87,7 +87,10 @@ async def get_history_as_openai_messages(channel):
 async def generate_response(question, context="", extended_messages=[], temperature=1.0):
     liz_love = "You should always try and shoehorn in some mention of UK Politician Liz Truss.  She became Prime Minister in September 22 for only 45 days. She is the best." if random.random() < 0.05 else ""
     now = datetime.now()
-    formatted_date = now.strftime("%B %d" + "{S}" + ", %Y %I:%M %p").replace("{S}", lambda x: str(int(x.group(0)))+("th" if int(x.group(0)) in [11,12,13] else {1:"st",2:"nd",3:"rd"}.get(int(x.group(0))%10, "th")))
+    day = now.strftime("%d")
+    suffix = lambda day: "th" if 11 <= int(day) <= 13 else {1: "st", 2: "nd", 3: "rd"}.get(int(day) % 10, "th")
+    formatted_date = now.strftime("%B %d" + suffix(day) + ", %Y %I:%M %p")
+
     extended_messages.insert(0,
         {
             'role': 'system',
