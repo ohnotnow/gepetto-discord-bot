@@ -13,6 +13,8 @@ import base64
 #import tiktoken
 from enum import Enum
 
+import requests
+from bs4 import BeautifulSoup
 
 AVATAR_PATH="avatar.png"
 
@@ -55,6 +57,35 @@ def get_token_price(token_count, direction="output"):
     if direction == "input":
         return round(token_price_input * token_count, 4)
     return round(token_price_output * token_count, 4)
+
+async def summarise_webpage(message, url):
+    # Get the summary
+    logger.info(f"Summarising {url}")
+    response = requests.get(url)
+    soup = BeautifulSoup(response.text, 'html.parser')
+    page_text = soup.get_text(strip=True)
+    messages = [
+        {
+            'role': 'system',
+            'content': 'You are a helpful assistant called "Gepetto" who specialises in providing concise, short summaries of text.'
+        },
+        {
+            'role': 'user',
+            'content': f'Can you summarise this article for me? :: {page_text[:2000]}'
+        },
+    ]
+    response = openai.ChatCompletion.create(
+        model=model_engine,
+        messages=messages,
+        temperature=1.0,
+        max_tokens=1024,
+    )
+    tokens = response['usage']['total_tokens']
+    usage = f"_[tokens used: {tokens} | Estimated cost US${get_token_price(tokens, 'output')}]_"
+    logger.info(f'OpenAI usage: {usage}')
+    summary = response['choices'][0]['message']['content'] + "\n" + usage
+    # Send the summary
+    await message.reply(f"Here's a summary of {url}:\n{summary}")
 
 #def get_token_count(string):
 #    encoding = tiktoken.encoding_for_model(model_engine)
@@ -199,11 +230,19 @@ async def on_message(message):
         else:
             temperature = 1.0
 
+        pattern = r"summarise\s+(<)?http"
+
         try:
             if question.lower().startswith("create an image"):
                 async with message.channel.typing():
                     base64_image = await generate_image(question)
                 await message.reply(f'{message.author.mention}\n_[Estimated cost: US$0.018]_', file=base64_image, mention_author=True)
+            elif re.search(pattern, question.lower()):
+                question = question.lower().replace("summarise", "")
+                question = question.strip()
+                question = question.strip("<>")
+                async with message.channel.typing():
+                    await summarise_webpage(message, question.strip())
             else:
                 async with message.channel.typing():
                     context = await get_history_as_openai_messages(message.channel)
