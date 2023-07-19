@@ -13,6 +13,7 @@ import base64
 #import tiktoken
 from enum import Enum
 
+
 AVATAR_PATH="avatar.png"
 
 # Setup logging
@@ -180,11 +181,6 @@ async def on_message(message):
         if len(mention_counts[user_id]) > 10:
             # Send an abusive response
             await message.reply(f"{message.author.mention} {random.choice(abusive_responses)}.")
-            return
-
-        # get the openai response
-        if not any(char.isalpha() for char in message.content.strip()):
-            await message.channel.send(f'{message.author.mention} {random.choice(abusive_responses)}.')
             return
 
         question = message.content.split(' ', 1)[1][:500].replace('\r', ' ').replace('\n', ' ')
