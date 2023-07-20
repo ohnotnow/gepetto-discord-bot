@@ -1,20 +1,21 @@
-import openai
-import discord
-from discord.ext import commands
-from discord import File
-import os
+import base64
 import io
+import logging
+import os
+import random
 import re
 from collections import defaultdict
 from datetime import datetime, timedelta, timezone
-import logging
-import random
-import base64
-#import tiktoken
 from enum import Enum
-
 import requests
+
+import discord
+from discord import File
+from discord.ext import commands
+import openai
 from bs4 import BeautifulSoup
+#import tiktoken
+
 
 AVATAR_PATH="avatar.png"
 
