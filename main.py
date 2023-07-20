@@ -106,7 +106,7 @@ async def summarise_webpage(message, url):
     logger.info(f'OpenAI usage: {usage}')
     summary = response['choices'][0]['message']['content'] + "\n" + usage
     # Send the summary
-    await message.reply(f"Here's a summary of {url}:\n{summary}")
+    await message.reply(f"Here's a summary of the content:\n{summary}")
 
 #def get_token_count(string):
 #    encoding = tiktoken.encoding_for_model(model_engine)
