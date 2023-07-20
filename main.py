@@ -14,6 +14,7 @@ from discord import File
 from discord.ext import commands
 import openai
 from bs4 import BeautifulSoup
+from youtube_transcript_api import YouTubeTranscriptApi
 #import tiktoken
 
 
@@ -47,7 +48,7 @@ intents.members = True
 intents.message_content = True
 bot = commands.Bot(command_prefix='!', intents=intents)
 
-def get_token_price(token_count, direction="output"):
+def get_token_price(token_count, direction="output", model_engine=model_engine):
     token_price_input = 0
     token_price_output = 0
     for model in Model:
@@ -61,10 +62,29 @@ def get_token_price(token_count, direction="output"):
 
 async def summarise_webpage(message, url):
     # Get the summary
+    model = model_engine
+    max_tokens = 1024
     logger.info(f"Summarising {url}")
-    response = requests.get(url)
-    soup = BeautifulSoup(response.text, 'html.parser')
-    page_text = soup.get_text(strip=True)
+    if '//www.youtube.com/' in url:
+        video_id = re.search(r"v=([^\&\?]+)", url).group(1)
+        logger.info(f"Youtube Video ID: {video_id}")
+        try:
+            transcript_list = YouTubeTranscriptApi.get_transcript(video_id)
+        except Exception as e:
+            logger.error(f"Error getting transcript: {e}")
+            await message.reply(f"Sorry, I couldn't get a transcript for that video.")
+            return
+        transcript_text = [x['text'] for x in transcript_list]
+        page_text = ' '.join(transcript_text)
+        # if len(page_text) > 8000:
+        #     model = 'gpt-3.5-turbo-16k'
+        logger.info(f"Page length: {len(page_text)}")
+        page_text = page_text[:12000]
+        max_tokens = 1024
+    else:
+        response = requests.get(url)
+        soup = BeautifulSoup(response.text, 'html.parser')
+        page_text = soup.get_text(strip=True)[:2000]
     messages = [
         {
             'role': 'system',
@@ -72,17 +92,17 @@ async def summarise_webpage(message, url):
         },
         {
             'role': 'user',
-            'content': f'Can you summarise this article for me? :: {page_text[:2000]}'
+            'content': f'Can you summarise this article for me? :: {page_text}'
         },
     ]
     response = openai.ChatCompletion.create(
-        model=model_engine,
+        model=model,
         messages=messages,
         temperature=1.0,
-        max_tokens=1024,
+        max_tokens=max_tokens,
     )
     tokens = response['usage']['total_tokens']
-    usage = f"_[tokens used: {tokens} | Estimated cost US${get_token_price(tokens, 'output')}]_"
+    usage = f"_[tokens used: {tokens} | Estimated cost US${get_token_price(tokens, 'output', model)}]_"
     logger.info(f'OpenAI usage: {usage}')
     summary = response['choices'][0]['message']['content'] + "\n" + usage
     # Send the summary
@@ -171,6 +191,7 @@ async def generate_image(prompt):
 
 @bot.event
 async def on_ready():
+    return
     with open(AVATAR_PATH, 'rb') as avatar:
         await bot.user.edit(avatar=avatar.read())
     logger.info("Avatar has been changed!")
@@ -239,7 +260,7 @@ async def on_message(message):
                     base64_image = await generate_image(question)
                 await message.reply(f'{message.author.mention}\n_[Estimated cost: US$0.018]_', file=base64_image, mention_author=True)
             elif re.search(pattern, question.lower()):
-                question = question.lower().replace("summarise", "")
+                question = question.replace("summarise", "")
                 question = question.strip()
                 question = question.strip("<>")
                 async with message.channel.typing():
