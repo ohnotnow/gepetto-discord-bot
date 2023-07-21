@@ -4,7 +4,7 @@ This bot uses OpenAI to generate responses to messages in a Discord server. It l
 
 It has a couple of extra options to do common things.  Eg:
 ```
-@Gepetto create and image of a rocket flying through space
+@Gepetto create an image of a rocket flying through space
 @Gepetto summarise https://www.example.com/an/article
 @Gepetto summarise <https://www.youtube.com/watch?v=123f830q9>
 ```
