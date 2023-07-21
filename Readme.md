@@ -5,9 +5,9 @@ This bot uses OpenAI to generate responses to messages in a Discord server. It l
 It has a couple of extra options to do common things.  Eg:
 ```
 @Gepetto create an image of a rocket flying through space
-@Gepetto summarise https://www.example.com/an/article
-@Gepetto summarise <https://www.youtube.com/watch?v=123f830q9>
-@Gepetto summarise <https://www.example.com/an/article> can you give me the main insights on this as bullet points?
+@Gepetto 👀 https://www.example.com/an/article
+@Gepetto 👀 <https://www.youtube.com/watch?v=123f830q9>
+@Gepetto 👀 <https://www.example.com/an/article> can you give me the main insights on this as bullet points?
 ```
 The youtube one depends on their being subtitles/transcripts attached to the video.  The summarise command is a little limited (currently hard-coded) in scope due to token limits on the text you can send to the cheaper OpenAI models.
 

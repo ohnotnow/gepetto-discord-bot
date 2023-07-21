@@ -270,6 +270,7 @@ async def on_message(message):
             return
 
         question = message.content.split(' ', 1)[1][:500].replace('\r', ' ').replace('\n', ' ')
+        logger.info(f'Question: {question}')
         if not any(char.isalpha() for char in question):
             await message.channel.send(f'{message.author.mention} {random.choice(abusive_responses)}.')
 
@@ -285,7 +286,8 @@ async def on_message(message):
         else:
             temperature = 1.0
 
-        pattern = r"summarise\s+(<)?http"
+        # pattern = r"summarise\s+(<)?http"
+        pattern = r"👀\s*(http|https)://"
 
         try:
             if question.lower().startswith("create an image"):
@@ -293,7 +295,7 @@ async def on_message(message):
                     base64_image = await generate_image(question)
                 await message.reply(f'{message.author.mention}\n_[Estimated cost: US$0.018]_', file=base64_image, mention_author=True)
             elif re.search(pattern, question.lower()):
-                question = question.replace("summarise", "")
+                question = question.replace("👀", "")
                 question = question.strip()
                 question = question.strip("<>")
                 async with message.channel.typing():
