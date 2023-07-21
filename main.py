@@ -101,7 +101,20 @@ async def summarise_webpage(message, url):
         page_text = page_text[:12000]
         max_tokens = 1024
     else:
-        response = requests.get(url)
+        url_match = re.search(r"http[s]?://(?:[a-zA-Z]|[0-9]|[$-_@.&+]|[!*\\(\\),]|(?:%[0-9a-fA-F][0-9a-fA-F]))+", url)
+        url_string = url_match.group(0) if url_match else None
+
+        if not url_string:
+            await message.reply(f"Sorry, I couldn't find a URL in that message.")
+            return
+
+        # If a URL was found, remove it from the string to get the trailing text
+        if url_string:
+            url_string = url_string.strip('<>')
+            trailing_text = url.replace(url_string, '').strip()
+            if trailing_text:
+                prompt = trailing_text
+        response = requests.get(url_string)
         soup = BeautifulSoup(response.text, 'html.parser')
         page_text = soup.get_text(strip=True)[:2000]
     logger.info(f"Prompt: {prompt}")
