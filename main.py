@@ -60,13 +60,32 @@ def get_token_price(token_count, direction="output", model_engine=model_engine):
         return round(token_price_input * token_count, 4)
     return round(token_price_output * token_count, 4)
 
+import re
+
+def extract_video_id_and_trailing_text(input_string):
+    # Use a regular expression to match a YouTube URL and extract the video ID
+    video_id_match = re.search(r"https://www\.youtube\.com/watch\?v=([^&\s\?]+)", input_string)
+    video_id = video_id_match.group(1) if video_id_match else None
+
+    # If a video ID was found, remove the URL from the string to get the trailing text
+    if video_id:
+        url = video_id_match.group(0)  # The entire matched URL
+        trailing_text = input_string.replace(url, '').strip()
+    else:
+        trailing_text = ''
+
+    return video_id, trailing_text
+
 async def summarise_webpage(message, url):
     # Get the summary
     model = model_engine
     max_tokens = 1024
+    prompt = "Can you summarise this article for me?"
     logger.info(f"Summarising {url}")
     if '//www.youtube.com/' in url:
-        video_id = re.search(r"v=([^\&\?]+)", url).group(1)
+        video_id, trailing_text = extract_video_id_and_trailing_text(url)
+        if trailing_text:
+            prompt = trailing_text
         logger.info(f"Youtube Video ID: {video_id}")
         try:
             transcript_list = YouTubeTranscriptApi.get_transcript(video_id)
@@ -85,6 +104,7 @@ async def summarise_webpage(message, url):
         response = requests.get(url)
         soup = BeautifulSoup(response.text, 'html.parser')
         page_text = soup.get_text(strip=True)[:2000]
+    logger.info(f"Prompt: {prompt}")
     messages = [
         {
             'role': 'system',
@@ -92,7 +112,7 @@ async def summarise_webpage(message, url):
         },
         {
             'role': 'user',
-            'content': f'Can you summarise this article for me? :: {page_text}'
+            'content': f'{prompt}? :: {page_text}'
         },
     ]
     response = openai.ChatCompletion.create(
@@ -104,7 +124,7 @@ async def summarise_webpage(message, url):
     tokens = response['usage']['total_tokens']
     usage = f"_[tokens used: {tokens} | Estimated cost US${get_token_price(tokens, 'output', model)}]_"
     logger.info(f'OpenAI usage: {usage}')
-    summary = response['choices'][0]['message']['content'] + "\n" + usage
+    summary = response['choices'][0]['message']['content'][:1900] + "\n" + usage
     # Send the summary
     await message.reply(f"Here's a summary of the content:\n{summary}")
 
