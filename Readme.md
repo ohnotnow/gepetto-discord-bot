@@ -1,6 +1,14 @@
 # Discord OpenAI Bot
 
-This bot uses OpenAI to generate responses to messages in a Discord server. It listens for mentions of the bot and generates responses using OpenAI's GPT chat model. It has some special functionality to track the number of times a user has mentioned the bot recently and limit the number of OpenAI calls. It can also generate images using DALLE2 in response to prompts that begin with `create an image`...
+This bot uses OpenAI to generate responses to messages in a Discord server. It listens for mentions of the bot and generates responses using OpenAI's GPT chat model. It has some special functionality to track the number of times a user has mentioned the bot recently and limit the number of OpenAI calls.
+
+It has a couple of extra options to do common things.  Eg:
+```
+@Gepetto create and image of a rocket flying through space
+@Gepetto summarise https://www.example.com/an/article
+@Gepetto summarise <https://www.youtube.com/watch?v=123f830q9>
+```
+The youtube one depends on their being subtitles/transcripts attached to the video.  The summarise command is a little limited (currently hard-coded) in scope due to token limits on the text you can send to the cheaper OpenAI models.
 
 ## Environment Variables
 
