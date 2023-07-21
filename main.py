@@ -116,7 +116,7 @@ async def summarise_webpage(message, url):
                 prompt = trailing_text
         response = requests.get(url_string)
         soup = BeautifulSoup(response.text, 'html.parser')
-        page_text = soup.get_text(strip=True)[:2000]
+        page_text = soup.get_text(strip=True)[:12000]
     logger.info(f"Prompt: {prompt}")
     messages = [
         {
