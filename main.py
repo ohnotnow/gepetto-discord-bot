@@ -83,7 +83,7 @@ async def summarise_webpage(message, url):
     prompt = "Can you summarise this article for me?"
     logger.info(f"Summarising {url}")
     if '//www.youtube.com/' in url:
-        video_id, trailing_text = extract_video_id_and_trailing_text(url)
+        video_id, trailing_text = extract_video_id_and_trailing_text(url.strip("<>"))
         if trailing_text:
             prompt = trailing_text
         logger.info(f"Youtube Video ID: {video_id}")
