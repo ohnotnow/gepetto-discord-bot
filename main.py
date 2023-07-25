@@ -287,7 +287,7 @@ async def on_message(message):
             temperature = 1.0
 
         # pattern = r"summarise\s+(<)?http"
-        pattern = r"👀\s*(http|https)://"
+        pattern = r"👀\s*\<?(http|https):"
 
         try:
             if question.lower().startswith("create an image"):
