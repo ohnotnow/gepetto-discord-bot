@@ -4,6 +4,7 @@ import logging
 import os
 import random
 import re
+import json
 from collections import defaultdict
 from datetime import datetime, timedelta, timezone
 from enum import Enum
@@ -15,6 +16,7 @@ from discord.ext import commands
 import openai
 from bs4 import BeautifulSoup
 from youtube_transcript_api import YouTubeTranscriptApi
+import metoffer
 #import tiktoken
 
 
@@ -300,6 +302,13 @@ async def on_message(message):
                 question = question.strip("<>")
                 async with message.channel.typing():
                     await summarise_webpage(message, question.strip())
+            elif question.lower().startswith("weather"):
+                question = question.replace("weather", "")
+                question = question.strip()
+                async with message.channel.typing():
+                    forecast = get_forecast(question.strip())
+                # await message.reply(f'{message.author.mention}\n_[Estimated cost: US$0.018]_', file=forecast, mention_author=True)
+                await message.reply(f'{message.author.mention} {forecast}\n_[Estimated cost: US$0.00]_', mention_author=True)
             else:
                 async with message.channel.typing():
                     context = await get_history_as_openai_messages(message.channel)
@@ -309,6 +318,34 @@ async def on_message(message):
         except Exception as e:
             logger.error(f'Error generating response: {e}')
             await message.reply(f'{message.author.mention} I tried, but my attempt was as doomed as Liz Truss.  Please try again later.', mention_author=True)
+
+def get_forecast(location_name = None):
+    if not location_name:
+        return "Wut?  I need a location name.  Asshat."
+
+    API_KEY = os.getenv('MET_OFFICE_API_KEY')
+    # 1. Download the Sitelist
+    sitelist_url = f'http://datapoint.metoffice.gov.uk/public/data/val/wxfcs/all/json/sitelist?key={API_KEY}'
+    response = requests.get(sitelist_url)
+    sitelist = response.json()
+
+    # 2. Find the ID for the location
+    location_id = None
+    for location in sitelist['Locations']['Location']:
+        if location['name'].lower() == location_name.lower():
+            location_id = location['id']
+            break
+
+    if location_id is None:
+        return f"Wut iz {location_name}? I dunno where that is.  Try again with a real place name, dummy."
+
+    # 3. Request the forecast
+    M = metoffer.MetOffer(API_KEY)
+    forecast = M.loc_forecast(location_id, metoffer.DAILY)
+    today = forecast['SiteRep']['DV']['Location']['Period'][0]
+    details = today['Rep'][0]
+    readable_forecast = f"Forecast for {location_name.capitalize()}: {metoffer.WEATHER_CODES[int(details['W'])]}, chance of rain {details['PPd']}%, temperature {details['Dm']}C (feels like {details['FDm']}C). Humidity {details['Hn']}%, wind {details['S']} knots - gusting upto {details['Gn']}.\n"
+    return readable_forecast
 
 # Run the bot
 bot.run(os.getenv("DISCORD_BOT_TOKEN", 'not_set'))
