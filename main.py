@@ -17,6 +17,7 @@ import openai
 from bs4 import BeautifulSoup
 from youtube_transcript_api import YouTubeTranscriptApi
 import metoffer
+import PyPDF2
 #import tiktoken
 
 
@@ -117,8 +118,11 @@ async def summarise_webpage(message, url):
             if trailing_text:
                 prompt = trailing_text
         response = requests.get(url_string)
-        soup = BeautifulSoup(response.text, 'html.parser')
-        page_text = soup.get_text(strip=True)[:12000]
+        if url_string.endswith('.pdf'):
+            page_text = get_text_from_pdf(url_string)[:10000]
+        else:
+            soup = BeautifulSoup(response.text, 'html.parser')
+            page_text = soup.get_text(strip=True)[:12000]
     logger.info(f"Prompt: {prompt}")
     messages = [
         {
@@ -346,6 +350,20 @@ def get_forecast(location_name = None):
     details = today['Rep'][0]
     readable_forecast = f"Forecast for {location_name.capitalize()}: {metoffer.WEATHER_CODES[int(details['W'])]}, chance of rain {details['PPd']}%, temperature {details['Dm']}C (feels like {details['FDm']}C). Humidity {details['Hn']}%, wind {details['S']} knots - gusting upto {details['Gn']}.\n"
     return readable_forecast
+
+def get_text_from_pdf(url: str) -> str:
+    try:
+        response = requests.get(url)
+        file = io.BytesIO(response.content)
+        pdf_reader = PyPDF2.PdfReader(file)
+        text = ""
+        for page in pdf_reader.pages:
+            text += page.extract_text() + "\n"
+        return text
+    except Exception as e:
+        print(f"Could not get pdf text for {url}")
+        print(e)
+        return "Could not extract text for this PDF.  Sorry."
 
 # Run the bot
 bot.run(os.getenv("DISCORD_BOT_TOKEN", 'not_set'))
