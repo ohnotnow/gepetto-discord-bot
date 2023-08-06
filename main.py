@@ -12,12 +12,13 @@ import requests
 
 import discord
 from discord import File
-from discord.ext import commands
+from discord.ext import commands, tasks
 import openai
 from bs4 import BeautifulSoup
 from youtube_transcript_api import YouTubeTranscriptApi
 import metoffer
 import PyPDF2
+import feedparser
 #import tiktoken
 
 
@@ -41,7 +42,7 @@ class Model(Enum):
 
 # Fetch environment variables
 server_id = os.getenv("DISCORD_SERVER_ID", "not_set")
-model_engine = os.getenv("DEFAULT_MODEL_ENGINE", Model.GPT3_5_Turbo.value[0])
+model_engine = os.getenv("OPENAI_MODEL_ENGINE", Model.GPT3_5_Turbo.value[0])
 openai.api_key = os.getenv("OPENAI_API_KEY")
 location = os.getenv('BOT_LOCATION', 'dunno')
 
@@ -364,6 +365,36 @@ def get_text_from_pdf(url: str) -> str:
         print(f"Could not get pdf text for {url}")
         print(e)
         return "Could not extract text for this PDF.  Sorry."
+
+
+def get_top_stories(feed_url, num_stories=5):
+    feed = feedparser.parse(feed_url)
+    body = ""
+    for entry in feed.entries[:num_stories]:
+        body = body + f'* {entry.title} <{entry.link}>\n'
+    return body
+
+def get_news_summary(num_stories=5):
+    most_read_url = 'http://feeds.bbci.co.uk/news/rss.xml?edition=int'
+    uk_url = 'http://feeds.bbci.co.uk/news/uk/rss.xml'
+    scotland_url = 'http://feeds.bbci.co.uk/news/scotland/rss.xml'
+    summary = f'Here are the top {num_stories} stories from the BBC News website:\n\n'
+    summary = summary + 'Most Read:\n'
+    summary = summary + get_top_stories(most_read_url, num_stories)
+    summary = summary + '\nUK:\n'
+    summary = summary + get_top_stories(uk_url, num_stories)
+    summary = summary + '\nScotland:\n'
+    summary = summary + get_top_stories(scotland_url, num_stories)
+    return summary
+
+@tasks.loop(hours=24)
+async def morning_summary():
+    now = datetime.datetime.now()
+    if now.hour == 8:
+        channel = bot.get_channel(os.getenv('DISCORD_BOT_CHANNEL_ID'))  # Replace <channel-id> with the ID of the channel you want to send the message to
+#        weather = get_weather()  # You'll need to implement the get_weather function
+        news = get_news_summary(5)
+        await channel.send(news)
 
 # Run the bot
 bot.run(os.getenv("DISCORD_BOT_TOKEN", 'not_set'))
