@@ -314,6 +314,11 @@ async def on_message(message):
                     forecast = get_forecast(question.strip())
                 # await message.reply(f'{message.author.mention}\n_[Estimated cost: US$0.018]_', file=forecast, mention_author=True)
                 await message.reply(f'{message.author.mention} {forecast}\n_[Estimated cost: US$0.00]_', mention_author=True)
+            elif question.lower().strip() == "test":
+                print(f"ENV : {os.getenv('DISCORD_BOT_CHANNEL_ID')}")
+                print(f"MSG : {message.channel.id}")
+                await morning_summary()
+
             else:
                 async with message.channel.typing():
                     context = await get_history_as_openai_messages(message.channel)
@@ -378,23 +383,29 @@ def get_news_summary(num_stories=5):
     most_read_url = 'http://feeds.bbci.co.uk/news/rss.xml?edition=int'
     uk_url = 'http://feeds.bbci.co.uk/news/uk/rss.xml'
     scotland_url = 'http://feeds.bbci.co.uk/news/scotland/rss.xml'
-    summary = f'Here are the top {num_stories} stories from the BBC News website:\n\n'
-    summary = summary + 'Most Read:\n'
-    summary = summary + get_top_stories(most_read_url, num_stories)
-    summary = summary + '\nUK:\n'
-    summary = summary + get_top_stories(uk_url, num_stories)
-    summary = summary + '\nScotland:\n'
-    summary = summary + get_top_stories(scotland_url, num_stories)
-    return summary
+    most_read = 'Most Read:\n'
+    most_read = most_read + get_top_stories(most_read_url, num_stories)
+    uk = '\nUK:\n'
+    uk = uk + get_top_stories(uk_url, num_stories)
+    # scotland = '\nScotland:\n'
+    # scotland = scotland + get_top_stories(scotland_url, num_stories)
+    # return most_read, uk, scotland
+    return most_read, uk
 
 @tasks.loop(hours=24)
 async def morning_summary():
-    now = datetime.datetime.now()
-    if now.hour == 8:
-        channel = bot.get_channel(os.getenv('DISCORD_BOT_CHANNEL_ID'))  # Replace <channel-id> with the ID of the channel you want to send the message to
-#        weather = get_weather()  # You'll need to implement the get_weather function
-        news = get_news_summary(5)
-        await channel.send(news)
+    now = datetime.now()
+    if now.hour > 0:
+        locations = os.getenv('WEATHER_LOCATIONS', "").split(",")
+        print(os.getenv('DISCORD_BOT_CHANNEL_ID', 'WHATEVER'))
+        channel = bot.get_channel(os.getenv('DISCORD_BOT_CHANNEL_ID', 'Invalid').strip())  # Replace <channel-id> with the ID of the channel you want to send the message to
+        most_read, uk = get_news_summary(5)
+        await channel.send(most_read)
+        await channel.send(uk)
+        if len(locations) > 0:
+            for location in locations:
+                forecast = get_forecast(location.strip())
+                await channel.send(forecast)
 
 # Run the bot
 bot.run(os.getenv("DISCORD_BOT_TOKEN", 'not_set'))
