@@ -19,6 +19,7 @@ from youtube_transcript_api import YouTubeTranscriptApi
 import metoffer
 import PyPDF2
 import feedparser
+from trafilatura import fetch_url, extract
 #import tiktoken
 
 
@@ -122,8 +123,13 @@ async def summarise_webpage(message, url):
         if url_string.endswith('.pdf'):
             page_text = get_text_from_pdf(url_string)[:10000]
         else:
-            soup = BeautifulSoup(response.text, 'html.parser')
-            page_text = soup.get_text(strip=True)[:12000]
+            downloaded = fetch_url(url_string)
+            if downloaded is None:
+                await message.reply(f"Sorry, I couldn't download that URL.")
+                return
+            page_text = extract(downloaded)
+            # soup = BeautifulSoup(response.text, 'html.parser')
+            # page_text = soup.get_text(strip=True)[:12000]
     logger.info(f"Prompt: {prompt}")
     messages = [
         {
