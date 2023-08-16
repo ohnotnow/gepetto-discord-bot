@@ -286,6 +286,7 @@ async def on_message(message):
         logger.info(f'Question: {question}')
         if not any(char.isalpha() for char in question):
             await message.channel.send(f'{message.author.mention} {random.choice(abusive_responses)}.')
+            return
 
         if "--strict" in question.lower():
             question = question.lower().replace("--strict", "")
