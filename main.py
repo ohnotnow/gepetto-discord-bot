@@ -235,6 +235,44 @@ async def generate_image(prompt):
     logger.info(f'OpenAI usage: {usage}')
     return discord_file
 
+async def get_weather_location_from_prompt(prompt):
+    messages = [
+        {"role": "system", "content": "You are a helpful assistant who is an expert at picking out UK town and city names from user prompts"},
+        {"role": "user", "content": prompt}
+    ]
+    functions = [
+        {
+            "name": "get_location_for_forecast",
+            "description": "figure out what town or city the user wants the weather for",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "location": {
+                        "type": "string",
+                        "description": "The UK city or town, eg London, Edinburgh, Manchester",
+                    },
+                },
+                "required": ["location"],
+            },
+        }
+    ]
+    response = openai.ChatCompletion.create(
+        model=model_engine,
+        messages=messages,
+        functions=functions,
+        function_call={"name": "get_location_for_forecast"},  # auto is default, but we'll be explicit
+    )
+    response_message = response["choices"][0]["message"]
+    tokens = response['usage']['total_tokens']
+    usage = f"_[tokens used: {tokens} | Estimated cost US${get_token_price(tokens, 'output')}]_"
+
+    if response_message.get("function_call"):
+        function_name = response_message["function_call"]["name"]
+        function_args = json.loads(response_message["function_call"]["arguments"])
+        location = function_args.get("location")
+        return location, usage
+    return None, usage
+
 @bot.event
 async def on_ready():
     return
@@ -314,13 +352,19 @@ async def on_message(message):
                 question = question.strip("<>")
                 async with message.channel.typing():
                     await summarise_webpage(message, question.strip())
-            elif question.lower().startswith("weather"):
-                question = question.replace("weather", "")
+            elif "weather" in question.lower():
+                # question = question.replace("weather", "")
                 question = question.strip()
                 async with message.channel.typing():
-                    forecast = get_forecast(question.strip())
+                    location, usage = await get_weather_location_from_prompt(question.strip())
+                    if location is None:
+                        context = await get_history_as_openai_messages(message.channel)
+                        forecast = await generate_response(question, "", context, temperature)
+                    else:
+                        forecast = get_forecast(location.strip())
+                        forecast = forecast + "\n" + usage
                 # await message.reply(f'{message.author.mention}\n_[Estimated cost: US$0.018]_', file=forecast, mention_author=True)
-                await message.reply(f'{message.author.mention} {forecast}\n_[Estimated cost: US$0.00]_', mention_author=True)
+                await message.reply(f'{message.author.mention} {forecast}', mention_author=True)
             elif question.lower().strip() == "test":
                 print(f"ENV : {os.getenv('DISCORD_BOT_CHANNEL_ID')}")
                 print(f"MSG : {message.channel.id}")
