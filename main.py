@@ -361,7 +361,13 @@ def get_forecast(location_name = None):
     forecast = M.loc_forecast(location_id, metoffer.DAILY)
     today = forecast['SiteRep']['DV']['Location']['Period'][0]
     details = today['Rep'][0]
-    readable_forecast = f"Forecast for {location_name.capitalize()}: {metoffer.WEATHER_CODES[int(details['W'])]}, chance of rain {details['PPd']}%, temperature {details['Dm']}C (feels like {details['FDm']}C). Humidity {details['Hn']}%, wind {details['S']} knots - gusting upto {details['Gn']}.\n"
+    # readable_forecast = f"Forecast for {location_name.capitalize()}: {metoffer.WEATHER_CODES[int(details['W'])]}, chance of rain {details['PPd']}%, temperature {details['Dm']}C (feels like {details['FDm']}C). Humidity {details['Hn']}%, wind {details['S']} knots - gusting upto {details['Gn']}.\n"
+    rain_emoji = "\u2614" if int(details['PPd']) > 50 else ""
+    sun_emoji = "\u2600\ufe0f" if int(details['Dm']) > 20 else ""
+    humidity_emoji = "\U0001F6BF" if int(details['Hn']) > 70 else ""
+
+    readable_forecast = f"Forecast for {location_name.capitalize()}: {metoffer.WEATHER_CODES[int(details['W'])]}{rain_emoji}, chance of rain {details['PPd']}%, temperature {details['Dm']}C{sun_emoji} (feels like {details['FDm']}C). Humidity {details['Hn']}%{humidity_emoji}, wind {details['S']} knots - gusting upto {details['Gn']}.\n"
+
     return readable_forecast
 
 def get_text_from_pdf(url: str) -> str:
