@@ -102,6 +102,8 @@ async def summarise_webpage(message, url):
         page_text = ' '.join(transcript_text)
         # if len(page_text) > 8000:
         #     model = 'gpt-3.5-turbo-16k'
+        if "The copyright belongs to Google LLC" in page_text:
+            page_text = "Could not get the transcript - possibly I am being geoblocked"
         logger.info(f"Page length: {len(page_text)}")
         page_text = page_text[:12000]
         max_tokens = 1024
