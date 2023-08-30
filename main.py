@@ -378,7 +378,11 @@ async def on_message(message):
 
             else:
                 async with message.channel.typing():
-                    context = await get_history_as_openai_messages(message.channel)
+                    if "--no-logs" in question.lower():
+                        context = []
+                        question = question.lower().replace("--no-logs", "")
+                    else:
+                        context = await get_history_as_openai_messages(message.channel)
                     response = await generate_response(question, "", context, temperature)
                     # send the response as a reply and mention the person who asked the question
                 await message.reply(f'{message.author.mention} {response}')
