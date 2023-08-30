@@ -322,6 +322,10 @@ async def on_message(message):
             await message.reply(f"{message.author.mention} {random.choice(abusive_responses)}.")
             return
 
+        if len(message.content.split(' ', 1)) == 1:
+            await message.reply(f"{message.author.mention} {random.choice(abusive_responses)}.")
+            return
+
         question = message.content.split(' ', 1)[1][:500].replace('\r', ' ').replace('\n', ' ')
         logger.info(f'Question: {question}')
         if not any(char.isalpha() for char in question):
