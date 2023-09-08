@@ -478,6 +478,7 @@ async def morning_summary():
 
 @tasks.loop(hours=1)
 async def say_something_random():
+    logger.info("In say_something_random")
     if random.random() < 0.1:
         logger.info("Saying something random")
         channel = bot.get_channel(os.getenv('DISCORD_BOT_CHANNEL_ID', 'Invalid').strip())
