@@ -476,7 +476,7 @@ async def morning_summary():
                 forecast = get_forecast(location.strip())
                 await channel.send(forecast)
 
-@tasks.loop(hours=4)
+@tasks.loop(hours=1)
 async def say_something_random():
     if random.random() < 0.1:
         logger.info("Saying something random")
