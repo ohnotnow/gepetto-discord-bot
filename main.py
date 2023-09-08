@@ -185,7 +185,7 @@ async def get_history_as_openai_messages(channel):
     # logger.info(f"Total tokens: {total_tokens}")
     return messages[::-1]
 
-async def generate_response(question, context="", extended_messages=[], temperature=1.0):
+async def generate_response(question, context="", extended_messages=[], temperature=1.0, model=model_engine):
     liz_love = "You should always try and shoehorn in some mention of UK Politician Liz Truss.  She became Prime Minister in September 22 for only 45 days. She is the best." if random.random() < 0.05 else ""
     now = datetime.now()
     day = now.strftime("%d")
@@ -206,7 +206,7 @@ async def generate_response(question, context="", extended_messages=[], temperat
     )
 
     response = openai.ChatCompletion.create(
-        model=model_engine,
+        model=model,
         messages=extended_messages,
         temperature=float(temperature),
         max_tokens=1024,
@@ -277,6 +277,7 @@ async def get_weather_location_from_prompt(prompt):
 
 @bot.event
 async def on_ready():
+    say_something_random.start()
     return
     with open(AVATAR_PATH, 'rb') as avatar:
         await bot.user.edit(avatar=avatar.read())
@@ -461,6 +462,7 @@ def get_news_summary(num_stories=5):
 
 @tasks.loop(hours=24)
 async def morning_summary():
+    return
     now = datetime.now()
     if now.hour > 0:
         locations = os.getenv('WEATHER_LOCATIONS', "").split(",")
@@ -473,6 +475,59 @@ async def morning_summary():
             for location in locations:
                 forecast = get_forecast(location.strip())
                 await channel.send(forecast)
+
+@tasks.loop(hours=4)
+async def say_something_random():
+    if random.random() < 0.1:
+        logger.info("Saying something random")
+        channel = bot.get_channel(os.getenv('DISCORD_BOT_CHANNEL_ID', 'Invalid').strip())
+        prompt = "Can you tell me a random fact?"
+        today = datetime.now()
+        date_string = today.strftime("%d %B %Y")
+        if random.random() < 0.1:
+            prompt += f" It could be about the UK politician Liz Truss who became the UK prime minister on September 6th 2022 (today is {date_string}), and had to resign just a few weeks later after the Queen died in mysterious circumstances after shaking Liz's hand."
+
+        system_prompt = f'Today is {date_string}. You are a helpful assistant called "Gepetto" who specialises in providing random interesting facts'
+        if random.random() < 0.2:
+            system_prompt += " which often focus on esoteric PHP and Javascript Programming techniques"
+        elif random.random() < 0.2:
+            system_prompt += " which often focus on techniques for using an air fryer to cook a wide variety of foods"
+        elif random.random() < 0.2:
+            system_prompt += " which often focus on a UK region such as Cornwall, Norfolk, Cumbria or the West of Scotland"
+        elif random.random() < 0.2:
+            system_prompt += " which often focus on the potato, pasta, barbecue or Scottish food"
+
+        system_prompt += ".  You should ONLY respond with the fact, no other text."
+        logger.info(f"System prompt: {system_prompt}")
+        logger.info(f"Prompt: {prompt}")
+        messages = [
+            {
+                'role': 'system',
+                'content': system_prompt
+            },
+            {
+                'role': 'user',
+                'content': f'{prompt}'
+            },
+        ]
+
+        response = openai.ChatCompletion.create(
+            model=model_engine,
+            messages=messages,
+            temperature=1.0,
+            max_tokens=1024,
+        )
+
+        tokens = response['usage']['total_tokens']
+        usage = f"_[tokens used: {tokens} | Estimated cost US${get_token_price(tokens, 'output')}]_"
+        logger.info(f'OpenAI random fact usage: {usage}')
+        message = response['choices'][0]['message']['content'][:1900] + "\n" + usage
+        message = message.replace("Sure! ", '')
+        message = message.replace("Here's a random fact for you: ", '')
+        message = message.replace("Certainly! ", '')
+        logger.info(f"Random fact: {message}")
+        # Send the message
+        await channel.send(f"{message}")
 
 # Run the bot
 bot.run(os.getenv("DISCORD_BOT_TOKEN", 'not_set'))
