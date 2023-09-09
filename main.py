@@ -481,7 +481,7 @@ async def say_something_random():
     logger.info("In say_something_random")
     if random.random() < 0.1:
         logger.info("Saying something random")
-        channel = bot.get_channel(os.getenv('DISCORD_BOT_CHANNEL_ID', 'Invalid').strip())
+        channel = bot.get_channel(int(os.getenv('DISCORD_BOT_CHANNEL_ID', 'Invalid').strip()))
         prompt = "Can you tell me a random fact?"
         today = datetime.now()
         date_string = today.strftime("%d %B %Y")
