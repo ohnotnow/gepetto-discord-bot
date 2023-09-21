@@ -386,8 +386,10 @@ async def on_message(message):
                         max_tokens=1024,
                         temperature=0
                     )
-                    completion = response['choices'][0]['text'].strip('complete')
-                await message.reply(f'{message.author.mention} {completion}')
+                    completion = response['choices'][0]['text'].strip('complete').strip()
+                    usage = f"_[tokens used: {response['usage']['total_tokens']} | Estimated cost US${get_token_price(response['usage']['total_tokens'], 'output', 'gpt-3.5-turbo-instruct')}]_"
+
+                await message.reply(f'{message.author.mention} {completion}\n{usage}', mention_author=True)
             else:
                 async with message.channel.typing():
                     if "--no-logs" in question.lower():
