@@ -376,7 +376,18 @@ async def on_message(message):
                 print(f"ENV : {os.getenv('DISCORD_BOT_CHANNEL_ID')}")
                 print(f"MSG : {message.channel.id}")
                 await morning_summary()
-
+            elif question.lower().strip().startswith("complete"):
+                logger.info('Do completion stuff')
+                completion = ""
+                async with message.channel.typing():
+                    response = openai.Completion.create(
+                        model="gpt-3.5-turbo-instruct",
+                        prompt=question,
+                        max_tokens=1024,
+                        temperature=0
+                    )
+                    completion = response['choices'][0]['text'].strip('complete')
+                await message.reply(f'{message.author.mention} {completion}')
             else:
                 async with message.channel.typing():
                     if "--no-logs" in question.lower():
