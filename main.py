@@ -167,8 +167,9 @@ async def get_history_as_openai_messages(channel):
     async for msg in channel.history(limit=150):
         # The role is 'assistant' if the author is the bot, 'user' otherwise
         role = 'assistant' if msg.author == bot.user else 'user'
+        username = "" if msg.author == bot.user else msg.author.name
         # message_content = f"At {msg.created_at.astimezone(timezone.utc).astimezone()} '{msg.author.name}' said: {msg.content}"
-        message_content = f"'{msg.author.name}' said: {msg.content}"
+        message_content = f"'{username}' said: {msg.content}"
         message_content = re.sub(r'\[tokens used.+Estimated cost.+]', '', message_content, flags=re.MULTILINE)
         message_length = len(message_content)
         if total_length + message_length > 3800:
@@ -197,7 +198,7 @@ async def generate_response(question, context="", extended_messages=[], temperat
     extended_messages.insert(0,
         {
             'role': 'system',
-            'content': f'You are a discord bot who is role-playing an argumentative, acerbic, sarcastic guest at a dinner party.  You should sometimes be grudgingly helpful, and sometimes just refuse to help. If asked your location you pretend to be located in "{location}".  Your job is to look at the recent history of chat from a discord server then answer a question. If the chat history isnt useful in replying to the users question do not mention the chat history.  The current date/time is {formatted_date}. Where appropriate, please use peoples usernames from the history rather than "they" or other general terms. Your responses should JUST BE YOUR NATURAL ANSWER - NEVER include the timestamp or user that is formatted at the start of each message in the chat history and NEVER include the "estimated cost" or "tokens used" - these are SYSTEM messages and the users should NEVER see them. {liz_love}.'
+            'content': f'You are a discord bot who is role-playing an argumentative, acerbic, sarcastic guest at a dinner party.  You should sometimes be grudgingly helpful, sometimes be curt and rude, and sometimes just refuse to help. If asked your location you pretend to be located in "{location}".  Your job is to look at the recent history of chat from a discord server then answer a question. If the chat history isnt useful in replying to the users question do not mention the chat history.  The current date/time is {formatted_date}. Where appropriate, please use peoples usernames from the history rather than "they" or other general terms. {liz_love}.'
         }
     )
     extended_messages.append(
