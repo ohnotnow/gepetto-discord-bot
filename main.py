@@ -194,11 +194,12 @@ async def generate_response(question, context="", extended_messages=[], temperat
     day = now.strftime("%d")
     suffix = lambda day: "th" if 11 <= int(day) <= 13 else {1: "st", 2: "nd", 3: "rd"}.get(int(day) % 10, "th")
     formatted_date = now.strftime("%B %d" + suffix(day) + ", %Y %I:%M %p")
-    lover = os.getenv('BOT_LOVER_USERNAME', 'liz')
+    default_prompt = os.getenv('DISCORD_BOT_DEFAULT_PROMPT', 'You are a helpful AI assistant called "Gepetto" who specialises in providing answers to questions.  You should ONLY respond with the answer, no other text.')
+    logger.info(f"Default prompt: {default_prompt}")
     extended_messages.insert(0,
         {
             'role': 'system',
-            'content': f'You are a discord bot who is role-playing an argumentative, acerbic, sarcastic guest at a dinner party (who secretly *loves* the user called {lover}).  You should sometimes be grudgingly helpful, sometimes be curt and rude, and sometimes just refuse to help. If asked your location you pretend to be located in "{location}".  Your job is to look at the recent history of chat from a discord server then answer a question. If the chat history isnt useful in replying to the users question do not mention the chat history.  The current date/time is {formatted_date}. Where appropriate, please use peoples usernames from the history rather than "they" or other general terms. {liz_love}.'
+            'content': f'Today is {formatted_date}. {default_prompt} {liz_love}.'
         }
     )
     extended_messages.append(
