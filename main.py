@@ -167,7 +167,9 @@ async def get_history_as_openai_messages(channel):
     async for msg in channel.history(limit=150):
         # The role is 'assistant' if the author is the bot, 'user' otherwise
         role = 'assistant' if msg.author == bot.user else 'user'
-        message_content = f"At {msg.created_at.astimezone(timezone.utc).astimezone()} '{msg.author.name}' said: {msg.content}"
+        # message_content = f"At {msg.created_at.astimezone(timezone.utc).astimezone()} '{msg.author.name}' said: {msg.content}"
+        message_content = f"'{msg.author.name}' said: {msg.content}"
+        message_content = re.sub(r'\[tokens used.+Estimated cost.+]', '', message_content, flags=re.MULTILINE)
         message_length = len(message_content)
         if total_length + message_length > 3800:
             break
@@ -216,7 +218,7 @@ async def generate_response(question, context="", extended_messages=[], temperat
     logger.info(f'OpenAI usage: {usage}')
     # sometimes the response includes formatting to match what was in the formatted chat history
     # so we want to remove it as it looks rubbish and is confusing
-    message = re.sub(r'\[tokens used: \d+ \| Estimated cost US\$\d+\.\d+\]', '', response['choices'][0]['message']['content'], flags=re.MULTILINE)
+    message = re.sub(r'\[tokens used.+Estimated cost.+]', '', response['choices'][0]['message']['content'], flags=re.MULTILINE)
     message = re.sub(r"Gepetto' said: ", '', message, flags=re.MULTILINE)
     message = re.sub(r"^.*At \d{4}-\d{2}.+said?", "", message, flags=re.MULTILINE)
     return message.strip()[:1900] + "\n" + usage
