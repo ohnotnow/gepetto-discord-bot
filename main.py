@@ -498,13 +498,13 @@ async def say_something_random():
     if random.random() < 0.1:
         logger.info("Saying something random")
         channel = bot.get_channel(int(os.getenv('DISCORD_BOT_CHANNEL_ID', 'Invalid').strip()))
-        prompt = "Can you tell me a random fact?"
+        prompt = "Can you tell me a random fact?  The more obscure the better!"
         today = datetime.now()
         date_string = today.strftime("%d %B %Y")
         if random.random() < 0.1:
             prompt += f" It could be about the UK politician Liz Truss who became the UK prime minister on September 6th 2022 (today is {date_string}), and had to resign just a few weeks later after the Queen died in mysterious circumstances after shaking Liz's hand."
 
-        system_prompt = f'Today is {date_string}. You are a helpful assistant called "Gepetto" who specialises in providing random interesting facts'
+        system_prompt = f'Today is {date_string}. You are a helpful assistant called "Gepetto" who specialises in providing random interesting, esoteric and obscure facts'
         if random.random() < 0.2:
             system_prompt += " which often focus on esoteric PHP and Javascript Programming techniques"
         elif random.random() < 0.2:
