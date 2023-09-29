@@ -518,7 +518,11 @@ async def say_happy_birthday():
     for birthday in birthdays:
         if today_string in birthday:
             channel = bot.get_channel(int(os.getenv('DISCORD_BOT_CHANNEL_ID', 'Invalid').strip()))
-            birthday_user = birthday.split(":")[0]
+            birthday_user_id = birthday.split(":")[0]
+            user = await bot.fetch_user(birthday_user_id)
+            if user is None:
+                logger.error(f"Could not find user with ID {birthday_user_id}")
+                return
             messages = [
                 {
                     'role': 'system',
@@ -541,8 +545,8 @@ async def say_happy_birthday():
         message = message.replace("Sure! ", '')
         message = message.replace("Here's a random fact for you: ", '')
         message = message.replace("Certainly! ", '')
-        logger.info(f"Birthday fact for @{birthday_user}: {message}")
-        await channel.send(f"Happy birthday @{birthday_user}! {message}")
+        logger.info(f"Birthday fact for @{user.name}: {message}")
+        await channel.send(f"Happy birthday {user.mention}! {message}")
 
 @tasks.loop(hours=1)
 async def say_something_random():
