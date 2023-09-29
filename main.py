@@ -6,7 +6,8 @@ import random
 import re
 import json
 from collections import defaultdict
-from datetime import datetime, timedelta, timezone
+from datetime import datetime, timedelta, timezone, time
+import pytz
 from enum import Enum
 import requests
 
@@ -282,6 +283,7 @@ async def get_weather_location_from_prompt(prompt):
 @bot.event
 async def on_ready():
     say_something_random.start()
+    say_happy_birthday.start()
     return
     with open(AVATAR_PATH, 'rb') as avatar:
         await bot.user.edit(avatar=avatar.read())
@@ -492,6 +494,55 @@ async def morning_summary():
             for location in locations:
                 forecast = get_forecast(location.strip())
                 await channel.send(forecast)
+
+@tasks.loop(time=time(hour=9, tzinfo=pytz.timezone('Europe/London')))
+async def say_happy_birthday():
+    logger.info("In say_happy_birthday")
+    birthdays = os.getenv('DISCORD_BOT_BIRTHDAYS', "").split(",")
+    # each birthday will be formatted as "discord_username:dd/mm"
+    if len(birthdays) == 0:
+        return
+    today = datetime.now()
+    today_string = today.strftime("%d/%m")
+    day = today.day
+    month = today.month
+    if 4 <= day <= 20 or 24 <= day <= 30:
+        suffix = "th"
+    else:
+        suffix = ["st", "nd", "rd"][day % 10 - 1]
+
+    month_name = today.strftime("%B")
+
+    date_string = f"the {day}{suffix} of {month_name}"
+
+    for birthday in birthdays:
+        if today_string in birthday:
+            channel = bot.get_channel(int(os.getenv('DISCORD_BOT_CHANNEL_ID', 'Invalid').strip()))
+            birthday_user = birthday.split(":")[0]
+            messages = [
+                {
+                    'role': 'system',
+                    'content': "You are a helpful AI assistant who specialises in finding unusual, esoteric and obscure facts about specific dates in the style of newspapr 'On this day in 1905 ...'.  You should ONLY respond with the fact, no other text."
+                },
+                {
+                    'role': 'user',
+                    'content': f'Can you tell me something interesting and unusual that happened on this day in history on {date_string}?'
+                },
+            ]
+
+        response = openai.ChatCompletion.create(
+            model=model_engine,
+            messages=messages,
+            temperature=1.0,
+            max_tokens=1024,
+        )
+
+        message = response['choices'][0]['message']['content'][:1900]
+        message = message.replace("Sure! ", '')
+        message = message.replace("Here's a random fact for you: ", '')
+        message = message.replace("Certainly! ", '')
+        logger.info(f"Birthday fact for @{birthday_user}: {message}")
+        await channel.send(f"Happy birthday @{birthday_user}! {message}")
 
 @tasks.loop(hours=1)
 async def say_something_random():
