@@ -534,19 +534,19 @@ async def say_happy_birthday():
                 },
             ]
 
-        response = openai.ChatCompletion.create(
-            model=model_engine,
-            messages=messages,
-            temperature=1.0,
-            max_tokens=1024,
-        )
+            response = openai.ChatCompletion.create(
+                model=model_engine,
+                messages=messages,
+                temperature=1.0,
+                max_tokens=1024,
+            )
 
-        message = response['choices'][0]['message']['content'][:1900]
-        message = message.replace("Sure! ", '')
-        message = message.replace("Here's a random fact for you: ", '')
-        message = message.replace("Certainly! ", '')
-        logger.info(f"Birthday fact for @{user.name}: {message}")
-        await channel.send(f"Happy birthday {user.mention}! {message}")
+            message = response['choices'][0]['message']['content'][:1900]
+            message = message.replace("Sure! ", '')
+            message = message.replace("Here's a random fact for you: ", '')
+            message = message.replace("Certainly! ", '')
+            logger.info(f"Birthday fact for @{user.name}: {message}")
+            await channel.send(f"Happy birthday {user.mention}! {message}")
 
 @tasks.loop(hours=1)
 async def say_something_random():
