@@ -34,6 +34,7 @@ logger = logging.getLogger('discord')  # Get the discord logger
 
 mention_counts = defaultdict(list) # This will hold user IDs and their mention timestamps
 abusive_responses = ["Wanker", "Asshole", "Prick", "Twat"]
+random_facts = []
 
 # Define model and token prices
 class Model(Enum):
@@ -573,6 +574,8 @@ async def say_something_random():
         system_prompt += ".  You should ONLY respond with the fact, no other text."
         logger.info(f"System prompt: {system_prompt}")
         logger.info(f"Prompt: {prompt}")
+        previous_facts = "\n".join(random_facts)
+        previous_facts = previous_facts[:800]
         messages = [
             {
                 'role': 'system',
@@ -580,7 +583,7 @@ async def say_something_random():
             },
             {
                 'role': 'user',
-                'content': f'{prompt}'
+                'content': f'{prompt}. It should not include and of the following information : {previous_facts}'
             },
         ]
 
@@ -599,6 +602,8 @@ async def say_something_random():
         message = message.replace("Here's a random fact for you: ", '')
         message = message.replace("Certainly! ", '')
         logger.info(f"Random fact: {message}")
+        random_facts.append(message)
+        random_facts = random_facts[-10:]
         # Send the message
         await channel.send(f"{message}")
 
