@@ -552,6 +552,7 @@ async def say_happy_birthday():
 @tasks.loop(hours=1)
 async def say_something_random():
     logger.info("In say_something_random")
+    global random_facts
     if random.random() < 0.1:
         logger.info("Saying something random")
         channel = bot.get_channel(int(os.getenv('DISCORD_BOT_CHANNEL_ID', 'Invalid').strip()))
