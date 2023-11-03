@@ -10,4 +10,4 @@ fi
 docker build -t gepetto .
 
 # put your various environment variables in a file named .env
-docker run --restart=on-failure --env-file=.env gepetto
+docker run --restart=on-failure --env-file=.env -v $(pwd)/random_facts.json:/app/random_facts.json gepetto

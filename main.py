@@ -34,7 +34,6 @@ logger = logging.getLogger('discord')  # Get the discord logger
 
 mention_counts = defaultdict(list) # This will hold user IDs and their mention timestamps
 abusive_responses = ["Wanker", "Asshole", "Prick", "Twat"]
-random_facts = []
 
 # Define model and token prices
 class Model(Enum):
@@ -552,7 +551,6 @@ async def say_happy_birthday():
 @tasks.loop(hours=1)
 async def say_something_random():
     logger.info("In say_something_random")
-    global random_facts
     if random.random() < 0.1:
         logger.info("Saying something random")
         channel = bot.get_channel(int(os.getenv('DISCORD_BOT_CHANNEL_ID', 'Invalid').strip()))
@@ -575,6 +573,11 @@ async def say_something_random():
         system_prompt += ".  You should ONLY respond with the fact, no other text."
         logger.info(f"System prompt: {system_prompt}")
         logger.info(f"Prompt: {prompt}")
+        try:
+            with open("random_facts.json", 'r') as f:
+                random_facts = json.load(f)
+        except (FileNotFoundError, json.JSONDecodeError):
+            random_facts = []
         previous_facts = "\n".join(random_facts)
         previous_facts = previous_facts[:800]
         messages = [
@@ -605,6 +608,8 @@ async def say_something_random():
         logger.info(f"Random fact: {message}")
         random_facts.append(message)
         random_facts = random_facts[-10:]
+        with open("random_facts.json", 'w') as f:
+            json.dump(random_facts, f)
         # Send the message
         await channel.send(f"{message}")
 
