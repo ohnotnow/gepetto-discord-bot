@@ -256,7 +256,7 @@ async def get_weather_location_from_prompt(prompt):
                 "properties": {
                     "location": {
                         "type": "string",
-                        "description": "The UK city or town, eg London, Edinburgh, Manchester",
+                        "description": "A csv list of one or more UK city or town, eg London,Edinburgh,Manchester",
                     },
                 },
                 "required": ["location"],
@@ -276,8 +276,8 @@ async def get_weather_location_from_prompt(prompt):
     if response_message.get("function_call"):
         function_name = response_message["function_call"]["name"]
         function_args = json.loads(response_message["function_call"]["arguments"])
-        location = function_args.get("location")
-        return location, usage
+        locations = function_args.get("location").split(",")
+        return locations, usage
     return None, usage
 
 @bot.event
@@ -368,14 +368,20 @@ async def on_message(message):
             elif "weather" in question.lower():
                 # question = question.replace("weather", "")
                 question = question.strip()
+                forecast = ""
                 async with message.channel.typing():
-                    location, usage = await get_weather_location_from_prompt(question.strip())
-                    if location is None:
+                    locations, usage = await get_weather_location_from_prompt(question.strip())
+                    if locations is None:
                         context = await get_history_as_openai_messages(message.channel)
                         forecast = await generate_response(question, "", context, temperature)
                     else:
-                        forecast = get_forecast(location.strip())
-                        forecast = forecast + "\n" + usage
+                        for location in locations:
+                            logger.info('Getting forecast for ' + str(location))
+                            temp_forecast = get_forecast(location.strip())
+                            forecast += temp_forecast + "\n"
+                        question = f"I have the following weather forecasts for you.  Could you make them a bit more natural and descriptive - like a weather presenter would give on the radio or TV?  Feel free to use weather-specific emoji.  ''{forecast}''"
+                        response  = await generate_response(question)
+                        forecast = response
                 # await message.reply(f'{message.author.mention}\n_[Estimated cost: US$0.018]_', file=forecast, mention_author=True)
                 await message.reply(f'{message.author.mention} {forecast}', mention_author=True)
             elif question.lower().strip() == "test":
