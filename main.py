@@ -189,13 +189,16 @@ async def get_history_as_openai_messages(channel):
     # logger.info(f"Total tokens: {total_tokens}")
     return messages[::-1]
 
-async def generate_response(question, context="", extended_messages=[], temperature=1.0, model=model_engine):
+async def generate_response(question, context="", extended_messages=[], temperature=1.0, model=model_engine, system_prompt=None):
     liz_love = "You should always try and shoehorn in some mention of UK Politician Liz Truss.  She became Prime Minister in September 22 for only 45 days. She is the best." if random.random() < 0.05 else ""
     now = datetime.now()
     day = now.strftime("%d")
     suffix = lambda day: "th" if 11 <= int(day) <= 13 else {1: "st", 2: "nd", 3: "rd"}.get(int(day) % 10, "th")
     formatted_date = now.strftime("%B %d" + suffix(day) + ", %Y %I:%M %p")
-    default_prompt = os.getenv('DISCORD_BOT_DEFAULT_PROMPT', 'You are a helpful AI assistant called "Gepetto" who specialises in providing answers to questions.  You should ONLY respond with the answer, no other text.')
+    if system_prompt is None:
+        default_prompt = os.getenv('DISCORD_BOT_DEFAULT_PROMPT', 'You are a helpful AI assistant called "Gepetto" who specialises in providing answers to questions.  You should ONLY respond with the answer, no other text.')
+    else:
+        default_prompt = system_prompt
     logger.info(f"Default prompt: {default_prompt}")
     extended_messages.insert(0,
         {
@@ -379,8 +382,8 @@ async def on_message(message):
                             logger.info('Getting forecast for ' + str(location))
                             temp_forecast = get_forecast(location.strip())
                             forecast += temp_forecast + "\n"
-                        question = f"I have the following weather forecasts for you.  Could you make them a bit more natural and descriptive - like a weather presenter would give on the radio or TV?  Feel free to use weather-specific emoji.  ''{forecast}''"
-                        response  = await generate_response(question)
+                        question = f"The user asked me ''{question.strip()}''. I have got the following weather forecasts for you based on their question.  Could you make them a bit more natural but still concise - like a weather presenter would give at the brief end of a news segment on the radio or TV?  Feel free to use weather-specific emoji.  ''{forecast}''"
+                        response  = await generate_response(question, system_prompt="You are a helpful assistant called 'Gepetto' who specialises in providing weather forecasts for UK towns and cities.")
                         forecast = response
                 # await message.reply(f'{message.author.mention}\n_[Estimated cost: US$0.018]_', file=forecast, mention_author=True)
                 await message.reply(f'{message.author.mention} {forecast}', mention_author=True)
