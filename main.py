@@ -39,6 +39,7 @@ abusive_responses = ["Wanker", "Asshole", "Prick", "Twat"]
 class Model(Enum):
     GPT4_32k = ('gpt-4-32k', 0.03, 0.06)
     GPT4 = ('gpt-4', 0.06, 0.12)
+    GPT_4_1106_PREVIEW = ('gpt-4-1106-preview', 0.01, 0.03)
     GPT3_5_Turbo_16k = ('gpt-3.5-turbo-16k', 0.003, 0.004)
     GPT3_5_Turbo = ('gpt-3.5-turbo', 0.0015, 0.002)
 
@@ -233,7 +234,9 @@ async def generate_image(prompt):
     response = openai.Image.create(
         prompt=prompt,
         n=1,
-        size="512x512",
+        # size="512x512",
+        size="1024x1024"
+        model="dall-e-3",
         response_format="b64_json",
     )
     image_data = response['data'][0]['b64_json']
@@ -241,7 +244,7 @@ async def generate_image(prompt):
     image = io.BytesIO(image_bytes)
     discord_file = File(fp=image, filename=f'{prompt}.png')
     logger.info('Image generated')
-    usage = "_[Estimated cost US$0.018]_"
+    usage = "_[Estimated cost US$0.04]_"
     logger.info(f'OpenAI usage: {usage}')
     return discord_file
 
