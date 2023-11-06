@@ -364,7 +364,7 @@ async def on_message(message):
             if question.lower().startswith("create an image"):
                 async with message.channel.typing():
                     base64_image = await generate_image(question)
-                await message.reply(f'{message.author.mention}\n_[Estimated cost: US$0.018]_', file=base64_image, mention_author=True)
+                await message.reply(f'{message.author.mention}\n_[Estimated cost: US$0.04]_', file=base64_image, mention_author=True)
             elif re.search(pattern, question.lower()):
                 question = question.replace("👀", "")
                 question = question.strip()
