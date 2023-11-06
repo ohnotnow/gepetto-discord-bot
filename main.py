@@ -38,8 +38,8 @@ abusive_responses = ["Wanker", "Asshole", "Prick", "Twat"]
 # Define model and token prices
 class Model(Enum):
     GPT4_32k = ('gpt-4-32k', 0.03, 0.06)
-    GPT4 = ('gpt-4', 0.06, 0.12)
     GPT_4_1106_PREVIEW = ('gpt-4-1106-preview', 0.01, 0.03)
+    GPT4 = ('gpt-4', 0.06, 0.12)
     GPT3_5_Turbo_16k = ('gpt-3.5-turbo-16k', 0.003, 0.004)
     GPT3_5_Turbo = ('gpt-3.5-turbo', 0.0015, 0.002)
 
