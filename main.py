@@ -235,7 +235,7 @@ async def generate_image(prompt):
         prompt=prompt,
         n=1,
         # size="512x512",
-        size="1024x1024"
+        size="1024x1024",
         model="dall-e-3",
         response_format="b64_json",
     )
