@@ -166,7 +166,7 @@ async def get_history_as_openai_messages(channel):
     messages = []
     total_length = 0
     total_tokens = 0
-    async for msg in channel.history(limit=150):
+    async for msg in channel.history(limit=50):
         # The role is 'assistant' if the author is the bot, 'user' otherwise
         role = 'assistant' if msg.author == bot.user else 'user'
         username = "" if msg.author == bot.user else msg.author.name
@@ -174,7 +174,7 @@ async def get_history_as_openai_messages(channel):
         message_content = f"'{username}' said: {msg.content}"
         message_content = re.sub(r'\[tokens used.+Estimated cost.+]', '', message_content, flags=re.MULTILINE)
         message_length = len(message_content)
-        if total_length + message_length > 2000:
+        if total_length + message_length > 1000:
             break
         # token_length = get_token_count(message_content)
         # if total_tokens + token_length > 3500:
