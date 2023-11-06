@@ -173,7 +173,7 @@ async def get_history_as_openai_messages(channel):
         message_content = f"'{username}' said: {msg.content}"
         message_content = re.sub(r'\[tokens used.+Estimated cost.+]', '', message_content, flags=re.MULTILINE)
         message_length = len(message_content)
-        if total_length + message_length > 3800:
+        if total_length + message_length > 2000:
             break
         # token_length = get_token_count(message_content)
         # if total_tokens + token_length > 3500:
