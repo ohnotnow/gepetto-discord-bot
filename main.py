@@ -192,6 +192,7 @@ async def get_history_as_openai_messages(channel):
     messages = messages[1:]  # Exclude the mention message
     # We reverse the list to make it in chronological order
     # logger.info(f"Total tokens: {total_tokens}")
+    print(f"History: {messages[::-1]}")
     return messages[::-1]
 
 async def generate_response(question, context="", extended_messages=[], temperature=1.0, model=model_engine, system_prompt=None):
