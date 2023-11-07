@@ -145,6 +145,10 @@ async def summarise_webpage(message, url):
             'content': f'{prompt}? :: {page_text}'
         },
     ]
+    if len(page_text) > 8000:
+        model = 'gpt-3.5-turbo-16k'
+    else:
+        model = "gpt-3.5-turbo"
     response = openai.ChatCompletion.create(
         model=model,
         messages=messages,
@@ -270,7 +274,7 @@ async def get_weather_location_from_prompt(prompt):
         }
     ]
     response = openai.ChatCompletion.create(
-        model=model_engine,
+        model="gpt-4-1106-preview",
         messages=messages,
         functions=functions,
         function_call={"name": "get_location_for_forecast"},  # auto is default, but we'll be explicit
@@ -379,14 +383,14 @@ async def on_message(message):
                     locations, usage = await get_weather_location_from_prompt(question.strip())
                     if locations is None:
                         context = await get_history_as_openai_messages(message.channel)
-                        forecast = await generate_response(question, "", context, temperature)
+                        forecast = await generate_response(question, "", context, temperature, model="gpt-3.5-turbo")
                     else:
                         for location in locations:
                             logger.info('Getting forecast for ' + str(location))
                             temp_forecast = get_forecast(location.strip())
                             forecast += temp_forecast + "\n"
                         question = f"The user asked me ''{question.strip()}''. I have got the following weather forecasts for you based on their question.  Could you make them a bit more natural but still concise - like a weather presenter would give at the brief end of a news segment on the radio or TV?  If the wind speed is given in knots, convert it to MPH. Feel free to use weather-specific emoji.  ''{forecast}''"
-                        response  = await generate_response(question, system_prompt="You are a helpful assistant called 'Gepetto' who specialises in providing weather forecasts for UK towns and cities.")
+                        response  = await generate_response(question, model="gpt-3.5-turbo", system_prompt="You are a helpful assistant called 'Gepetto' who specialises in providing weather forecasts for UK towns and cities.")
                         forecast = response
                 # await message.reply(f'{message.author.mention}\n_[Estimated cost: US$0.018]_', file=forecast, mention_author=True)
                 await message.reply(f'{message.author.mention} {forecast}', mention_author=True)
@@ -547,7 +551,7 @@ async def say_happy_birthday():
             ]
 
             response = openai.ChatCompletion.create(
-                model=model_engine,
+                model="gpt-3.5-turbo",
                 messages=messages,
                 temperature=1.0,
                 max_tokens=1024,
@@ -604,7 +608,7 @@ async def say_something_random():
         ]
 
         response = openai.ChatCompletion.create(
-            model=model_engine,
+            model="gpt-3.5-turbo",
             messages=messages,
             temperature=1.0,
             max_tokens=1024,
