@@ -40,6 +40,7 @@ class Model(Enum):
     GPT4_32k = ('gpt-4-32k', 0.03, 0.06)
     GPT_4_1106_PREVIEW = ('gpt-4-1106-preview', 0.01, 0.03)
     GPT4 = ('gpt-4', 0.06, 0.12)
+    GPT3_5_Turbo_gpt_1106 = ('gpt-3.5-turbo-1106', 0.001, 0.002)
     GPT3_5_Turbo_16k = ('gpt-3.5-turbo-16k', 0.003, 0.004)
     GPT3_5_Turbo = ('gpt-3.5-turbo', 0.0015, 0.002)
 
@@ -145,10 +146,7 @@ async def summarise_webpage(message, url):
             'content': f'{prompt}? :: {page_text}'
         },
     ]
-    if len(page_text) > 8000:
-        model = 'gpt-3.5-turbo-16k'
-    else:
-        model = "gpt-3.5-turbo"
+    model = 'gpt-3.5-turbo-1106'
     response = openai.ChatCompletion.create(
         model=model,
         messages=messages,
@@ -383,7 +381,7 @@ async def on_message(message):
                     locations, usage = await get_weather_location_from_prompt(question.strip())
                     if locations is None:
                         context = await get_history_as_openai_messages(message.channel)
-                        forecast = await generate_response(question, "", context, temperature, model="gpt-3.5-turbo")
+                        forecast = await generate_response(question, "", context, temperature, model="gpt-3.5-turbo-1106")
                     else:
                         for location in locations:
                             logger.info('Getting forecast for ' + str(location))
@@ -551,7 +549,7 @@ async def say_happy_birthday():
             ]
 
             response = openai.ChatCompletion.create(
-                model="gpt-3.5-turbo",
+                model="gpt-3.5-turbo-1106",
                 messages=messages,
                 temperature=1.0,
                 max_tokens=1024,
@@ -608,14 +606,14 @@ async def say_something_random():
         ]
 
         response = openai.ChatCompletion.create(
-            model="gpt-3.5-turbo",
+            model="gpt-3.5-turbo-1106",
             messages=messages,
             temperature=1.0,
             max_tokens=1024,
         )
 
         tokens = response['usage']['total_tokens']
-        usage = f"_[tokens used: {tokens} | Estimated cost US${get_token_price(tokens, 'output', model_engine='gpt-3.5-turbo')}]_"
+        usage = f"_[tokens used: {tokens} | Estimated cost US${get_token_price(tokens, 'output', model_engine='gpt-3.5-turbo-1106')}]_"
         logger.info(f'OpenAI random fact usage: {usage}')
         message = response['choices'][0]['message']['content'][:1900] + "\n" + usage
         message = message.replace("Sure! ", '')
