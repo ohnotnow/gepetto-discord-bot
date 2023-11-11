@@ -601,7 +601,7 @@ async def say_something_random():
             },
             {
                 'role': 'user',
-                'content': f'{prompt}. It should not include and of the following information : {previous_facts}'
+                'content': f'{prompt}. It should not include any of the following information : {previous_facts}'
             },
         ]
 
