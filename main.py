@@ -584,7 +584,7 @@ async def say_something_random():
         elif random.random() < 0.2:
             system_prompt += " which often focus on the potato, pasta, barbecue or Scottish food"
 
-        system_prompt += ".  You should ONLY respond with the fact, no other text."
+        system_prompt += ".  You should ONLY respond with the fact, no other text.  You facts should be unique and not repeated."
         logger.info(f"System prompt: {system_prompt}")
         logger.info(f"Prompt: {prompt}")
         try:
@@ -592,18 +592,28 @@ async def say_something_random():
                 random_facts = json.load(f)
         except (FileNotFoundError, json.JSONDecodeError):
             random_facts = []
-        previous_facts = "\n".join(random_facts)
-        previous_facts = previous_facts[:800]
-        messages = [
+        messages = []
+        for fact in random_facts:
+            messages.append(
+                {
+                    'role': 'user',
+                    'content': f'{prompt}. You should not repeat any previous facts you have told me.'
+                },
+                {
+                    'role': 'assistant',
+                    'content': f'{fact}'
+                }
+            )
+        messages.append(
             {
                 'role': 'system',
                 'content': system_prompt
             },
             {
                 'role': 'user',
-                'content': f'{prompt}. It should not include any of the following information : {previous_facts}'
+                'content': f'{prompt}. You should not repeat any previous facts you have told me.'
             },
-        ]
+        )
 
         response = openai.ChatCompletion.create(
             model="gpt-3.5-turbo-1106",
@@ -621,7 +631,7 @@ async def say_something_random():
         message = message.replace("Certainly! ", '')
         logger.info(f"Random fact: {message}")
         random_facts.append(message)
-        random_facts = random_facts[-10:]
+        random_facts = random_facts[-20:]
         with open("random_facts.json", 'w') as f:
             json.dump(random_facts, f)
         # Send the message
