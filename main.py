@@ -598,7 +598,9 @@ async def say_something_random():
                 {
                     'role': 'user',
                     'content': f'{prompt}. You should not repeat any previous facts you have told me.'
-                },
+                }
+            )
+            messages.append(
                 {
                     'role': 'assistant',
                     'content': f'{fact}'
@@ -608,7 +610,9 @@ async def say_something_random():
             {
                 'role': 'system',
                 'content': system_prompt
-            },
+            }
+        )
+        messages.append(
             {
                 'role': 'user',
                 'content': f'{prompt}. You should not repeat any previous facts you have told me.'
