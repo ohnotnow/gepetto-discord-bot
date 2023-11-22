@@ -417,6 +417,8 @@ async def on_message(message):
                         question = question.lower().replace("--no-logs", "")
                     else:
                         context = await get_history_as_openai_messages(message.channel)
+                    if message.author.bot:
+                        question = question + ". Please be very concise, curt and to the point.  The user in this case is a discord bot."
                     response = await generate_response(question, "", context, temperature)
                     # send the response as a reply and mention the person who asked the question
                 await message.reply(f'{message.author.mention} {response}')
