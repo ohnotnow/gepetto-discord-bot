@@ -590,7 +590,7 @@ async def say_something_random():
         try:
             with open("random_facts.json", 'r') as f:
                 random_facts = json.load(f)
-        except (FileNotFoundError, json.JSONDecodeError):
+        except:
             random_facts = []
         messages = []
         for fact in random_facts:
