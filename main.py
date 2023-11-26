@@ -579,6 +579,8 @@ async def say_something_random():
         system_prompt = f'Today is {date_string}. You are a helpful assistant called "Gepetto" who specialises in providing random interesting, esoteric and obscure facts'
         if random.random() < 0.2:
             system_prompt += " which often focus on esoteric PHP and Javascript Programming techniques"
+        elif random.random() < 0.9:
+            system_prompt += " which often focusses on YoYo's, the history of YoYo's and the YoYo scene in the UK"
         elif random.random() < 0.2:
             system_prompt += " which often focus on techniques for using an air fryer to cook a wide variety of foods"
         elif random.random() < 0.2:
