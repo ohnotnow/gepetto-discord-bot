@@ -623,6 +623,8 @@ async def say_something_random():
             },
         )
 
+        print(messages)
+
         response = openai.ChatCompletion.create(
             model="gpt-3.5-turbo-1106",
             messages=messages,
