@@ -388,7 +388,7 @@ async def on_message(message):
                             temp_forecast = get_forecast(location.strip())
                             forecast += temp_forecast + "\n"
                         question = f"The user asked me ''{question.strip()}''. I have got the following weather forecasts for you based on their question.  Could you make them a bit more natural but still concise - like a weather presenter would give at the brief end of a news segment on the radio or TV?  If the wind speed is given in knots, convert it to MPH. Feel free to use weather-specific emoji.  ''{forecast}''"
-                        response  = await generate_response(question, model="gpt-3.5-turbo", system_prompt="You are a helpful assistant called 'Gepetto' who specialises in providing weather forecasts for UK towns and cities.")
+                        response  = await generate_response(question, model="gpt-3.5-turbo-1106", system_prompt="You are a helpful assistant called 'Gepetto' who specialises in providing weather forecasts for UK towns and cities.")
                         forecast = response
                 # await message.reply(f'{message.author.mention}\n_[Estimated cost: US$0.018]_', file=forecast, mention_author=True)
                 await message.reply(f'{message.author.mention} {forecast}', mention_author=True)
