@@ -379,6 +379,8 @@ async def on_message(message):
                 forecast = ""
                 async with message.channel.typing():
                     locations, usage = await get_weather_location_from_prompt(question.strip())
+                    logger.info(f"Locations: {locations}")
+                    logger.info(f"Usage: {usage}")
                     if locations is None:
                         context = await get_history_as_openai_messages(message.channel)
                         forecast = await generate_response(question, "", context, temperature, model="gpt-3.5-turbo-1106")
@@ -452,10 +454,12 @@ def get_forecast(location_name = None):
     today = forecast['SiteRep']['DV']['Location']['Period'][0]
     details = today['Rep'][0]
     # readable_forecast = f"Forecast for {location_name.capitalize()}: {metoffer.WEATHER_CODES[int(details['W'])]}, chance of rain {details['PPd']}%, temperature {details['Dm']}C (feels like {details['FDm']}C). Humidity {details['Hn']}%, wind {details['S']} knots - gusting upto {details['Gn']}.\n"
-    rain_emoji = "\u2614" if int(details['PPd']) > 50 else ""
-    sun_emoji = "\u2600\ufe0f" if int(details['Dm']) > 20 else ""
-    humidity_emoji = "\U0001F6BF" if int(details['Hn']) > 70 else ""
-
+    # rain_emoji = "\u2614" if int(details['PPd']) > 50 else ""
+    # sun_emoji = "\u2600\ufe0f" if int(details['Dm']) > 20 else ""
+    # humidity_emoji = "\U0001F6BF" if int(details['Hn']) > 70 else ""
+    rain_emoji = ""
+    sun_emoji = ""
+    humidity_emoji = ""
     readable_forecast = f"Forecast for {location_name.capitalize()}: {metoffer.WEATHER_CODES[int(details['W'])]}{rain_emoji}, chance of rain {details['PPd']}%, temperature {details['Dm']}C{sun_emoji} (feels like {details['FDm']}C). Humidity {details['Hn']}%{humidity_emoji}, wind {details['S']} knots - gusting upto {details['Gn']}.\n"
 
     return readable_forecast
