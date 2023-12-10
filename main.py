@@ -271,6 +271,7 @@ async def get_weather_location_from_prompt(prompt):
             },
         }
     ]
+    logger.info(messages)
     response = openai.ChatCompletion.create(
         model="gpt-4-1106-preview",
         messages=messages,
@@ -382,6 +383,7 @@ async def on_message(message):
                     logger.info(f"Locations: {locations}")
                     logger.info(f"Usage: {usage}")
                     if locations is None:
+                        logger.info('No locations found')
                         context = await get_history_as_openai_messages(message.channel)
                         forecast = await generate_response(question, "", context, temperature, model="gpt-3.5-turbo-1106")
                     else:
@@ -390,6 +392,7 @@ async def on_message(message):
                             temp_forecast = get_forecast(location.strip())
                             forecast += temp_forecast + "\n"
                         question = f"The user asked me ''{question.strip()}''. I have got the following weather forecasts for you based on their question.  Could you make them a bit more natural but still concise - like a weather presenter would give at the brief end of a news segment on the radio or TV?  If the wind speed is given in knots, convert it to MPH. Feel free to use weather-specific emoji.  ''{forecast}''"
+                        logger.info(f"Question: {question}")
                         response  = await generate_response(question, model="gpt-3.5-turbo-1106", system_prompt="You are a helpful assistant called 'Gepetto' who specialises in providing weather forecasts for UK towns and cities.")
                         forecast = response
                 # await message.reply(f'{message.author.mention}\n_[Estimated cost: US$0.018]_', file=forecast, mention_author=True)
