@@ -595,7 +595,7 @@ async def say_something_random():
         elif random.random() < 0.2:
             system_prompt += " which often focus on the potato, pasta, barbecue or Scottish food"
 
-        system_prompt += ".  You should ONLY respond with the fact, no other text.  You facts should be unique and not repeated."
+        system_prompt += ".  You should ONLY respond with the fact, no other text.  The facts should be unique and must NOT repeat information previously given to the user."
         logger.info(f"System prompt: {system_prompt}")
         logger.info(f"Prompt: {prompt}")
         try:
@@ -608,7 +608,7 @@ async def say_something_random():
             messages.append(
                 {
                     'role': 'user',
-                    'content': f'{prompt}. You should not repeat any previous facts you have told me.'
+                    'content': f'{prompt}. You should not repeat any previous information you have told me.'
                 }
             )
             messages.append(
@@ -626,7 +626,7 @@ async def say_something_random():
         messages.append(
             {
                 'role': 'user',
-                'content': f'{prompt}. You should not repeat any previous facts you have told me.'
+                'content': f'{prompt}. You should not repeat any previous information you have told me.'
             },
         )
 
