@@ -364,7 +364,8 @@ async def on_message(message):
         pattern = r"👀\s*\<?(http|https):"
 
         try:
-            if question.lower().startswith("create an image"):
+            lq = question.lower().strip()
+            if lq.startswith("create an image") or lq.startswith("📷") or lq.startswith("🖌️") or lq.startswith("🖼️"):
                 async with message.channel.typing():
                     base64_image = await generate_image(question)
                 await message.reply(f'{message.author.mention}\n_[Estimated cost: US$0.04]_', file=base64_image, mention_author=True)
