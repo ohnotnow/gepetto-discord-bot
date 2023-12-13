@@ -631,15 +631,17 @@ async def say_something_random():
             },
         )
 
+        model = "gpt-4-1106-preview"
         response = openai.ChatCompletion.create(
-            model="gpt-4-1106-preview",
+            model=model,
             messages=messages,
             temperature=1.0,
             max_tokens=1024,
         )
 
         tokens = response['usage']['total_tokens']
-        usage = f"_[tokens used: {tokens} | Estimated cost US${get_token_price(tokens, 'output', model_engine='gpt-3.5-turbo-1106')}]_"
+        cost = get_token_price(tokens, 'output', model_engine=model)
+        usage = f"_[tokens used: {tokens} | Estimated cost US${cost}]_"
         logger.info(f'OpenAI random fact usage: {usage}')
         message = response['choices'][0]['message']['content'][:1900] + "\n" + usage
         message = message.replace("Sure! ", '')
