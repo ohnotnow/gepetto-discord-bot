@@ -632,7 +632,7 @@ async def say_something_random():
         )
 
         response = openai.ChatCompletion.create(
-            model="gpt-3.5-turbo-1106",
+            model="gpt-4-1106-preview",
             messages=messages,
             temperature=1.0,
             max_tokens=1024,
