@@ -173,7 +173,8 @@ async def get_history_as_openai_messages(channel):
         role = 'assistant' if msg.author == bot.user else 'user'
         username = "" if msg.author == bot.user else msg.author.name
         # message_content = f"At {msg.created_at.astimezone(timezone.utc).astimezone()} '{msg.author.name}' said: {msg.content}"
-        message_content = f"'{username}' said: {msg.content}"
+        content = remove_emoji(msg.content)
+        message_content = f"'{username}' said: {content}"
         message_content = re.sub(r'\[tokens used.+Estimated cost.+]', '', message_content, flags=re.MULTILINE)
         message_length = len(message_content)
         if total_length + message_length > 1000:
@@ -288,6 +289,15 @@ async def get_weather_location_from_prompt(prompt):
         locations = function_args.get("location").split(",")
         return locations, usage
     return None, usage
+
+def remove_emoji(text):
+    regrex_pattern = re.compile(pattern = "["
+        u"\U0001F600-\U0001F64F"  # emoticons
+        u"\U0001F300-\U0001F5FF"  # symbols & pictographs
+        u"\U0001F680-\U0001F6FF"  # transport & map symbols
+        u"\U0001F1E0-\U0001F1FF"  # flags (iOS)
+                           "]+", flags = re.UNICODE)
+    return regrex_pattern.sub(r'',text)
 
 @bot.event
 async def on_ready():
