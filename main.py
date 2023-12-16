@@ -11,17 +11,13 @@ import pytz
 from enum import Enum
 import requests
 
+from gepetto import mistral, dalle, summary, weather, random_facts, birthdays
+
 import discord
 from discord import File
 from discord.ext import commands, tasks
 import openai
-from bs4 import BeautifulSoup
-from youtube_transcript_api import YouTubeTranscriptApi
-import metoffer
-import PyPDF2
 import feedparser
-from trafilatura import fetch_url, extract
-#import tiktoken
 
 
 AVATAR_PATH="avatar.png"
@@ -70,95 +66,6 @@ def get_token_price(token_count, direction="output", model_engine=model_engine):
 
 import re
 
-def extract_video_id_and_trailing_text(input_string):
-    # Use a regular expression to match a YouTube URL and extract the video ID
-    video_id_match = re.search(r"https://www\.youtube\.com/watch\?v=([^&\s\?]+)", input_string)
-    video_id = video_id_match.group(1) if video_id_match else None
-
-    # If a video ID was found, remove the URL from the string to get the trailing text
-    if video_id:
-        url = video_id_match.group(0)  # The entire matched URL
-        trailing_text = input_string.replace(url, '').strip()
-    else:
-        trailing_text = ''
-
-    return video_id, trailing_text
-
-async def summarise_webpage(message, url):
-    # Get the summary
-    model = model_engine
-    max_tokens = 1024
-    prompt = "Can you summarise this article for me?"
-    logger.info(f"Summarising {url}")
-    if '//www.youtube.com/' in url:
-        video_id, trailing_text = extract_video_id_and_trailing_text(url.strip("<>"))
-        if trailing_text:
-            prompt = trailing_text
-        logger.info(f"Youtube Video ID: {video_id}")
-        try:
-            transcript_list = YouTubeTranscriptApi.get_transcript(video_id)
-        except Exception as e:
-            logger.error(f"Error getting transcript: {e}")
-            await message.reply(f"Sorry, I couldn't get a transcript for that video.")
-            return
-        transcript_text = [x['text'] for x in transcript_list]
-        page_text = ' '.join(transcript_text)
-        # if len(page_text) > 8000:
-        #     model = 'gpt-3.5-turbo-16k'
-        if "The copyright belongs to Google LLC" in page_text:
-            page_text = "Could not get the transcript - possibly I am being geoblocked"
-        logger.info(f"Page length: {len(page_text)}")
-        page_text = page_text[:12000]
-        max_tokens = 1024
-    else:
-        url_match = re.search(r"http[s]?://(?:[a-zA-Z]|[0-9]|[$-_@.&+]|[!*\\(\\),]|(?:%[0-9a-fA-F][0-9a-fA-F]))+", url)
-        url_string = url_match.group(0) if url_match else None
-
-        if not url_string:
-            await message.reply(f"Sorry, I couldn't find a URL in that message.")
-            return
-
-        # If a URL was found, remove it from the string to get the trailing text
-        if url_string:
-            url_string = url_string.strip('<>')
-            trailing_text = url.replace(url_string, '').strip()
-            if trailing_text:
-                prompt = trailing_text
-        response = requests.get(url_string)
-        if url_string.endswith('.pdf'):
-            page_text = get_text_from_pdf(url_string)[:10000]
-        else:
-            downloaded = fetch_url(url_string)
-            if downloaded is None:
-                await message.reply(f"Sorry, I couldn't download that URL.")
-                return
-            page_text = extract(downloaded)
-            # soup = BeautifulSoup(response.text, 'html.parser')
-            # page_text = soup.get_text(strip=True)[:12000]
-    logger.info(f"Prompt: {prompt}")
-    messages = [
-        {
-            'role': 'system',
-            'content': 'You are a helpful assistant called "Gepetto" who specialises in providing concise, short summaries of text.'
-        },
-        {
-            'role': 'user',
-            'content': f'{prompt}? :: {page_text}'
-        },
-    ]
-    model = 'gpt-3.5-turbo-1106'
-    response = openai.ChatCompletion.create(
-        model=model,
-        messages=messages,
-        temperature=1.0,
-        max_tokens=max_tokens,
-    )
-    tokens = response['usage']['total_tokens']
-    usage = f"_[tokens used: {tokens} | Estimated cost US${get_token_price(tokens, 'output', model)}]_"
-    logger.info(f'OpenAI usage: {usage}')
-    summary = response['choices'][0]['message']['content'][:1900] + "\n" + usage
-    # Send the summary
-    await message.reply(f"Here's a summary of the content:\n{summary}")
 
 #def get_token_count(string):
 #    encoding = tiktoken.encoding_for_model(model_engine)
@@ -174,7 +81,7 @@ async def get_history_as_openai_messages(channel):
         username = "" if msg.author == bot.user else msg.author.name
         # message_content = f"At {msg.created_at.astimezone(timezone.utc).astimezone()} '{msg.author.name}' said: {msg.content}"
         content = remove_emoji(msg.content)
-        message_content = f"'{username}' said: {content}"
+        message_content = f"{content}"
         message_content = re.sub(r'\[tokens used.+Estimated cost.+]', '', message_content, flags=re.MULTILINE)
         message_length = len(message_content)
         if total_length + message_length > 1000:
@@ -204,91 +111,25 @@ async def generate_response(question, context="", extended_messages=[], temperat
     else:
         default_prompt = system_prompt
     logger.info(f"Default prompt: {default_prompt}")
-    extended_messages.insert(0,
-        {
-            'role': 'system',
-            'content': f'Today is {formatted_date}. {default_prompt} {liz_love}.'
-        }
-    )
     extended_messages.append(
         {
             'role': 'user',
             'content': f'{question}'
         },
     )
-
-    response = openai.ChatCompletion.create(
-        model=model,
-        messages=extended_messages,
-        temperature=float(temperature),
-        max_tokens=1024,
+    extended_messages.append(
+        {
+            'role': 'system',
+            'content': f'Today is {formatted_date}. {default_prompt} {liz_love}.'
+        }
     )
-    tokens = response['usage']['total_tokens']
-    usage = f"_[tokens used: {tokens} | Estimated cost US${get_token_price(tokens, 'output')}]_"
-    logger.info(f'OpenAI usage: {usage}')
-    # sometimes the response includes formatting to match what was in the formatted chat history
-    # so we want to remove it as it looks rubbish and is confusing
-    message = re.sub(r'\[tokens used.+Estimated cost.+]', '', response['choices'][0]['message']['content'], flags=re.MULTILINE)
+
+    response = await mistral.chat(extended_messages, temperature=1.0)
+    message = response.message
+    message = re.sub(r'\[tokens used.+Estimated cost.+]', '', message, flags=re.MULTILINE)
     message = re.sub(r"Gepetto' said: ", '', message, flags=re.MULTILINE)
     message = re.sub(r"^.*At \d{4}-\d{2}.+said?", "", message, flags=re.MULTILINE)
-    return message.strip()[:1900] + "\n" + usage
-
-async def generate_image(prompt):
-    response = openai.Image.create(
-        prompt=prompt,
-        n=1,
-        # size="512x512",
-        size="1024x1024",
-        model="dall-e-3",
-        response_format="b64_json",
-    )
-    image_data = response['data'][0]['b64_json']
-    image_bytes = base64.b64decode(image_data)
-    image = io.BytesIO(image_bytes)
-    discord_file = File(fp=image, filename=f'{prompt}.png')
-    logger.info('Image generated')
-    usage = "_[Estimated cost US$0.04]_"
-    logger.info(f'OpenAI usage: {usage}')
-    return discord_file
-
-async def get_weather_location_from_prompt(prompt):
-    messages = [
-        {"role": "system", "content": "You are a helpful assistant who is an expert at picking out UK town and city names from user prompts"},
-        {"role": "user", "content": prompt}
-    ]
-    functions = [
-        {
-            "name": "get_location_for_forecast",
-            "description": "figure out what town or city the user wants the weather for",
-            "parameters": {
-                "type": "object",
-                "properties": {
-                    "location": {
-                        "type": "string",
-                        "description": "A csv list of one or more UK city or town, eg London,Edinburgh,Manchester",
-                    },
-                },
-                "required": ["location"],
-            },
-        }
-    ]
-    logger.info(messages)
-    response = openai.ChatCompletion.create(
-        model="gpt-4-1106-preview",
-        messages=messages,
-        functions=functions,
-        function_call={"name": "get_location_for_forecast"},  # auto is default, but we'll be explicit
-    )
-    response_message = response["choices"][0]["message"]
-    tokens = response['usage']['total_tokens']
-    usage = f"_[tokens used: {tokens} | Estimated cost US${get_token_price(tokens, 'output')}]_"
-
-    if response_message.get("function_call"):
-        function_name = response_message["function_call"]["name"]
-        function_args = json.loads(response_message["function_call"]["arguments"])
-        locations = function_args.get("location").split(",")
-        return locations, usage
-    return None, usage
+    return message.strip()[:1900] + "\n" + response.usage
 
 def remove_emoji(text):
     regrex_pattern = re.compile(pattern = "["
@@ -377,55 +218,37 @@ async def on_message(message):
             lq = question.lower().strip()
             if lq.startswith("create an image") or lq.startswith("📷") or lq.startswith("🖌️") or lq.startswith("🖼️"):
                 async with message.channel.typing():
-                    base64_image = await generate_image(question)
+                    base64_image = await dalle.generate_image(question)
                 await message.reply(f'{message.author.mention}\n_[Estimated cost: US$0.04]_', file=base64_image, mention_author=True)
-            elif re.search(pattern, question.lower()):
+            elif re.search(pattern, lq):
                 question = question.replace("👀", "")
                 question = question.strip()
                 question = question.strip("<>")
+                page_summary = ""
                 async with message.channel.typing():
-                    await summarise_webpage(message, question.strip())
+                    page_text = await summary.get_text(message, question.strip())
+                    messages = [
+                        {
+                            'role': 'system',
+                            'content': 'You are a helpful assistant called "Gepetto" who specialises in providing concise, short summaries of text.'
+                        },
+                        {
+                            'role': 'user',
+                            'content': f'{question}? :: {page_text}'
+                        },
+                    ]
+                    response = await mistral.chat(messages, temperature=1.0)
+                    page_summary = response.message[:1900] + "\n" + response.usage
+                await message.reply(f"Here's a summary of the content:\n{page_summary}")
             elif "weather" in question.lower():
-                # question = question.replace("weather", "")
                 question = question.strip()
                 forecast = ""
                 async with message.channel.typing():
-                    locations, usage = await get_weather_location_from_prompt(question.strip())
-                    logger.info(f"Locations: {locations}")
-                    logger.info(f"Usage: {usage}")
-                    if locations is None:
-                        logger.info('No locations found')
-                        context = await get_history_as_openai_messages(message.channel)
-                        forecast = await generate_response(question, "", context, temperature, model="gpt-3.5-turbo-1106")
-                    else:
-                        for location in locations:
-                            logger.info('Getting forecast for ' + str(location))
-                            temp_forecast = get_forecast(location.strip())
-                            forecast += temp_forecast + "\n"
-                        question = f"The user asked me ''{question.strip()}''. I have got the following weather forecasts for you based on their question.  Could you make them a bit more natural but still concise - like a weather presenter would give at the end of a drive-time news segment on the radio or TV?  If the wind speed is given in knots, convert it to MPH. Feel free to use weather-specific emoji.  ''{forecast}''"
-                        logger.info(f"Question: {question}")
-                        response  = await generate_response(question, model="gpt-3.5-turbo-1106", system_prompt="You are a helpful assistant called 'Gepetto' who specialises in providing chatty and friendly weather forecasts for UK towns and cities.")
-                        forecast = response
-                # await message.reply(f'{message.author.mention}\n_[Estimated cost: US$0.018]_', file=forecast, mention_author=True)
+                    forecast = await weather.get_friendly_forecast(question.strip())
                 await message.reply(f'{message.author.mention} {forecast}', mention_author=True)
             elif question.lower().strip() == "test":
                 print(f"ENV : {os.getenv('DISCORD_BOT_CHANNEL_ID')}")
                 print(f"MSG : {message.channel.id}")
-                await morning_summary()
-            elif question.lower().strip().startswith("complete"):
-                logger.info('Do completion stuff')
-                completion = ""
-                async with message.channel.typing():
-                    response = openai.Completion.create(
-                        model="gpt-3.5-turbo-instruct",
-                        prompt=question,
-                        max_tokens=1024,
-                        temperature=0
-                    )
-                    completion = response['choices'][0]['text'].strip('complete').strip()
-                    usage = f"_[tokens used: {response['usage']['total_tokens']} | Estimated cost US${get_token_price(response['usage']['total_tokens'], 'output', 'gpt-3.5-turbo-instruct')}]_"
-
-                await message.reply(f'{message.author.mention} {completion}\n{usage}', mention_author=True)
             else:
                 async with message.channel.typing():
                     if "--no-logs" in question.lower():
@@ -441,56 +264,6 @@ async def on_message(message):
         except Exception as e:
             logger.error(f'Error generating response: {e}')
             await message.reply(f'{message.author.mention} I tried, but my attempt was as doomed as Liz Truss.  Please try again later.', mention_author=True)
-
-def get_forecast(location_name = None):
-    if not location_name:
-        return "Wut?  I need a location name.  Asshat."
-
-    API_KEY = os.getenv('MET_OFFICE_API_KEY')
-    # 1. Download the Sitelist
-    sitelist_url = f'http://datapoint.metoffice.gov.uk/public/data/val/wxfcs/all/json/sitelist?key={API_KEY}'
-    response = requests.get(sitelist_url)
-    sitelist = response.json()
-
-    # 2. Find the ID for the location
-    location_id = None
-    for location in sitelist['Locations']['Location']:
-        if location['name'].lower() == location_name.lower():
-            location_id = location['id']
-            break
-
-    if location_id is None:
-        return f"Wut iz {location_name}? I dunno where that is.  Try again with a real place name, dummy."
-
-    # 3. Request the forecast
-    M = metoffer.MetOffer(API_KEY)
-    forecast = M.loc_forecast(location_id, metoffer.DAILY)
-    today = forecast['SiteRep']['DV']['Location']['Period'][0]
-    details = today['Rep'][0]
-    # readable_forecast = f"Forecast for {location_name.capitalize()}: {metoffer.WEATHER_CODES[int(details['W'])]}, chance of rain {details['PPd']}%, temperature {details['Dm']}C (feels like {details['FDm']}C). Humidity {details['Hn']}%, wind {details['S']} knots - gusting upto {details['Gn']}.\n"
-    # rain_emoji = "\u2614" if int(details['PPd']) > 50 else ""
-    # sun_emoji = "\u2600\ufe0f" if int(details['Dm']) > 20 else ""
-    # humidity_emoji = "\U0001F6BF" if int(details['Hn']) > 70 else ""
-    rain_emoji = ""
-    sun_emoji = ""
-    humidity_emoji = ""
-    readable_forecast = f"Forecast for {location_name.capitalize()}: {metoffer.WEATHER_CODES[int(details['W'])]}{rain_emoji}, chance of rain {details['PPd']}%, temperature {details['Dm']}C{sun_emoji} (feels like {details['FDm']}C). Humidity {details['Hn']}%{humidity_emoji}, wind {details['S']} knots - gusting upto {details['Gn']}.\n"
-
-    return readable_forecast
-
-def get_text_from_pdf(url: str) -> str:
-    try:
-        response = requests.get(url)
-        file = io.BytesIO(response.content)
-        pdf_reader = PyPDF2.PdfReader(file)
-        text = ""
-        for page in pdf_reader.pages:
-            text += page.extract_text() + "\n"
-        return text
-    except Exception as e:
-        print(f"Could not get pdf text for {url}")
-        print(e)
-        return "Could not extract text for this PDF.  Sorry."
 
 
 def get_top_stories(feed_url, num_stories=5):
@@ -513,157 +286,19 @@ def get_news_summary(num_stories=5):
     # return most_read, uk, scotland
     return most_read, uk
 
-@tasks.loop(hours=24)
-async def morning_summary():
-    return
-    now = datetime.now()
-    if now.hour > 0:
-        locations = os.getenv('WEATHER_LOCATIONS', "").split(",")
-        print(os.getenv('DISCORD_BOT_CHANNEL_ID', 'WHATEVER'))
-        channel = bot.get_channel(os.getenv('DISCORD_BOT_CHANNEL_ID', 'Invalid').strip())  # Replace <channel-id> with the ID of the channel you want to send the message to
-        most_read, uk = get_news_summary(5)
-        await channel.send(most_read)
-        await channel.send(uk)
-        if len(locations) > 0:
-            for location in locations:
-                forecast = get_forecast(location.strip())
-                await channel.send(forecast)
-
 @tasks.loop(time=time(hour=9, tzinfo=pytz.timezone('Europe/London')))
 async def say_happy_birthday():
     logger.info("In say_happy_birthday")
-    birthdays = os.getenv('DISCORD_BOT_BIRTHDAYS', "").split(",")
-    # each birthday will be formatted as "discord_username:dd/mm"
-    if len(birthdays) == 0:
-        return
-    today = datetime.now()
-    today_string = today.strftime("%d/%m")
-    day = today.day
-    month = today.month
-    if 4 <= day <= 20 or 24 <= day <= 30:
-        suffix = "th"
-    else:
-        suffix = ["st", "nd", "rd"][day % 10 - 1]
-
-    month_name = today.strftime("%B")
-
-    date_string = f"the {day}{suffix} of {month_name}"
-
-    for birthday in birthdays:
-        if today_string in birthday:
-            channel = bot.get_channel(int(os.getenv('DISCORD_BOT_CHANNEL_ID', 'Invalid').strip()))
-            birthday_user_id = birthday.split(":")[0]
-            user = await bot.fetch_user(birthday_user_id)
-            if user is None:
-                logger.error(f"Could not find user with ID {birthday_user_id}")
-                return
-            messages = [
-                {
-                    'role': 'system',
-                    'content': "You are a helpful AI assistant who specialises in finding unusual, esoteric and obscure facts about specific dates in the style of newspapr 'On this day in 1905 ...'.  You should ONLY respond with the fact, no other text."
-                },
-                {
-                    'role': 'user',
-                    'content': f'Can you tell me something interesting and unusual that happened on this day in history on {date_string}?'
-                },
-            ]
-
-            response = openai.ChatCompletion.create(
-                model="gpt-3.5-turbo-1106",
-                messages=messages,
-                temperature=1.0,
-                max_tokens=1024,
-            )
-
-            message = response['choices'][0]['message']['content'][:1900]
-            message = message.replace("Sure! ", '')
-            message = message.replace("Here's a random fact for you: ", '')
-            message = message.replace("Certainly! ", '')
-            logger.info(f"Birthday fact for @{user.name}: {message}")
-            await channel.send(f"Happy birthday {user.mention}! {message}")
+    await birthdays.say_happy_birthday(bot)
 
 @tasks.loop(hours=1)
 async def say_something_random():
     logger.info("In say_something_random")
-    if random.random() < 0.1:
-        logger.info("Saying something random")
-        channel = bot.get_channel(int(os.getenv('DISCORD_BOT_CHANNEL_ID', 'Invalid').strip()))
-        prompt = "Can you tell me a random fact?  The more obscure the better!"
-        today = datetime.now()
-        date_string = today.strftime("%d %B %Y")
-        if random.random() < 0.1:
-            prompt += f" It could be about the UK politician Liz Truss who became the UK prime minister on September 6th 2022 (today is {date_string}), and had to resign just a few weeks later after the Queen died in mysterious circumstances after shaking Liz's hand."
-
-        system_prompt = f'Today is {date_string}. You are a helpful assistant called "Gepetto" who specialises in providing random interesting, esoteric and obscure facts'
-        if random.random() < 0.2:
-            system_prompt += " which often focus on esoteric PHP and Javascript Programming techniques"
-        elif random.random() < 0.2:
-            system_prompt += " which often focusses on YoYo's, the history of YoYo's and the YoYo scene in the UK"
-        elif random.random() < 0.2:
-            system_prompt += " which often focus on techniques for using an air fryer to cook a wide variety of foods"
-        elif random.random() < 0.2:
-            system_prompt += " which often focus on a UK region such as Cornwall, Norfolk, Cumbria or the West of Scotland"
-        elif random.random() < 0.2:
-            system_prompt += " which often focus on the potato, pasta, barbecue or Scottish food"
-
-        system_prompt += ".  You should ONLY respond with the fact, no other text.  The facts should be unique and must NOT repeat information previously given to the user."
-        logger.info(f"System prompt: {system_prompt}")
-        logger.info(f"Prompt: {prompt}")
-        try:
-            with open("random_facts.json", 'r') as f:
-                random_facts = json.load(f)
-        except:
-            random_facts = []
-        messages = []
-        for fact in random_facts:
-            messages.append(
-                {
-                    'role': 'user',
-                    'content': f'{prompt}. You should not repeat any previous information you have told me.'
-                }
-            )
-            messages.append(
-                {
-                    'role': 'assistant',
-                    'content': f'{fact}'
-                }
-            )
-        messages.append(
-            {
-                'role': 'system',
-                'content': system_prompt
-            }
-        )
-        messages.append(
-            {
-                'role': 'user',
-                'content': f'{prompt}. You should not repeat any previous information you have told me.'
-            },
-        )
-
-        model = "gpt-4-1106-preview"
-        response = openai.ChatCompletion.create(
-            model=model,
-            messages=messages,
-            temperature=1.0,
-            max_tokens=1024,
-        )
-
-        tokens = response['usage']['total_tokens']
-        cost = get_token_price(tokens, 'output', model_engine=model)
-        usage = f"_[tokens used: {tokens} | Estimated cost US${cost}]_"
-        logger.info(f'OpenAI random fact usage: {usage}')
-        message = response['choices'][0]['message']['content'][:1900] + "\n" + usage
-        message = message.replace("Sure! ", '')
-        message = message.replace("Here's a random fact for you: ", '')
-        message = message.replace("Certainly! ", '')
-        logger.info(f"Random fact: {message}")
-        random_facts.append(message)
-        random_facts = random_facts[-20:]
-        with open("random_facts.json", 'w') as f:
-            json.dump(random_facts, f)
-        # Send the message
-        await channel.send(f"{message}")
+    if random.random() > 0.1:
+        return
+    fact = await random_facts.get_fact()
+    channel = bot.get_channel(int(os.getenv('DISCORD_BOT_CHANNEL_ID', 'Invalid').strip()))
+    await channel.send(f"{fact}")
 
 # Run the bot
 bot.run(os.getenv("DISCORD_BOT_TOKEN", 'not_set'))
