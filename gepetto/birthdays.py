@@ -1,6 +1,6 @@
 import os
 import datetime
-from mistral import chat
+from gepetto.mistral import chat
 
 def get_today_formatted():
     today = datetime.now()

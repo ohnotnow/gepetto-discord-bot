@@ -1,7 +1,7 @@
 import requests
 import os
 import datetime
-import metoffer
+from gepetto import metoffer
 from gepetto.mistral import chat, function_call
 
 def get_forecast(location_name = None):

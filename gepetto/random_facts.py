@@ -1,7 +1,7 @@
 import random
 import json
 import datetime
-from mistral import chat
+from gepetto.mistral import chat
 
 async def get_fact():
     prompt = "Can you tell me a random fact?  The more obscure the better!"
