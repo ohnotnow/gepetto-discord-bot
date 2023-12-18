@@ -2,7 +2,6 @@ import requests
 import os
 import datetime
 from gepetto import metoffer
-from gepetto.mistral import chat, function_call
 
 def get_forecast(location_name = None):
     if not location_name:
@@ -33,7 +32,7 @@ def get_forecast(location_name = None):
 
     return readable_forecast
 
-async def get_weather_location_from_prompt(prompt):
+async def get_weather_location_from_prompt(prompt, chatbot):
     messages = [
         {"role": "system", "content": "You are a helpful assistant who is an expert at picking out UK town and city names from user prompts"},
         {"role": "user", "content": prompt}
@@ -57,20 +56,25 @@ async def get_weather_location_from_prompt(prompt):
             }
         }
     ]
-    response = function_call(messages, tools)
-    return response.parameters.get("location").split(","), response.usage
+    response = chatbot.function_call(messages, tools)
+    return response.parameters.get("location").split(","), response.tokens
 
-async def get_friendly_forecast(question):
+async def get_friendly_forecast(question, chatbot):
     forecast = ""
-    locations, usage = await get_weather_location_from_prompt(question.strip())
+    locations, total_tokens = await get_weather_location_from_prompt(question.strip())
     if locations is None:
-        forecast = await chat([{"role": "user", "content": question}])
+        response = await chatbot.chat([{"role": "user", "content": question}])
+        forecast = response.message
+        total_tokens += response.tokens
     else:
         for location in locations:
             temp_forecast = get_forecast(location.strip())
             forecast += temp_forecast + "\n"
         time = datetime.datetime.now().strftime("%H:%M")
         question = f"It is currently {time}. The user asked me ''{question.strip()}''. I have got the following weather forecasts for you based on their question.  Could you make the a bit more natural but still concise - like a weather presenter would give at the end of a drive-time news segment on the radio or TV?  ONLY reply with the rewritten forecast.  NEVER add any extra context - the use only wants to see the forecast.  If the wind speed is given in knots, convert it to MPH. Feel free to use weather-specific emoji.  ''{forecast}''"
-        response  = await chat([{"role": "user", "content": question}, {"role": "system", "content": "You are a helpful assistant called 'Gepetto' who specialises in providing chatty and friendly weather forecasts for UK towns and cities.  ALWAYS use degrees Celcius and not Fahrenheit for temperatures. You MUST ONLY reply with the forecast - NEVER say things like 'Sure thing! Here's the forecast for...'"}])
-        forecast = response.message
+        response  = await chatbot.chat([{"role": "user", "content": question}, {"role": "system", "content": "You are a helpful assistant called 'Gepetto' who specialises in providing chatty and friendly weather forecasts for UK towns and cities.  ALWAYS use degrees Celcius and not Fahrenheit for temperatures. You MUST ONLY reply with the forecast - NEVER say things like 'Sure thing! Here's the forecast for...'"}])
+        total_tokens += response.tokens
+        cost = (0.50 / 1000000) * total_tokens
+        usage = f"_[tokens used: {total_tokens} | Estimated cost US${round(cost, 5)}]_"
+        forecast = response.message + "\n" + usage
     return forecast

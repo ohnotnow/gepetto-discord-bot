@@ -11,7 +11,7 @@ import pytz
 from enum import Enum
 import requests
 
-from gepetto import mistral, dalle, summary, weather, random_facts, birthdays
+from gepetto import mistral, dalle, summary, weather, random_facts, birthdays, gpt
 
 import discord
 from discord import File
@@ -31,39 +31,22 @@ logger = logging.getLogger('discord')  # Get the discord logger
 mention_counts = defaultdict(list) # This will hold user IDs and their mention timestamps
 abusive_responses = ["Wanker", "Asshole", "Prick", "Twat"]
 
-# Define model and token prices
-class Model(Enum):
-    GPT4_32k = ('gpt-4-32k', 0.03, 0.06)
-    GPT_4_1106_PREVIEW = ('gpt-4-1106-preview', 0.01, 0.03)
-    GPT4 = ('gpt-4', 0.06, 0.12)
-    GPT3_5_Turbo_gpt_1106 = ('gpt-3.5-turbo-1106', 0.001, 0.002)
-    GPT3_5_Turbo_16k = ('gpt-3.5-turbo-16k', 0.003, 0.004)
-    GPT3_5_Turbo = ('gpt-3.5-turbo', 0.0015, 0.002)
-
 # Fetch environment variables
 server_id = os.getenv("DISCORD_SERVER_ID", "not_set")
-model_engine = os.getenv("OPENAI_MODEL_ENGINE", Model.GPT3_5_Turbo.value[0])
+model_engine = os.getenv("OPENAI_MODEL_ENGINE", gpt.Model.GPT3_5_Turbo.value[0])
 openai.api_key = os.getenv("OPENAI_API_KEY")
 location = os.getenv('BOT_LOCATION', 'dunno')
+
+if os.getenv("BOT_PROVIDER") == 'mistral':
+    chatbot = mistral.MistralModel()
+else:
+    chatbot = gpt.GPTModel()
 
 # Create instance of bot
 intents = discord.Intents.default()
 intents.members = True
 intents.message_content = True
 bot = commands.Bot(command_prefix='!', intents=intents)
-
-def get_token_price(token_count, direction="output", model_engine=model_engine):
-    token_price_input = 0
-    token_price_output = 0
-    for model in Model:
-        if model_engine.startswith(model.value[0]):
-            token_price_input = model.value[1] / 1000
-            token_price_output = model.value[2] / 1000
-            break
-    if direction == "input":
-        return round(token_price_input * token_count, 4)
-    return round(token_price_output * token_count, 4)
-
 import re
 
 
@@ -110,7 +93,6 @@ async def generate_response(question, context="", extended_messages=[], temperat
         default_prompt = os.getenv('DISCORD_BOT_DEFAULT_PROMPT', 'You are a helpful AI assistant called "Gepetto" who specialises in providing answers to questions.  You should ONLY respond with the answer, no other text.')
     else:
         default_prompt = system_prompt
-    logger.info(f"Default prompt: {default_prompt}")
     extended_messages.append(
         {
             'role': 'user',
@@ -124,10 +106,11 @@ async def generate_response(question, context="", extended_messages=[], temperat
         }
     )
 
-    response = await mistral.chat(extended_messages, temperature=1.0)
+    response = await chatbot.chat(extended_messages, temperature=1.0)
     message = response.message
     message = re.sub(r'\[tokens used.+Estimated cost.+]', '', message, flags=re.MULTILINE)
     message = re.sub(r"Gepetto' said: ", '', message, flags=re.MULTILINE)
+    message = re.sub(r"Minxie' said: ", '', message, flags=re.MULTILINE)
     message = re.sub(r"^.*At \d{4}-\d{2}.+said?", "", message, flags=re.MULTILINE)
     return message.strip()[:1900] + "\n" + response.usage
 
@@ -230,21 +213,21 @@ async def on_message(message):
                     messages = [
                         {
                             'role': 'system',
-                            'content': 'You are a helpful assistant called "Gepetto" who specialises in providing concise, short summaries of text.'
+                            'content': 'You are a helpful assistant who specialises in providing concise, short summaries of text.'
                         },
                         {
                             'role': 'user',
                             'content': f'{question}? :: {page_text}'
                         },
                     ]
-                    response = await mistral.chat(messages, temperature=1.0)
+                    response = await chatbot.chat(messages, temperature=1.0)
                     page_summary = response.message[:1900] + "\n" + response.usage
                 await message.reply(f"Here's a summary of the content:\n{page_summary}")
             elif "weather" in question.lower():
                 question = question.strip()
                 forecast = ""
                 async with message.channel.typing():
-                    forecast = await weather.get_friendly_forecast(question.strip())
+                    forecast = await weather.get_friendly_forecast(question.strip(), chatbot)
                 await message.reply(f'{message.author.mention} {forecast}', mention_author=True)
             elif question.lower().strip() == "test":
                 print(f"ENV : {os.getenv('DISCORD_BOT_CHANNEL_ID')}")
@@ -289,14 +272,17 @@ def get_news_summary(num_stories=5):
 @tasks.loop(time=time(hour=9, tzinfo=pytz.timezone('Europe/London')))
 async def say_happy_birthday():
     logger.info("In say_happy_birthday")
-    await birthdays.say_happy_birthday(bot)
+    await birthdays.say_happy_birthday(bot, chatbot)
 
 @tasks.loop(hours=1)
 async def say_something_random():
     logger.info("In say_something_random")
     if random.random() > 0.1:
         return
-    fact = await random_facts.get_fact()
+    if isinstance(chatbot, gpt.GPTModel):
+        logger.info("Not saying something random because we are using GPT")
+        return
+    fact = await random_facts.get_fact(chatbot)
     channel = bot.get_channel(int(os.getenv('DISCORD_BOT_CHANNEL_ID', 'Invalid').strip()))
     await channel.send(f"{fact}")
 

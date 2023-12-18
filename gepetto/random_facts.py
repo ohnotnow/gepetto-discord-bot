@@ -1,9 +1,8 @@
 import random
 import json
 import datetime
-from gepetto.mistral import chat
 
-async def get_fact():
+async def get_fact(chatbot):
     prompt = "Can you tell me a random fact?  The more obscure the better!"
     today = datetime.datetime.now()
     date_string = today.strftime("%d %B %Y")
@@ -55,7 +54,7 @@ async def get_fact():
         },
     )
 
-    response = await chat(messages, temperature=1.0)
+    response = await chatbot.chat(messages, temperature=1.0)
     message = response.message[:1900]
     message = message.replace("Sure! ", '')
     message = message.replace("Here's a random fact for you: ", '')

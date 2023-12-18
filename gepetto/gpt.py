@@ -1,11 +1,31 @@
 import os
 import json
+from enum import Enum
 from openai import OpenAI
 from gepetto.response import ChatResponse, FunctionResponse
 
-class MistralModel():
+class Model(Enum):
+    GPT4_32k = ('gpt-4-32k', 0.03, 0.06)
+    GPT_4_1106_PREVIEW = ('gpt-4-1106-preview', 0.01, 0.03)
+    GPT4 = ('gpt-4', 0.06, 0.12)
+    GPT3_5_Turbo_gpt_1106 = ('gpt-3.5-turbo-1106', 0.001, 0.002)
+    GPT3_5_Turbo_16k = ('gpt-3.5-turbo-16k', 0.003, 0.004)
+    GPT3_5_Turbo = ('gpt-3.5-turbo', 0.0015, 0.002)
 
-    async def chat(self, messages, temperature=1.0, model="mistralai/Mistral-7B-Instruct-v0.1"):
+class GPTModel():
+    def get_token_price(token_count, direction="output", model_engine="gpt-4-1106-preview"):
+        token_price_input = 0
+        token_price_output = 0
+        for model in Model:
+            if model_engine.startswith(model.value[0]):
+                token_price_input = model.value[1] / 1000
+                token_price_output = model.value[2] / 1000
+                break
+        if direction == "input":
+            return round(token_price_input * token_count, 4)
+        return round(token_price_output * token_count, 4)
+
+    async def chat(self, messages, temperature=0.7, model="gpt-4-1106-preview"):
         """Chat with the model.
 
         Args:
@@ -17,23 +37,22 @@ class MistralModel():
             tokens: The number of tokens used.
             cost: The estimated cost of the request.
         """
-        api_key = os.getenv("ANYSCALE_API_KEY")
-        api_base = os.getenv("ANYSCALE_BASE_URL")
+        api_key = os.getenv("OPENAI_API_KEY")
+        api_base = "https://api.openai.com/v1/"
         client = OpenAI(api_key=api_key, base_url=api_base)
         response = client.chat.completions.create(
             model=model,
             messages=messages,
-            temperature=temperature,
         )
         # print(str(response.choices[0].message))
         tokens = response.usage.total_tokens
-        cost = (0.50 / 1000000) * tokens
+        cost = self.get_token_price(tokens, "output", model)
         message = str(response.choices[0].message.content)
         return ChatResponse(message, tokens, cost)
 
-    async def function_call(self, messages = [], tools = [], temperature=0.7, model="mistralai/Mistral-7B-Instruct-v0.1"):
-        api_key = os.getenv("ANYSCALE_API_KEY")
-        api_base = os.getenv("ANYSCALE_BASE_URL")
+    async def function_call(self, messages = [], tools = [], temperature=0.7, model="gpt-4-1106-preview"):
+        api_key = os.getenv("OPENAI_API_KEY")
+        api_base = "https://api.openai.com/v1/"
         client = OpenAI(api_key=api_key, base_url=api_base)
         response = client.chat.completions.create(
             model=model,
@@ -43,7 +62,7 @@ class MistralModel():
         )
         # print(str(response.choices[0].message))
         tokens = response.usage.total_tokens
-        cost = (0.50 / 1000000) * tokens
+        cost = self.get_token_price(tokens, "output", model)
         message = response.choices[0].message
         parameters = json.loads(message.tool_calls[0].function.arguments)
         return FunctionResponse(parameters, tokens, cost)

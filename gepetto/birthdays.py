@@ -1,6 +1,5 @@
 import os
 import datetime
-from gepetto.mistral import chat
 
 def get_today_formatted():
     today = datetime.now()
@@ -12,7 +11,7 @@ def get_today_formatted():
     month_name = today.strftime("%B")
     return f"the {day}{suffix} of {month_name}"
 
-async def get_birthday_message(bot):
+async def get_birthday_message(bot, chatbot):
     birthdays = os.getenv('DISCORD_BOT_BIRTHDAYS', "").split(",")
     # each birthday will be formatted as "discord_username:dd/mm"
     if len(birthdays) == 0:
@@ -37,7 +36,7 @@ async def get_birthday_message(bot):
                 },
             ]
 
-            response = chat(
+            response = await chatbot.chat(
                 messages=messages,
                 temperature=1.0,
             )
