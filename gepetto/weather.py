@@ -61,7 +61,7 @@ async def get_weather_location_from_prompt(prompt, chatbot):
 
 async def get_friendly_forecast(question, chatbot):
     forecast = ""
-    locations, total_tokens = await get_weather_location_from_prompt(question.strip())
+    locations, total_tokens = await get_weather_location_from_prompt(question.strip(), chatbot)
     if locations is None:
         response = await chatbot.chat([{"role": "user", "content": question}])
         forecast = response.message
