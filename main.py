@@ -235,7 +235,7 @@ async def on_message(message):
                 print(f"MSG : {message.channel.id}")
             else:
                 async with message.channel.typing():
-                    if "--no-logs" in question.lower():
+                    if "--no-logs" in question.lower() or isinstance(chatbot, mistral.MistralModel):
                         context = []
                         question = question.lower().replace("--no-logs", "")
                     else:
