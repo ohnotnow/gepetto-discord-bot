@@ -13,7 +13,7 @@ class Model(Enum):
     GPT3_5_Turbo = ('gpt-3.5-turbo', 0.0015, 0.002)
 
 class GPTModel():
-    def get_token_price(token_count, direction="output", model_engine="gpt-4-1106-preview"):
+    def get_token_price(self, token_count, direction="output", model_engine="gpt-4-1106-preview"):
         token_price_input = 0
         token_price_output = 0
         for model in Model:
