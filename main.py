@@ -226,6 +226,7 @@ async def on_message(message):
             elif "weather" in question.lower():
                 question = question.strip()
                 forecast = ""
+                logger.info("Getting weather using " + type(chatbot))
                 async with message.channel.typing():
                     forecast = await weather.get_friendly_forecast(question.strip(), chatbot)
                 await message.reply(f'{message.author.mention} {forecast}', mention_author=True)
