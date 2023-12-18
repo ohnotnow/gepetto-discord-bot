@@ -4,6 +4,8 @@ from openai import OpenAI
 from gepetto.response import ChatResponse, FunctionResponse
 
 class MistralModel():
+    def get_token_price(self, token_count, direction="output", model_engine="mistralai/Mistral-7B-Instruct-v0.1"):
+        return (0.50 / 1000000) * token_count
 
     async def chat(self, messages, temperature=1.0, model="mistralai/Mistral-7B-Instruct-v0.1"):
         """Chat with the model.
