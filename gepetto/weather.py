@@ -56,7 +56,7 @@ async def get_weather_location_from_prompt(prompt, chatbot):
             }
         }
     ]
-    response = chatbot.function_call(messages, tools)
+    response = await chatbot.function_call(messages, tools)
     return response.parameters.get("location").split(","), response.tokens
 
 async def get_friendly_forecast(question, chatbot):
