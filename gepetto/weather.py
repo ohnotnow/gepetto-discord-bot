@@ -70,8 +70,8 @@ async def get_friendly_forecast(question, chatbot):
         for location in locations:
             temp_forecast = get_forecast(location.strip())
             forecast += temp_forecast + "\n"
-        time = datetime.datetime.now().strftime("%H:%M")
-        question = f"It is currently {time}. The user asked me ''{question.strip()}''. I have the following plain weather forecasts for you based on their question.  Could you make the a bit more natural - like a weather presenter would give at the end of a drive-time news segment on the radio or TV?  ONLY reply with the rewritten forecast.  NEVER add any extra context - the user only wants to see the friendly, drive-time style forecast.  If the wind speed is given in knots, convert it to MPH. Feel free to use weather-specific emoji.  FORECAST : ''{forecast}''"
+        date_and_time = datetime.datetime.now().strftime("%A %d %B %Y at %H:%M")
+        question = f"It is currently {date_and_time}. The user asked me ''{question.strip()}''. I have the following plain weather forecasts for you based on their question.  Could you make the a bit more natural - like a weather presenter would give at the end of a drive-time news segment on the radio or TV?  ONLY reply with the rewritten forecast.  NEVER add any extra context - the user only wants to see the friendly, drive-time style forecast.  If the wind speed is given in knots, convert it to MPH. Feel free to use weather-specific emoji.  FORECAST : ''{forecast}''"
         response  = await chatbot.chat([{"role": "user", "content": question}, {"role": "system", "content": "You are a helpful assistant called 'Gepetto' who specialises in providing chatty and friendly weather forecasts for UK towns and cities.  ALWAYS use degrees Celcius and not Fahrenheit for temperatures. You MUST ONLY reply with the friendly forecast."}])
         total_tokens += response.tokens
         cost = chatbot.get_token_price(total_tokens)
