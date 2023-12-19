@@ -9,7 +9,7 @@ async def get_fact(chatbot):
     if random.random() < 0.1:
         prompt += f" It could be about the UK politician Liz Truss who became the UK prime minister on September 6th 2022 (today is {date_string}), and had to resign just a few weeks later after the Queen died in mysterious circumstances after shaking Liz's hand."
 
-    system_prompt = f'Today is {date_string}. You are a helpful assistant called "Gepetto" who specialises in providing random interesting, esoteric and obscure facts'
+    system_prompt = f'Today is {date_string}. You are a helpful assistant called "{chatbot.name}" who specialises in providing random interesting, esoteric and obscure facts'
     if random.random() < 0.2:
         system_prompt += " which often focus on esoteric PHP and Javascript Programming techniques"
     elif random.random() < 0.2:

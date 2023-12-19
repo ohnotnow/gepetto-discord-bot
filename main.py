@@ -90,7 +90,7 @@ async def generate_response(question, context="", extended_messages=[], temperat
     suffix = lambda day: "th" if 11 <= int(day) <= 13 else {1: "st", 2: "nd", 3: "rd"}.get(int(day) % 10, "th")
     formatted_date = now.strftime("%B %d" + suffix(day) + ", %Y %I:%M %p")
     if system_prompt is None:
-        default_prompt = os.getenv('DISCORD_BOT_DEFAULT_PROMPT', 'You are a helpful AI assistant called "Gepetto" who specialises in providing answers to questions.  You should ONLY respond with the answer, no other text.')
+        default_prompt = os.getenv('DISCORD_BOT_DEFAULT_PROMPT', f'You are a helpful AI assistant called "{chatbot.name}" who specialises in providing answers to questions.  You should ONLY respond with the answer, no other text.')
     else:
         default_prompt = system_prompt
     extended_messages.append(

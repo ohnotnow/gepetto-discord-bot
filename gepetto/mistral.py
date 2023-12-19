@@ -4,6 +4,7 @@ from openai import OpenAI
 from gepetto.response import ChatResponse, FunctionResponse
 
 class MistralModel():
+    name = "Minxie"
     def get_token_price(self, token_count, direction="output", model_engine="mistralai/Mistral-7B-Instruct-v0.1"):
         return (0.50 / 1000000) * token_count
 
