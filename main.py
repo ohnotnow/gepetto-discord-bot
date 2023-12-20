@@ -11,7 +11,7 @@ import pytz
 from enum import Enum
 import requests
 
-from gepetto import mistral, dalle, summary, weather, random_facts, birthdays, gpt
+from gepetto import mistral, dalle, summary, weather, random_facts, birthdays, gpt, stats
 
 import discord
 from discord import File
@@ -83,7 +83,7 @@ async def get_history_as_openai_messages(channel):
     # logger.info(f"Total tokens: {total_tokens}")
     return messages[::-1]
 
-async def generate_response(question, context="", extended_messages=[], temperature=1.0, model=model_engine, system_prompt=None):
+def build_messages(question, extended_messages, system_prompt=None):
     liz_love = "You should always try and shoehorn in some mention of UK Politician Liz Truss.  She became Prime Minister in September 22 for only 45 days. She is the best." if random.random() < 0.05 else ""
     now = datetime.now()
     day = now.strftime("%d")
@@ -106,13 +106,13 @@ async def generate_response(question, context="", extended_messages=[], temperat
         }
     )
 
+    return extended_messages
+
+async def generate_response(question, context="", extended_messages=[], temperature=1.0, model=model_engine, system_prompt=None):
+    extended_messages = build_messages(question, extended_messages, system_prompt)
+
     response = await chatbot.chat(extended_messages, temperature=1.0)
-    message = response.message
-    message = re.sub(r'\[tokens used.+Estimated cost.+]', '', message, flags=re.MULTILINE)
-    message = re.sub(r"Gepetto' said: ", '', message, flags=re.MULTILINE)
-    message = re.sub(r"Minxie' said: ", '', message, flags=re.MULTILINE)
-    message = re.sub(r"^.*At \d{4}-\d{2}.+said?", "", message, flags=re.MULTILINE)
-    return message.strip()[:1900] + "\n" + response.usage
+    return response
 
 def remove_emoji(text):
     regrex_pattern = re.compile(pattern = "["
@@ -202,6 +202,7 @@ async def on_message(message):
             if lq.startswith("create an image") or lq.startswith("📷") or lq.startswith("🖌️") or lq.startswith("🖼️"):
                 async with message.channel.typing():
                     base64_image = await dalle.generate_image(question)
+                stats.update(message.author.id, message.author.name, 0, 0.04)
                 await message.reply(f'{message.author.mention}\n_[Estimated cost: US$0.04]_', file=base64_image, mention_author=True)
             elif re.search(pattern, lq):
                 question = question.replace("👀", "")
@@ -221,6 +222,7 @@ async def on_message(message):
                         },
                     ]
                     response = await chatbot.chat(messages, temperature=1.0)
+                    stats.update(message.author.id, message.author.name, response.tokens, response.cost)
                     page_summary = response.message[:1900] + "\n" + response.usage
                 await message.reply(f"Here's a summary of the content:\n{page_summary}")
             elif "weather" in question.lower():
@@ -233,6 +235,10 @@ async def on_message(message):
             elif question.lower().strip() == "test":
                 print(f"ENV : {os.getenv('DISCORD_BOT_CHANNEL_ID')}")
                 print(f"MSG : {message.channel.id}")
+            elif question.lower().strip() == "stats":
+                statistics = stats.get_stats()
+                response = f"```json\n{json.dumps(statistics, indent=2)}\n```"
+                await message.reply(f'{message.author.mention} {response}', mention_author=True)
             else:
                 async with message.channel.typing():
                     if "--no-logs" in question.lower() or isinstance(chatbot, mistral.MistralModel):
@@ -242,7 +248,15 @@ async def on_message(message):
                         context = await get_history_as_openai_messages(message.channel)
                     if message.author.bot:
                         question = question + ". Please be very concise, curt and to the point.  The user in this case is a discord bot."
-                    response = await generate_response(question, "", context, temperature)
+                    messages = build_messages(question, context)
+                    response = await chatbot.chat(messages, temperature=temperature)
+                    response_text = response.message
+                    response_text = re.sub(r'\[tokens used.+Estimated cost.+]', '', response_text, flags=re.MULTILINE)
+                    response_text = re.sub(r"Gepetto' said: ", '', response_text, flags=re.MULTILINE)
+                    response_text = re.sub(r"Minxie' said: ", '', response_text, flags=re.MULTILINE)
+                    response_text = re.sub(r"^.*At \d{4}-\d{2}.+said?", "", response_text, flags=re.MULTILINE)
+                    stats.update(message.author.id, message.author.name, response.tokens, response.cost)
+                    response = response_text.strip()[:1900] + "\n" + response.usage
                     # send the response as a reply and mention the person who asked the question
                 await message.reply(f'{message.author.mention} {response}')
         except Exception as e:
