@@ -241,7 +241,8 @@ async def on_message(message):
                 await message.reply(f'{message.author.mention} {response}', mention_author=True)
             else:
                 async with message.channel.typing():
-                    if "--no-logs" in question.lower() or isinstance(chatbot, mistral.MistralModel):
+                    #if "--no-logs" in question.lower() or isinstance(chatbot, mistral.MistralModel):
+                    if "--no-logs" in question.lower():
                         context = []
                         question = question.lower().replace("--no-logs", "")
                     else:
