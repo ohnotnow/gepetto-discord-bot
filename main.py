@@ -89,6 +89,8 @@ def build_messages(question, extended_messages, system_prompt=None):
     day = now.strftime("%d")
     suffix = lambda day: "th" if 11 <= int(day) <= 13 else {1: "st", 2: "nd", 3: "rd"}.get(int(day) % 10, "th")
     formatted_date = now.strftime("%B %d" + suffix(day) + ", %Y %I:%M %p")
+    if random.random() < 0.1 and system_prompt is None:
+        default_prompt = os.getenv('DISCORD_BOT_ALTERNATE_PROMPT', None)
     if system_prompt is None:
         default_prompt = os.getenv('DISCORD_BOT_DEFAULT_PROMPT', f'You are a helpful AI assistant called "{chatbot.name}" who specialises in providing answers to questions.  You should ONLY respond with the answer, no other text.')
     else:
