@@ -129,6 +129,7 @@ def remove_emoji(text):
 async def on_ready():
     say_something_random.start()
     say_happy_birthday.start()
+    random_chat.start()
     return
     with open(AVATAR_PATH, 'rb') as avatar:
         await bot.user.edit(avatar=avatar.read())
@@ -291,6 +292,24 @@ def get_news_summary(num_stories=5):
 async def say_happy_birthday():
     logger.info("In say_happy_birthday")
     await birthdays.say_happy_birthday(bot, chatbot)
+
+@tasks.loop(minutes=60)
+async def random_chat():
+    logger.info("In random_chat")
+    if isinstance(chatbot, gpt.GPTModel):
+        logger.info("Not joining in with chat because we are using GPT")
+        return
+    channel = bot.get_channel(int(os.getenv('DISCORD_BOT_CHANNEL_ID', 'Invalid').strip()))
+    context = await get_history_as_openai_messages(channel)
+    system_prompt = f'You are a helpful AI Discord bot called "{chatbot.name}" who reads the chat history of a Discord server and adds funny, ascerbic, sarcastic replies based on what has been happening.'
+    context.append(
+        {
+            'role': 'system',
+            'content': system_prompt
+        }
+    )
+    response = await chatbot.chat(context, temperature=1.0)
+    await channel.send(f"{response.message}\n{response.usage}")
 
 @tasks.loop(hours=1)
 async def say_something_random():
