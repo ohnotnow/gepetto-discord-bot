@@ -296,9 +296,9 @@ async def say_happy_birthday():
 @tasks.loop(minutes=60)
 async def random_chat():
     logger.info("In random_chat")
-    if isinstance(chatbot, gpt.GPTModel):
-        logger.info("Not joining in with chat because we are using GPT")
-        return
+    # if isinstance(chatbot, gpt.GPTModel):
+    #     logger.info("Not joining in with chat because we are using GPT")
+    #     return
     now = datetime.now().time()
     start = datetime.strptime('23:00:00', '%H:%M:%S').time()
     end = datetime.strptime('07:00:00', '%H:%M:%S').time()
