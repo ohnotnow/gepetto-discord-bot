@@ -307,7 +307,7 @@ async def random_chat():
         return
     channel = bot.get_channel(int(os.getenv('DISCORD_BOT_CHANNEL_ID', 'Invalid').strip()))
     context = await get_history_as_openai_messages(channel)
-    system_prompt = f'You are a helpful AI Discord bot called "{chatbot.name}" who reads the chat history of a Discord server and adds funny, ascerbic, sarcastic replies based on what has been happening.'
+    system_prompt = f'You are a helpful AI Discord bot called "{chatbot.name}" who reads the chat history of a Discord server and adds funny, ascerbic, sarcastic replies based on what has been happening.  Your reply should be natural and fit in with the flow of the conversation as if you were a human.  You should ONLY respond with the chat reply, no other text.'
     context.append(
         {
             'role': 'system',
