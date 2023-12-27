@@ -299,6 +299,12 @@ async def random_chat():
     if isinstance(chatbot, gpt.GPTModel):
         logger.info("Not joining in with chat because we are using GPT")
         return
+    now = datetime.now().time()
+    start = datetime.strptime('23:00:00', '%H:%M:%S').time()
+    end = datetime.strptime('07:00:00', '%H:%M:%S').time()
+    if (start <= now <= end):
+        logger.info("Not joining in with chat because it is night time")
+        return
     channel = bot.get_channel(int(os.getenv('DISCORD_BOT_CHANNEL_ID', 'Invalid').strip()))
     context = await get_history_as_openai_messages(channel)
     system_prompt = f'You are a helpful AI Discord bot called "{chatbot.name}" who reads the chat history of a Discord server and adds funny, ascerbic, sarcastic replies based on what has been happening.'
