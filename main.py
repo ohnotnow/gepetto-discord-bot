@@ -54,11 +54,14 @@ import re
 #    encoding = tiktoken.encoding_for_model(model_engine)
 #    return len(encoding.encode(string))
 
-async def get_history_as_openai_messages(channel):
+async def get_history_as_openai_messages(channel, include_bot_messages=True, limit=50):
     messages = []
     total_length = 0
     total_tokens = 0
-    async for msg in channel.history(limit=50):
+    async for msg in channel.history(limit=limit):
+        # bail out if the message was by a bot and we don't want bot messages included
+        if (not include_bot_messages) and (msg.author.bot):
+            continue
         # The role is 'assistant' if the author is the bot, 'user' otherwise
         role = 'assistant' if msg.author == bot.user else 'user'
         username = "" if msg.author == bot.user else msg.author.name
@@ -306,7 +309,7 @@ async def random_chat():
         logger.info("Not joining in with chat because it is night time")
         return
     channel = bot.get_channel(int(os.getenv('DISCORD_BOT_CHANNEL_ID', 'Invalid').strip()))
-    context = await get_history_as_openai_messages(channel)
+    context = await get_history_as_openai_messages(channel, include_bot_messages=False)
     system_prompt = f'You are a helpful AI Discord bot called "{chatbot.name}" who reads the chat history of a Discord server and adds funny, ascerbic, sarcastic replies based on what has been happening.  Your reply should be natural and fit in with the flow of the conversation as if you were a human user chatting to your friends on Discord.  You should ONLY respond with the chat reply, no other text.  You can quote the text you are using as context by using markdown `> original text here` formatting if needed.'
     context.append(
         {
