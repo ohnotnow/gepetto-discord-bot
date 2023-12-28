@@ -21,7 +21,7 @@ async def get_fact(chatbot):
     elif random.random() < 0.2:
         system_prompt += " which often focus on the potato, pasta, barbecue or Scottish food"
 
-    system_prompt += ".  You should ONLY respond with the fact, no other text.  The facts should be unique and must NOT repeat information previously given to the user."
+    system_prompt += ".  You should ONLY respond with the fact, no other text.  The facts should be unique, about varied subjects and must NOT repeat information previously given to the user."
     try:
         with open("random_facts.json", 'r') as f:
             random_facts = json.load(f)
