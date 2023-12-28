@@ -315,7 +315,7 @@ async def random_chat():
         }
     )
     response = await chatbot.chat(context, temperature=1.0)
-    await channel.send(f"{response.message}\n{response.usage}")
+    await channel.send(f"{response.message[:1900]}\n{response.usage}")
 
 @tasks.loop(hours=1)
 async def say_something_random():
@@ -327,7 +327,7 @@ async def say_something_random():
         return
     fact = await random_facts.get_fact(chatbot)
     channel = bot.get_channel(int(os.getenv('DISCORD_BOT_CHANNEL_ID', 'Invalid').strip()))
-    await channel.send(f"{fact}")
+    await channel.send(f"{fact[:1900]}")
 
 # Run the bot
 bot.run(os.getenv("DISCORD_BOT_TOKEN", 'not_set'))
