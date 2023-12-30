@@ -305,7 +305,7 @@ async def random_chat():
     now = datetime.now().time()
     start = datetime.strptime('23:00:00', '%H:%M:%S').time()
     end = datetime.strptime('07:00:00', '%H:%M:%S').time()
-    if (start <= now <= end):
+    if (now >= start or now <= end):
         logger.info("Not joining in with chat because it is night time")
         return
     channel = bot.get_channel(int(os.getenv('DISCORD_BOT_CHANNEL_ID', 'Invalid').strip()))
