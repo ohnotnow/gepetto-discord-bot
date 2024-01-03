@@ -316,7 +316,7 @@ async def random_chat():
         logger.info("Not joining in with chat because it is night time")
         return
     channel = bot.get_channel(int(os.getenv('DISCORD_BOT_CHANNEL_ID', 'Invalid').strip()))
-    context = await get_history_as_openai_messages(channel, include_bot_messages=True, since_hourse=2)
+    context = await get_history_as_openai_messages(channel, include_bot_messages=True, since_hours=2)
     if len(context) < 3:
         logger.info("Not joining in with chat because it is too quiet")
         return
