@@ -59,7 +59,7 @@ async def get_history_as_openai_messages(channel, include_bot_messages=True, lim
     total_length = 0
     total_tokens = 0
     if since_hours:
-        after_time = datetime.datetime.utcnow() - datetime.timedelta(hours=since_hours)
+        after_time = datetime.utcnow() - timedelta(hours=since_hours)
     else:
         after_time = None
     async for msg in channel.history(limit=limit, after=after_time):
