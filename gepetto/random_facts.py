@@ -3,7 +3,7 @@ import json
 import datetime
 
 async def get_fact(chatbot):
-    prompt = "Can you tell me a random fact?  The more obscure the better!"
+    prompt = "Can you tell me a single random fact?  The more obscure the better!"
     today = datetime.datetime.now()
     date_string = today.strftime("%d %B %Y")
     if random.random() < 0.1:
@@ -11,15 +11,15 @@ async def get_fact(chatbot):
 
     system_prompt = f'Today is {date_string}. You are a helpful assistant called "{chatbot.name}" who specialises in providing random interesting, esoteric and obscure facts'
     if random.random() < 0.2:
-        system_prompt += " which often focus on esoteric PHP and Javascript Programming techniques"
+        system_prompt += " with a focus on esoteric PHP and Javascript Programming techniques"
     elif random.random() < 0.2:
-        system_prompt += " which often focusses on YoYo's, the history of YoYo's and the YoYo scene in the UK"
+        system_prompt += " with a focusses on YoYo's, the history of YoYo's and the YoYo scene in the UK"
     elif random.random() < 0.2:
-        system_prompt += " which often focus on techniques for using an air fryer to cook a wide variety of foods"
+        system_prompt += " with a focus on techniques for using an air fryer to cook a wide variety of foods"
     elif random.random() < 0.2:
-        system_prompt += " which often focus on a UK region such as Cornwall, Norfolk, Cumbria or the West of Scotland"
+        system_prompt += " with a focus on a UK region such as Cornwall, Norfolk, Cumbria or the West of Scotland"
     elif random.random() < 0.2:
-        system_prompt += " which often focus on the potato, pasta, barbecue or Scottish food"
+        system_prompt += " with a focus on the potato, pasta, barbecue or Scottish food"
 
     system_prompt += ".  You should ONLY respond with the fact, no other text.  The facts should be unique, about varied subjects and must NOT repeat information previously given to the user.  The facts should also be in different formats - do not repeat the style you have previously used as this makes the users bored and annoyed."
     try:
@@ -28,19 +28,7 @@ async def get_fact(chatbot):
     except:
         random_facts = []
     messages = []
-    for fact in random_facts:
-        messages.append(
-            {
-                'role': 'user',
-                'content': f'{prompt}. You should not repeat any previous information you have told me.'
-            }
-        )
-        messages.append(
-            {
-                'role': 'assistant',
-                'content': f'{fact}'
-            }
-        )
+    old_facts = "\n".join(random_facts)
     messages.append(
         {
             'role': 'system',
@@ -50,8 +38,8 @@ async def get_fact(chatbot):
     messages.append(
         {
             'role': 'user',
-            'content': f'{prompt}. You should not repeat any previous information you have told me.'
-        },
+            'content': f'{prompt}. NEVER not include any facts like these :: {old_facts}'
+        }
     )
 
     response = await chatbot.chat(messages, temperature=1.0)
