@@ -26,7 +26,7 @@ class GPTModel():
             return round(token_price_input * token_count, 4)
         return round(token_price_output * token_count, 4)
 
-    async def chat(self, messages, temperature=0.7, model="gpt-4-1106-preview"):
+    async def chat(self, messages, temperature=1.8, model="gpt-4-1106-preview", top_p=0.6):
         """Chat with the model.
 
         Args:
@@ -44,6 +44,8 @@ class GPTModel():
         response = client.chat.completions.create(
             model=model,
             messages=messages,
+            temperature=temperature,
+            top_p=top_p,
         )
         # print(str(response.choices[0].message))
         tokens = response.usage.total_tokens
