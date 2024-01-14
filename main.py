@@ -356,7 +356,11 @@ async def make_chat_image():
         for message in history:
             combined_chat += f"{message['content']}\n"
         discord_file = await dalle.generate_image(combined_chat)
-    await channel.send(f'Have a picture based on the recent chat!\n_[Estimated cost: US$0.04]_', file=discord_file)
+        response = await chatbot.chat([{
+            'role': 'user',
+            'content': "Could you reword the following sentence to make it sound more like a human wrote it? <sentence>Here is my image based on recent chat in my Discord server!</sentence>.  Please reply with only the reworded sentence as it will be sent directly to Discord as a message."
+        }])
+    await channel.send(f'{response.message}\n_[Estimated cost: US$0.05]_', file=discord_file)
 
 # Run the bot
 bot.run(os.getenv("DISCORD_BOT_TOKEN", 'not_set'))
