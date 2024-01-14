@@ -19,5 +19,5 @@ async def generate_image(prompt):
     # image_data = response['data'][0]['b64_json']
     image_bytes = base64.b64decode(image_data)
     image = io.BytesIO(image_bytes)
-    discord_file = File(fp=image, filename=f'{prompt}.png')
+    discord_file = File(fp=image, filename=f'channel_summary.png')
     return discord_file

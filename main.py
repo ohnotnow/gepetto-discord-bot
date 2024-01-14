@@ -137,6 +137,7 @@ async def on_ready():
     say_something_random.start()
     say_happy_birthday.start()
     random_chat.start()
+    make_chat_image.start()
     return
     with open(AVATAR_PATH, 'rb') as avatar:
         await bot.user.edit(avatar=avatar.read())
@@ -341,6 +342,21 @@ async def say_something_random():
     fact = await random_facts.get_fact(chatbot)
     channel = bot.get_channel(int(os.getenv('DISCORD_BOT_CHANNEL_ID', 'Invalid').strip()))
     await channel.send(f"{fact[:1900]}")
+
+@tasks.loop(hours=24)
+async def make_chat_image():
+    logger.info("In make_chat_image")
+    if isinstance(chatbot, mistral.MistralModel):
+        logger.info("Not saying something random because we are using Mistral")
+        return
+    channel = bot.get_channel(int(os.getenv('DISCORD_BOT_CHANNEL_ID', 'Invalid').strip()))
+    async with channel.typing():
+        history = await get_history_as_openai_messages(channel)
+        combined_chat = "The following is a transcript of recent chat in my Discord server.  Could you make me an image which summarises it?  The discord server has four users - a long-haired Italian man, a shaved head Cornish man, a depressed young Hungarian man and a jaded Scottish man. The discord server is for adults - so if there has been any NSFW content or mentions of celebtrities, please just make an image a little like them but not *of* them.  Thanks!\n\n"
+        for message in history:
+            combined_chat += f"{message['content']}\n"
+        discord_file = await dalle.generate_image(combined_chat)
+    await channel.send(f'Have a picture based on the recent chat!\n_[Estimated cost: US$0.04]_', file=discord_file)
 
 # Run the bot
 bot.run(os.getenv("DISCORD_BOT_TOKEN", 'not_set'))
