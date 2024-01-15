@@ -29,7 +29,7 @@ logger = logging.getLogger('discord')  # Get the discord logger
 # )
 
 mention_counts = defaultdict(list) # This will hold user IDs and their mention timestamps
-abusive_responses = ["Wanker", "Asshole", "Prick", "Twat"]
+abusive_responses = ["Wanker", "Asshole", "Prick", "Twat", "Asshat", "Knob", "Dick", "Tosser", "Cow", "Cockwomble", "Anorak", "Knickers", "Fanny", "Sigh", "Big girl's blouse"]
 
 # Fetch environment variables
 server_id = os.getenv("DISCORD_SERVER_ID", "not_set")
@@ -170,7 +170,10 @@ async def on_message(message):
 
         # If the user is a bot then send an abusive response
         if message.author.bot:
-            await message.reply(f"{message.author.mention} {random.choice(abusive_responses)}.")
+            if random.random() < 0.5:
+                await message.reply(f"{message.author.mention} {random.choice(abusive_responses)}.")
+            else:
+                await message.channel.send(f"{random.choice(abusive_responses)}.")
             return
 
         # Current time
