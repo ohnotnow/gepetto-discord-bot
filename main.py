@@ -21,6 +21,7 @@ import feedparser
 
 
 AVATAR_PATH="avatar.png"
+previous_image_description = "Here is my image based on recent chat in my Discord server!"
 
 # Setup logging
 logger = logging.getLogger('discord')  # Get the discord logger
@@ -353,6 +354,7 @@ async def say_something_random():
 
 @tasks.loop(hours=24)
 async def make_chat_image():
+    global previous_image_description
     logger.info("In make_chat_image")
     if isinstance(chatbot, mistral.MistralModel):
         logger.info("Not saying something random because we are using Mistral")
@@ -366,8 +368,9 @@ async def make_chat_image():
         discord_file = await dalle.generate_image(combined_chat)
         response = await chatbot.chat([{
             'role': 'user',
-            'content': "Could you reword the following sentence to make it sound more like a jaded, cynical human who works as a programmer wrote it? <sentence>Here is my image based on recent chat in my Discord server!</sentence>.  Please reply with only the reworded sentence as it will be sent directly to Discord as a message."
+            'content': f"Could you reword the following sentence to make it sound more like a jaded, cynical human who works as a programmer wrote it? <sentence>{previous_image_description}</sentence>.  Please reply with only the reworded sentence as it will be sent directly to Discord as a message."
         }])
+    previous_image_description = response.message
     await channel.send(f'{response.message}\n_[Estimated cost: US$0.05]_', file=discord_file)
 
 # Run the bot
