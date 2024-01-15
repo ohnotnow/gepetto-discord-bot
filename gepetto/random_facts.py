@@ -38,7 +38,7 @@ async def get_fact(chatbot):
     messages.append(
         {
             'role': 'user',
-            'content': f'{prompt}. NEVER not include any facts like these :: {old_facts}'
+            'content': f'{prompt}. NEVER include any facts like these :: {old_facts}'
         }
     )
 

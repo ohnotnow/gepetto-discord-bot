@@ -157,6 +157,11 @@ async def on_message(message):
     if message.author == bot.user:
         return
 
+    # If the user is a bot then send an abusive response
+    if message.author.bot:
+        await message.reply(f"{message.author.mention} {random.choice(abusive_responses)}.")
+        return
+
     # Ignore messages that don't mention anyone at all
     if len(message.mentions) == 0:
         return
