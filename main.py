@@ -365,13 +365,13 @@ async def make_chat_image():
         combined_chat = "The following is a transcript of recent chat in my Discord server.  Could you make me an image which summarises it?  The discord server users are all jaded, cynical computer programmers. The discord server is for adults - so if there has been any NSFW content or mentions of celebtrities, please just make an image a little like them but not *of* them.  Thanks!\n\n"
         for message in history:
             combined_chat += f"{message['content']}\n"
-        discord_file = await dalle.generate_image(combined_chat)
+        discord_file, prompt = await dalle.generate_image(combined_chat, return_prompt=True)
         response = await chatbot.chat([{
             'role': 'user',
             'content': f"Could you reword the following sentence to make it sound more like a jaded, cynical human who works as a programmer wrote it? <sentence>{previous_image_description}</sentence>.  Please reply with only the reworded sentence as it will be sent directly to Discord as a message."
         }])
     previous_image_description = response.message
-    await channel.send(f'{response.message}\n_[Estimated cost: US$0.05]_', file=discord_file)
+    await channel.send(f'{response.message}\n> {prompt}\n_[Estimated cost: US$0.05]_', file=discord_file)
 
 # Run the bot
 bot.run(os.getenv("DISCORD_BOT_TOKEN", 'not_set'))
