@@ -361,7 +361,7 @@ async def make_chat_image():
         return
     channel = bot.get_channel(int(os.getenv('DISCORD_BOT_CHANNEL_ID', 'Invalid').strip()))
     async with channel.typing():
-        history = await get_history_as_openai_messages(channel, limit=100)
+        history = await get_history_as_openai_messages(channel, limit=50)
         combined_chat = "The following is a transcript of recent chat in my Discord server.  Could you make me an image which summarises it?  The discord server users are all jaded, cynical computer programmers. The discord server is for adults - so if there has been any NSFW content or mentions of celebtrities, please just make an image a little like them but not *of* them.  Thanks!\n\n"
         for message in history:
             combined_chat += f"{message['content']}\n"
