@@ -343,6 +343,7 @@ async def random_chat():
 @tasks.loop(hours=1)
 async def say_something_random():
     logger.info("In say_something_random")
+    return
     if random.random() > 0.1:
         return
     if isinstance(chatbot, gpt.GPTModel):
