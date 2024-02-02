@@ -48,8 +48,12 @@ class GPTModel():
             top_p=top_p,
         )
         # print(str(response.choices[0].message))
-        tokens = response.usage.total_tokens
-        cost = self.get_token_price(tokens, "output", model)
+        input_tokens = response.usage.prompt_tokens
+        output_tokens = response.usage.completion_tokens
+        tokens = input_tokens + output_tokens
+        output_cost = self.get_token_price(output_tokens, "output", model)
+        input_cost = self.get_token_price(input_tokens, "input", model)
+        cost = input_cost + output_cost
         message = str(response.choices[0].message.content)
         return ChatResponse(message, tokens, cost)
 
