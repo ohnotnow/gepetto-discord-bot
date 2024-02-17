@@ -55,7 +55,11 @@ import re
 #    encoding = tiktoken.encoding_for_model(model_engine)
 #    return len(encoding.encode(string))
 
-async def get_history_as_openai_messages(channel, include_bot_messages=True, limit=50, since_hours=None):
+def remove_nsfw_words(message):
+    message = re.sub(r"(fuck|prick|asshole|shit|wanker|dick)", "", message)
+    return message
+
+async def get_history_as_openai_messages(channel, include_bot_messages=True, limit=50, since_hours=None, nsfw_filter=False):
     messages = []
     total_length = 0
     total_tokens = 0
@@ -74,6 +78,7 @@ async def get_history_as_openai_messages(channel, include_bot_messages=True, lim
         content = remove_emoji(msg.content)
         message_content = f"{content}"
         message_content = re.sub(r'\[tokens used.+Estimated cost.+]', '', message_content, flags=re.MULTILINE)
+        message_content = remove_nsfw_words(message_content) if nsfw_filter else message_content
         message_length = len(message_content)
         if total_length + message_length > 1000:
             break
@@ -362,15 +367,23 @@ async def make_chat_image():
         return
     channel = bot.get_channel(int(os.getenv('DISCORD_BOT_CHANNEL_ID', 'Invalid').strip()))
     async with channel.typing():
-        history = await get_history_as_openai_messages(channel, limit=50)
+        history = await get_history_as_openai_messages(channel, limit=50, nsfw_filter=True)
         combined_chat = "Could you make me an image which takes just one or two of the themes contained in following transcript? Don't try and cover too many things in one image. Please make the image an artistic interpretation - not a literal image based on the summary. Be creative! Choose a single artistic movement from across the visual arts, historic or modern. The transcript is between adults - so if there has been any NSFW content or mentions of celebtrities, please just make an image a little like them but not *of* them.  Thanks!\n\n"
         for message in history:
             combined_chat += f"{message['content']}\n"
         discord_file, prompt = await dalle.generate_image(combined_chat, return_prompt=True)
-        response = await chatbot.chat([{
-            'role': 'user',
-            'content': f"Could you reword the following sentence to make it sound more like a jaded, cynical human who works as a programmer wrote it? <sentence>{previous_image_description}</sentence>.  Please reply with only the reworded sentence as it will be sent directly to Discord as a message."
-        }])
+        if discord_file is None:
+            await channel.send(f"Sorry, I tried to make an image but I failed (probably because of naughty words - tsk).")
+            return
+        try:
+            response = await chatbot.chat([{
+                'role': 'user',
+                'content': f"Could you reword the following sentence to make it sound more like a jaded, cynical human who works as a programmer wrote it? You can reword it and restructure it any way you like. <sentence>{previous_image_description}</sentence>.  Please reply with only the reworded sentence as it will be sent directly to Discord as a message."
+            }])
+        except Exception as e:
+            logger.error(f'Error generating chat image response: {e}')
+            await channel.send(f"Sorry, I tried to make an image but I failed (probably because of naughty words - tsk).")
+            return
     previous_image_description = response.message
     await channel.send(f'{response.message}\n> {prompt}\n_[Estimated cost: US$0.05]_', file=discord_file)
 
