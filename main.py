@@ -126,7 +126,7 @@ def build_messages(question, extended_messages, system_prompt=None):
 async def generate_response(question, context="", extended_messages=[], temperature=1.0, model=model_engine, system_prompt=None):
     extended_messages = build_messages(question, extended_messages, system_prompt)
 
-    response = await chatbot.chat(extended_messages, temperature=1.0)
+    response = await chatbot.chat(extended_messages, temperature=temperature)
     return response
 
 def remove_emoji(text):

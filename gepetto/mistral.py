@@ -7,7 +7,7 @@ class MistralModel():
     def get_token_price(self, token_count, direction="output", model_engine="mistralai/Mixtral-8x7B-Instruct-v0.1"):
         return (0.50 / 1000000) * token_count
 
-    async def chat(self, messages, temperature=1.0, model="mistralai/Mixtral-8x7B-Instruct-v0.1"):
+    async def chat(self, messages, temperature=0.7, model="mistralai/Mixtral-8x7B-Instruct-v0.1"):
         """Chat with the model.
 
         Args:
@@ -25,7 +25,7 @@ class MistralModel():
         response = client.chat.completions.create(
             model=model,
             messages=messages,
-            temperature=temperature,
+            temperature=0.7,
         )
         # print(str(response.choices[0].message))
         tokens = response.usage.total_tokens
