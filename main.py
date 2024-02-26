@@ -353,14 +353,16 @@ async def say_something_random():
     if isinstance(chatbot, gpt.GPTModel):
         logger.info("Not saying something random because we are using GPT")
         return
-    response = await chatbot.chat([
-        { 'role': 'system', 'content': 'You are a helpful AI assistant who specialises in coming up with *slightly* off the wall ideas for Software as a Service apps.  For instance, a delivery notification app that sometimes sends misleading information.  You should always reply with the idea with no mention of the original user question - as if you just had the idea out of the blue.'},
-        { 'role': 'user', 'content': 'Could you give me an idea for a new SaaS?' }
-    ])
-    # fact = await random_facts.get_fact(chatbot)
+    if random.random() > 0.5:
+        response = await chatbot.chat([
+            { 'role': 'system', 'content': 'You are a helpful AI assistant who specialises in coming up with *slightly* off the wall ideas for Software as a Service apps.  For instance, a delivery notification app that sometimes sends misleading information.  You should always reply with the idea with no mention of the original user question - as if you just had the idea out of the blue (eg, "Here"' + "'" + 's an idea! ...").'},
+            { 'role': 'user', 'content': 'Could you give me an idea for a new SaaS?' }
+        ])
+        fact = response.message
+    else:
+        fact = await random_facts.get_fact(chatbot)
     channel = bot.get_channel(int(os.getenv('DISCORD_BOT_CHANNEL_ID', 'Invalid').strip()))
-    # await channel.send(f"{fact[:1900]}")
-    await channel.send(f"{response.message[:1900]}")
+    await channel.send(f"{fact[:1900]}")
 
 @tasks.loop(hours=24)
 async def make_chat_image():
