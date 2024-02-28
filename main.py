@@ -45,6 +45,8 @@ elif os.getenv("BOT_PROVIDER") == 'groq':
 else:
     chatbot = gpt.GPTModel()
 
+logger.info(f"Using model type : {type(chatbot)}")
+
 # Create instance of bot
 intents = discord.Intents.default()
 intents.members = True
