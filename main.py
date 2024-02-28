@@ -45,7 +45,6 @@ elif os.getenv("BOT_PROVIDER") == 'groq':
 else:
     chatbot = gpt.GPTModel()
 
-logger.info(f"Using model type : {type(chatbot)}")
 
 # Create instance of bot
 intents = discord.Intents.default()
@@ -148,6 +147,7 @@ async def on_ready():
     say_happy_birthday.start()
     random_chat.start()
     make_chat_image.start()
+    logger.info(f"Using model type : {type(chatbot)}")
     return
     with open(AVATAR_PATH, 'rb') as avatar:
         await bot.user.edit(avatar=avatar.read())
