@@ -11,7 +11,7 @@ import pytz
 from enum import Enum
 import requests
 
-from gepetto import mistral, dalle, summary, weather, random_facts, birthdays, gpt, stats
+from gepetto import mistral, dalle, summary, weather, random_facts, birthdays, gpt, stats, groq
 
 import discord
 from discord import File
@@ -40,6 +40,8 @@ location = os.getenv('BOT_LOCATION', 'dunno')
 
 if os.getenv("BOT_PROVIDER") == 'mistral':
     chatbot = mistral.MistralModel()
+elif os.getenv("BOT_PROVIDER") == 'groq':
+    chatbot = groq.GroqModel()
 else:
     chatbot = gpt.GPTModel()
 

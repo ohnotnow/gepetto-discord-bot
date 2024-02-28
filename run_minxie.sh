@@ -10,4 +10,4 @@ fi
 docker build -t minxie .
 
 # put your various environment variables in a file named .env
-docker run --restart=on-failure --env-file=.env -e BOT_PROVIDER=mistral -v $(pwd)/random_facts.json:/app/random_facts.json -v $(pwd)/stats.json:/app/stats.json minxie
+docker run --restart=on-failure --env-file=.env -e BOT_PROVIDER=groq -v $(pwd)/random_facts.json:/app/random_facts.json -v $(pwd)/stats.json:/app/stats.json minxie
