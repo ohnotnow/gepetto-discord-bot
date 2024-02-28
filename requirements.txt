@@ -5,3 +5,5 @@ youtube_transcript_api==0.6.1
 pypdf2==3.0.1
 feedparser==6.0.10
 trafilatura==1.6.1
+groq
+
