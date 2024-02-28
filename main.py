@@ -320,8 +320,8 @@ async def say_happy_birthday():
 @tasks.loop(minutes=60)
 async def random_chat():
     logger.info("In random_chat")
-    if isinstance(chatbot, mistral.MistralModel):
-        logger.info("Not joining in with chat because we are using Mistral")
+    if not isinstance(chatbot, gpt.GPTModel):
+        logger.info("Not joining in with chat because we are using non-gpt")
         return
     if random.random() > 0.3:
         logger.info("Not joining in with chat because random number is too high")
