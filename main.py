@@ -320,7 +320,7 @@ def get_news_summary(num_stories=5):
 @tasks.loop(time=time(hour=9, tzinfo=pytz.timezone('Europe/London')))
 async def say_happy_birthday():
     logger.info("In say_happy_birthday")
-    await birthdays.say_happy_birthday(bot, chatbot)
+    await birthdays.get_birthday_message(bot, chatbot)
 
 @tasks.loop(minutes=60)
 async def random_chat():
