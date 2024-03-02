@@ -275,7 +275,10 @@ async def on_message(message):
                         context = []
                         question = question.lower().replace("--no-logs", "")
                     else:
-                        context = await get_history_as_openai_messages(message.channel)
+                        if isinstance(chatbot, gpt.GPTModel):
+                            context = await get_history_as_openai_messages(message.channel)
+                        else:
+                            context = []
                     if message.author.bot:
                         question = question + ". Please be very concise, curt and to the point.  The user in this case is a discord bot."
                     messages = build_messages(question, context)
