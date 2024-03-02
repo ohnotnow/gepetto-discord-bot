@@ -62,7 +62,7 @@ def remove_nsfw_words(message):
     message = re.sub(r"(fuck|prick|asshole|shit|wanker|dick)", "", message)
     return message
 
-async def get_history_as_openai_messages(channel, include_bot_messages=True, limit=50, since_hours=None, nsfw_filter=False):
+async def get_history_as_openai_messages(channel, include_bot_messages=True, limit=10, since_hours=None, nsfw_filter=False):
     messages = []
     total_length = 0
     total_tokens = 0
