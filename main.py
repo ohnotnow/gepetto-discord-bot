@@ -317,7 +317,7 @@ def get_news_summary(num_stories=5):
     # return most_read, uk, scotland
     return most_read, uk
 
-@tasks.loop(time=time(hour=9, tzinfo=pytz.timezone('Europe/London')))
+@tasks.loop(time=time(hour=10, tzinfo=pytz.timezone('Europe/London')))
 async def say_happy_birthday():
     logger.info("In say_happy_birthday")
     await birthdays.get_birthday_message(bot, chatbot)
