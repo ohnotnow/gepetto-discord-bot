@@ -11,7 +11,7 @@ import pytz
 from enum import Enum
 import requests
 
-from gepetto import mistral, dalle, summary, weather, random_facts, birthdays, gpt, stats, groq
+from gepetto import mistral, dalle, summary, weather, random_facts, birthdays, gpt, stats, groq, claude, ollama
 
 import discord
 from discord import File
@@ -38,12 +38,6 @@ model_engine = os.getenv("OPENAI_MODEL_ENGINE", gpt.Model.GPT3_5_Turbo.value[0])
 openai.api_key = os.getenv("OPENAI_API_KEY")
 location = os.getenv('BOT_LOCATION', 'dunno')
 
-if os.getenv("BOT_PROVIDER") == 'mistral':
-    chatbot = mistral.MistralModel()
-elif os.getenv("BOT_PROVIDER") == 'groq':
-    chatbot = groq.GroqModel()
-else:
-    chatbot = gpt.GPTModel()
 
 
 # Create instance of bot
@@ -57,6 +51,20 @@ import re
 #def get_token_count(string):
 #    encoding = tiktoken.encoding_for_model(model_engine)
 #    return len(encoding.encode(string))
+
+def get_chatbot():
+    chatbot = None
+    if os.getenv("BOT_PROVIDER") == 'mistral':
+        chatbot = mistral.MistralModel()
+    elif os.getenv("BOT_PROVIDER") == 'groq':
+        chatbot = groq.GroqModel()
+    elif os.getenv("BOT_PROVIDER") == 'claude':
+        chatbot = claude.ClaudeModel()
+    elif os.getenv("BOT_PROVIDER") == 'ollama':
+        chatbot = ollama.OllamaModel()
+    else:
+        chatbot = gpt.GPTModel()
+    return chatbot
 
 def remove_nsfw_words(message):
     message = re.sub(r"(fuck|prick|asshole|shit|wanker|dick)", "", message)
@@ -401,4 +409,5 @@ async def make_chat_image():
     await channel.send(f'{response.message}\n> {prompt}\n_[Estimated cost: US$0.05]_', file=discord_file)
 
 # Run the bot
+chatbot = get_chatbot()
 bot.run(os.getenv("DISCORD_BOT_TOKEN", 'not_set'))

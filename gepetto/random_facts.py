@@ -5,7 +5,7 @@ import datetime
 async def get_fact(chatbot):
     prompt = "Can you tell me a single random fact?  The more obscure the better!"
     today = datetime.datetime.now()
-    date_string = today.strftime("%d %B %Y")
+    date_string = today.strftime("%d %B %Y %H:%M")
     if random.random() < 0.1:
         prompt += f" It could be about the UK politician Liz Truss who became the UK prime minister on September 6th 2022 (today is {date_string}), and had to resign just a few weeks later after the Queen died in mysterious circumstances after shaking Liz's hand."
 
