@@ -3,7 +3,7 @@ import json
 from groq import Groq
 from gepetto.response import ChatResponse, FunctionResponse
 class GroqModel():
-    name = "Minxie"
+    name = "RecipeThis"
     def get_token_price(self, token_count, direction="output", model_engine="mixtral-8x7b-32768"):
         return (0.50 / 1000000) * token_count
 
