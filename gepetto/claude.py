@@ -5,7 +5,9 @@ from gepetto.response import ChatResponse, FunctionResponse
 class ClaudeModel():
     name = "Minxie"
     def get_token_price(self, token_count, direction="output", model_engine="mixtral-8x7b-32768"):
-        return (0.50 / 1000000) * token_count
+        if direction == "input":
+            return (3 / 1000000) * token_count
+        return (15 / 1000000) * token_count
 
     async def chat(self, messages, temperature=0.7, model="mixtral-8x7b-32768"):
         """Chat with the model.
@@ -39,7 +41,7 @@ class ClaudeModel():
         )
         print(response.content)
         tokens = response.usage.input_tokens + response.usage.output_tokens
-        cost = ((3 / 1000000) * response.usage.input_tokens) + ((15 / 1000000) * response.usage.output_tokens)
+        cost = self.get_token_price(tokens, "output", model) + self.get_token_price(response.usage.input_tokens, "input", model)
         message = str(response.content[0].text)
         return ChatResponse(message, tokens, cost)
 
