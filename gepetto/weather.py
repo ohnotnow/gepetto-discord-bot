@@ -1,7 +1,7 @@
 import requests
 import os
 import datetime
-from gepetto import metoffer
+from gepetto import metoffer, gpt
 
 def get_forecast(location_name = None):
     if not location_name:
@@ -56,6 +56,8 @@ async def get_weather_location_from_prompt(prompt, chatbot):
             }
         }
     ]
+    # Note: we always use the openai model for this as it's the only one that always has function calling enabled
+    chatbot = gpt.GPTModel()
     response = await chatbot.function_call(messages, tools)
     return response.parameters.get("location").split(","), response.tokens
 

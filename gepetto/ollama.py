@@ -5,10 +5,10 @@ from gepetto.response import ChatResponse, FunctionResponse
 
 class OllamaModel():
     name = "Servalan"
-    def get_token_price(self, token_count, direction="output", model_engine="llama2-uncensored"):
+    def get_token_price(self, token_count, direction="output", model_engine="dolphin-mistral"):
         return 0
 
-    async def chat(self, messages, temperature=0.7, model="llama2-uncensored"):
+    async def chat(self, messages, temperature=1.1, model="dolphin-mistral"):
         """Chat with the model.
 
         Args:
@@ -21,16 +21,14 @@ class OllamaModel():
             cost: The estimated cost of the request.
         """
         client = OpenAI(
-            base_url = 'http://localhost:11434/v1',
+            base_url = 'http://host.docker.internal:11434/v1',
             api_key='ollama', # required, but unused
         )
-        response = client.messages.create(
+        response = client.chat.completions.create(
             model=model,
-            max_tokens=1000,
+            messages=messages,
             temperature=temperature,
-            messages=messages
         )
-        print(response.content)
         input_tokens = response.usage.prompt_tokens
         output_tokens = response.usage.completion_tokens
         tokens = input_tokens + output_tokens
