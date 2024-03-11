@@ -379,12 +379,12 @@ async def say_something_random():
     channel = bot.get_channel(int(os.getenv('DISCORD_BOT_CHANNEL_ID', 'Invalid').strip()))
     await channel.send(f"{fact[:1900]}")
 
-@tasks.loop(hours=24)
+@tasks.loop(time=time(hour=17, tzinfo=pytz.timezone('Europe/London')))
 async def make_chat_image():
     global previous_image_description
     logger.info("In make_chat_image")
     if not isinstance(chatbot, gpt.GPTModel):
-        logger.info("Not saying something random because we are using Mistral")
+        logger.info("Not saying something random because we are not using GPT")
         return
     channel = bot.get_channel(int(os.getenv('DISCORD_BOT_CHANNEL_ID', 'Invalid').strip()))
     async with channel.typing():
@@ -399,7 +399,7 @@ async def make_chat_image():
         try:
             response = await chatbot.chat([{
                 'role': 'user',
-                'content': f"Could you reword the following sentence to make it sound more like a jaded, cynical human who works as a programmer wrote it? You can reword it and restructure it any way you like. <sentence>{previous_image_description}</sentence>.  Please reply with only the reworded sentence as it will be sent directly to Discord as a message."
+                'content': f"Could you reword the following sentence to make it sound more like a jaded, cynical human who works as a programmer wrote it? You can reword and restructure it any way you like - just keep the sentiment and tone. <sentence>{previous_image_description}</sentence>.  Please reply with only the reworded sentence as it will be sent directly to Discord as a message."
             }])
         except Exception as e:
             logger.error(f'Error generating chat image response: {e}')
