@@ -155,6 +155,7 @@ async def on_ready():
     say_happy_birthday.start()
     random_chat.start()
     make_chat_image.start()
+    horror_chat.start()
     logger.info(f"Using model type : {type(chatbot)}")
     return
     with open(AVATAR_PATH, 'rb') as avatar:
@@ -359,6 +360,45 @@ async def random_chat():
     )
     response = await chatbot.chat(context, temperature=1.0)
     await channel.send(f"{response.message[:1900]}\n{response.usage}")
+
+@tasks.loop(minutes=60)
+async def horror_chat():
+    logger.info("In horror chat")
+    if not isinstance(chatbot, claude.ClaudeModel):
+        logger.info("Not doing horror chat because we are not appropriate models")
+        return
+    if random.random() > 0.1:
+        logger.info("Not doing horror chat because random number is too high")
+        return
+    now = datetime.now()
+    suffix = lambda day: "th" if 11 <= day <= 13 else {1: "st", 2: "nd", 3: "rd"}.get(day % 10, "th")
+    formatted_date = now.strftime("%B %d" + suffix(now.day) + ", %Y")
+    text_date_time = now.strftime("%-I:%M %p")  # Change the format to include hours, minutes, and AM/PM without leading zero
+    formatted_date_time = f"{formatted_date} {text_date_time}"
+    # start = datetime.strptime('23:00:00', '%H:%M:%S').time()
+    # end = datetime.strptime('07:00:00', '%H:%M:%S').time()
+    # if (now >= start or now <= end):
+    #     logger.info("Not joining in with chat because it is night time")
+    #     return
+    channel = bot.get_channel(int(os.getenv('DISCORD_BOT_CHANNEL_ID', 'Invalid').strip()))
+    # context = await get_history_as_openai_messages(channel, include_bot_messages=False, since_hours=0.5)
+    # if len(context) < 5:
+    #     logger.info("Not joining in with chat because it is too quiet")
+    #     return
+    system_prompt = f"You are an AI bot who lurks in a Discord server for UK adult horror novelists.  You task is to write one or two short sentences that are creepy, scary or unsettling and convey the sense of an out-of-context line from a horror film.  You will be given the date and time and you can use that to add a sense of timeliness and season to your response. You should ONLY respond with those sentences, no other text. <example>I'm scared.</example> <example>I think I can hear someone outside. In the dark.</example> <example>There's something in the shadows.</example> <example>I think the bleeding has stopped now.  But he deserved it.</example>  <example>That's not the first time I've had to bury a body.</example>"
+    context = [
+        {
+            'role': 'system',
+            'content': system_prompt
+        },
+        {
+            'role': 'user',
+            'content': f'It is {formatted_date_time}. Please give me a horror line - the creepier, the more unsettling, the more disturbing the better.',
+        }
+    ]
+    response = await chatbot.chat(context, temperature=1.0)
+    await channel.send(f"{response.message[:1900]}\n{response.usage}")
+
 
 @tasks.loop(hours=1)
 async def say_something_random():
