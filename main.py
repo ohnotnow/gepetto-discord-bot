@@ -375,11 +375,11 @@ async def horror_chat():
     formatted_date = now.strftime("%B %d" + suffix(now.day) + ", %Y")
     text_date_time = now.strftime("%-I:%M %p")  # Change the format to include hours, minutes, and AM/PM without leading zero
     formatted_date_time = f"{formatted_date} {text_date_time}"
-    # start = datetime.strptime('23:00:00', '%H:%M:%S').time()
-    # end = datetime.strptime('07:00:00', '%H:%M:%S').time()
-    # if (now >= start or now <= end):
-    #     logger.info("Not joining in with chat because it is night time")
-    #     return
+    start = datetime.strptime('07:00:00', '%H:%M:%S').time()
+    end = datetime.strptime('19:50:00', '%H:%M:%S').time()
+    if (now >= start and now <= end):
+        logger.info("Not doing horror chat because it is day time")
+        return
     channel = bot.get_channel(int(os.getenv('DISCORD_BOT_CHANNEL_ID', 'Invalid').strip()))
     # context = await get_history_as_openai_messages(channel, include_bot_messages=False, since_hours=0.5)
     # if len(context) < 5:
