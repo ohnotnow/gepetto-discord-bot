@@ -33,7 +33,7 @@ class ClaudeModel():
             else:
                 claude_messages.append(message)
         response = client.messages.create(
-            model=,
+            model=model,
             max_tokens=1000,
             temperature=0,
             system=system_prompt,
