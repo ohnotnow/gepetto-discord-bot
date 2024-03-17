@@ -26,7 +26,7 @@ class ClodflareModel():
         with s.post(f"{API_BASE_URL}{model}", headers=headers, json=input, stream=True) as stream:
             for word in stream.iter_lines():
                 message += word.decode('utf-8')
-        return ChatResponse(message, 0, 0)
+        return ChatResponse(message, 0, 0, model)
 
     async def function_call(self, messages = [], tools = [], temperature=0.7, model="mistralai/Mistral-7B-Instruct-v0.1"):
         return FunctionResponse({"error": "Cannot run functions"}, 0, 0)

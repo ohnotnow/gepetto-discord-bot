@@ -55,7 +55,7 @@ class GPTModel():
         input_cost = self.get_token_price(input_tokens, "input", model)
         cost = input_cost + output_cost
         message = str(response.choices[0].message.content)
-        return ChatResponse(message, tokens, cost)
+        return ChatResponse(message, tokens, cost, model)
 
     async def function_call(self, messages = [], tools = [], temperature=0.7, model="gpt-4-1106-preview"):
         api_key = os.getenv("OPENAI_API_KEY")

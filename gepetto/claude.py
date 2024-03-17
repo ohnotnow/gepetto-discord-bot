@@ -4,12 +4,12 @@ import anthropic
 from gepetto.response import ChatResponse, FunctionResponse
 class ClaudeModel():
     name = "Minxie"
-    def get_token_price(self, token_count, direction="output", model_engine="mixtral-8x7b-32768"):
+    def get_token_price(self, token_count, direction="output", model_engine="claude-3-sonnet-20240229"):
         if direction == "input":
             return (3 / 1000000) * token_count
         return (15 / 1000000) * token_count
 
-    async def chat(self, messages, temperature=0.7, model="mixtral-8x7b-32768"):
+    async def chat(self, messages, temperature=0.7, model="claude-3-sonnet-20240229"):
         """Chat with the model.
 
         Args:
@@ -33,7 +33,7 @@ class ClaudeModel():
             else:
                 claude_messages.append(message)
         response = client.messages.create(
-            model="claude-3-sonnet-20240229",
+            model=,
             max_tokens=1000,
             temperature=0,
             system=system_prompt,
@@ -43,7 +43,7 @@ class ClaudeModel():
         tokens = response.usage.input_tokens + response.usage.output_tokens
         cost = self.get_token_price(tokens, "output", model) + self.get_token_price(response.usage.input_tokens, "input", model)
         message = str(response.content[0].text)
-        return ChatResponse(message, tokens, cost)
+        return ChatResponse(message, tokens, cost, model)
 
     async def function_call(self, messages = [], tools = [], temperature=0.7, model="mistralai/Mistral-7B-Instruct-v0.1"):
         raise NotImplementedError

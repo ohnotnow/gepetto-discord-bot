@@ -7,12 +7,13 @@ class ChatResponse:
         message (str): The message from the API.
         tokens (int): The number of tokens used.
         cost (float): The estimated cost of the request in USD.
+        model (str): The model used to generate the response.
     """
-    def __init__(self, message, tokens, cost):
+    def __init__(self, message, tokens, cost, model="Unknown"):
         self.message = message
         self.tokens = tokens
         self.cost = cost
-        self.usage = f"_[tokens used: {self.tokens} | Estimated cost US${round(self.cost, 5)}]_"
+        self.usage = f"_[Tokens used: {self.tokens} | Estimated cost US${round(self.cost, 5)}] | Model: {model}_"
 
     def __str__(self):
         return f"{self.message}\n{self.usage}"

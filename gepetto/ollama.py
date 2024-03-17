@@ -34,7 +34,7 @@ class OllamaModel():
         tokens = input_tokens + output_tokens
         cost = 0
         message = str(response.choices[0].message.content)
-        return ChatResponse(message, tokens, cost)
+        return ChatResponse(message, tokens, cost, model)
 
     async def function_call(self, messages = [], tools = [], temperature=0.7, model="mistralai/Mistral-7B-Instruct-v0.1"):
         raise NotImplementedError
