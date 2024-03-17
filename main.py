@@ -377,6 +377,7 @@ async def horror_chat():
     formatted_date_time = f"{formatted_date} {text_date_time}"
     start = datetime.strptime('07:00:00', '%H:%M:%S').time()
     end = datetime.strptime('19:50:00', '%H:%M:%S').time()
+    now = datetime.now().time()  # Convert current time to datetime object
     if (now >= start and now <= end):
         logger.info("Not doing horror chat because it is day time")
         return
