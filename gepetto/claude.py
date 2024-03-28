@@ -5,9 +5,9 @@ import anthropic
 from gepetto.response import ChatResponse, FunctionResponse
 
 class Model(Enum):
-    CLAUDE_3_HAIKU = ('claude-3-opus-20240229', 0.25, 1.25)
+    CLAUDE_3_HAIKU = ('claude-3-haiku-20240229', 0.25, 1.25)
     CLAUDE_3_SONNET = ('claude-3-sonnet-20240229', 3.00, 15.00)
-    CLAUDE_3_OPUS = ('claude-3-haiku-20240307', 15.00, 75.00)
+    CLAUDE_3_OPUS = ('claude-3-opus-20240307', 15.00, 75.00)
 
 class ClaudeModel():
     name = "Minxie"
