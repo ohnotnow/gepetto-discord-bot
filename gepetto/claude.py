@@ -1,15 +1,29 @@
 import os
 import json
+from enum import Enum
 import anthropic
 from gepetto.response import ChatResponse, FunctionResponse
+
+class Model(Enum):
+    CLAUDE_3_OPUS = ('claude-3-opus-20240229', 0.25, 1.25)
+    CLAUDE_3_SONNET = ('claude-3-sonnet-20240229', 3.00, 15.00)
+    CLAUDE_3_HAIKU = ('claude-3-haiku-20240307', 15.00, 75.00)
+
 class ClaudeModel():
     name = "Minxie"
-    def get_token_price(self, token_count, direction="output", model_engine="claude-3-sonnet-20240229"):
+    def get_token_price(self, token_count, direction="output", model_engine="claude-3-haiku-20240307"):
+        token_price_input = 0
+        token_price_output = 0
+        for model in Model:
+            if model_engine.startswith(model.value[0]):
+                token_price_input = model.value[1] / 1000000
+                token_price_output = model.value[2] / 1000000
+                break
         if direction == "input":
-            return (3 / 1000000) * token_count
-        return (15 / 1000000) * token_count
+            return round(token_price_input * token_count, 4)
+        return round(token_price_output * token_count, 4)
 
-    async def chat(self, messages, temperature=0.7, model="claude-3-sonnet-20240229"):
+    async def chat(self, messages, temperature=0.7, model="claude-3-haiku-20240307"):
         """Chat with the model.
 
         Args:
