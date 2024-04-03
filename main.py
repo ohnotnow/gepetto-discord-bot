@@ -22,6 +22,7 @@ import feedparser
 
 AVATAR_PATH="avatar.png"
 previous_image_description = "Here is my image based on recent chat in my Discord server!"
+horror_history = []
 
 # Setup logging
 logger = logging.getLogger('discord')  # Get the discord logger
@@ -363,6 +364,7 @@ async def random_chat():
 
 @tasks.loop(minutes=60)
 async def horror_chat():
+    global horror_history
     logger.info("In horror chat")
     if not isinstance(chatbot, claude.ClaudeModel):
         logger.info("Not doing horror chat because we are not appropriate models")
@@ -394,10 +396,14 @@ async def horror_chat():
         },
         {
             'role': 'user',
-            'content': f'It is {formatted_date_time}. Please give me a horror line - the creepier, the more unsettling, the more disturbing the better.',
+            'content': f'It is {formatted_date_time}. Please give me a horror line - the creepier, the more unsettling, the more disturbing the better.  It should NOT repeat any of the following :\n<previous-sentences>{"\n- ".join(horror_history)}</previous-sentences>',
         }
     ]
     response = await chatbot.chat(context, temperature=1.0)
+    horror_history.append(response.message)
+    if len(horror_history) > 40:
+        # truncate the history to the most recent 40 entries
+        horror_history = horror_history[-40:]
     await channel.send(f"{response.message[:1900]}\n{response.usage}")
 
 
