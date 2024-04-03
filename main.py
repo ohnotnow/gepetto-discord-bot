@@ -396,7 +396,7 @@ async def horror_chat():
         },
         {
             'role': 'user',
-            'content': f'It is {formatted_date_time}. Please give me a horror line - the creepier, the more unsettling, the more disturbing the better.  It should NOT repeat any of the following :\n<previous-sentences>{"\n- ".join(horror_history)}</previous-sentences>',
+            'content': f"It is {formatted_date_time}. Please give me a horror line - the creepier, the more unsettling, the more disturbing the better.  It should NOT repeat any of the following :" + "\n<previous-sentences>" + "\n- ".join(horror_history) + "\n</previous-sentences>",
         }
     ]
     response = await chatbot.chat(context, temperature=1.0)
