@@ -399,7 +399,7 @@ async def horror_chat():
             'content': f"It is {formatted_date_time}. Please give me a horror line - the creepier, the more unsettling, the more disturbing the better.  It should NOT repeat any of the following :" + "\n<previous-sentences>" + "\n- ".join(horror_history) + "\n</previous-sentences>",
         }
     ]
-    response = await chatbot.chat(context, temperature=1.0)
+    response = await chatbot.chat(context, temperature=1.0, model="claude-3-sonnet-20240229")
     horror_history.append(response.message)
     if len(horror_history) > 40:
         # truncate the history to the most recent 40 entries
