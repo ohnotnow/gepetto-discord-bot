@@ -7,6 +7,7 @@ from gepetto.response import ChatResponse, FunctionResponse
 class Model(Enum):
     GPT4_32k = ('gpt-4-32k', 0.03, 0.06)
     GPT_4_1106_PREVIEW = ('gpt-4-1106-preview', 0.01, 0.03)
+    GPT_4_TURBO = ('gpt-4-turbo', 0.01, 0.03)
     GPT4 = ('gpt-4', 0.06, 0.12)
     GPT3_5_Turbo_gpt_1106 = ('gpt-3.5-turbo-1106', 0.001, 0.002)
     GPT3_5_Turbo_16k = ('gpt-3.5-turbo-16k', 0.003, 0.004)
@@ -14,7 +15,7 @@ class Model(Enum):
 
 class GPTModel():
     name = "Gepetto"
-    def get_token_price(self, token_count, direction="output", model_engine="gpt-4-1106-preview"):
+    def get_token_price(self, token_count, direction="output", model_engine="gpt-4-turbo"):
         token_price_input = 0
         token_price_output = 0
         for model in Model:
@@ -26,7 +27,7 @@ class GPTModel():
             return round(token_price_input * token_count, 4)
         return round(token_price_output * token_count, 4)
 
-    async def chat(self, messages, temperature=1.8, model="gpt-4-1106-preview", top_p=0.6):
+    async def chat(self, messages, temperature=1.8, model="gpt-4-turbo", top_p=0.6):
         """Chat with the model.
 
         Args:
