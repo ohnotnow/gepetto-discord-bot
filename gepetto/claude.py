@@ -53,7 +53,6 @@ class ClaudeModel():
             system=system_prompt,
             messages=claude_messages
         )
-        print(response.content)
         tokens = response.usage.input_tokens + response.usage.output_tokens
         cost = self.get_token_price(tokens, "output", model) + self.get_token_price(response.usage.input_tokens, "input", model)
         message = str(response.content[0].text)
