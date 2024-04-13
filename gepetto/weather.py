@@ -59,7 +59,8 @@ def get_forecast(location_name = None, dates = []):
     for date, period in plain_forcasts:
         details = period['Rep'][0]  # Assuming you want the first representation of the day
         weather_code = metoffer.WEATHER_CODES[int(details['W'])]
-        forecast_str = f"Forecast for {location_name.capitalize()}: {metoffer.WEATHER_CODES[int(details['W'])]}, chance of rain {details['PPd']}%, temperature {details['Dm']}C (feels like {details['FDm']}C). Humidity {details['Hn']}%, wind {details['S']} knots - gusting upto {details['Gn']}.\n"
+        human_readable_date = date.strftime("%A %d %B %Y")
+        forecast_str = f"Forecast for {location_name.capitalize()} on {human_readable_date}: {metoffer.WEATHER_CODES[int(details['W'])]}, chance of rain {details['PPd']}%, temperature {details['Dm']}C (feels like {details['FDm']}C). Humidity {details['Hn']}%, wind {details['S']} knots - gusting upto {details['Gn']}.\n"
         forecasts.append(forecast_str)
 
     readable_forecast = "\n".join(forecasts)
