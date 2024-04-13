@@ -3,10 +3,38 @@ import os
 import datetime
 from gepetto import metoffer, gpt
 
-def get_forecast(location_name = None):
+def get_relative_date(keyword):
+    today = datetime.date.today()
+    if "today" in keyword.lower():
+        return [today]
+    elif "tomorrow" in keyword.lower():
+        return [today + datetime.timedelta(days=1)]
+    elif "this week" in keyword.lower():
+        return [today + datetime.timedelta(days=i) for i in range(7)]  # next 7 days
+    else:
+        return [today]  # default to today if unsure
+
+def get_forecast_for_dates(forecast, target_dates):
+    """
+    Extracts forecast data for the specified dates from the API response.
+    Returns a list of (date, period) tuples for all matching dates.
+    """
+    matched_periods = []
+    for period in forecast['SiteRep']['DV']['Location']['Period']:
+        period_date = datetime.datetime.strptime(period['value'], "%Y-%m-%dZ").date()
+        if isinstance(target_dates, list):
+            if period_date in target_dates:
+                matched_periods.append((period_date, period))
+        elif period_date == target_dates:
+            matched_periods.append((period_date, period))
+            break  # Break if only looking for one date and it's found
+    return matched_periods
+
+def get_forecast(location_name = None, dates = []):
     if not location_name:
         return "Wut?  I need a location name.  Asshat."
-
+    if not dates:
+        dates = [datetime.date.today()]
     API_KEY = os.getenv('MET_OFFICE_API_KEY')
     # 1. Download the Sitelist
     sitelist_url = f'http://datapoint.metoffice.gov.uk/public/data/val/wxfcs/all/json/sitelist?key={API_KEY}'
@@ -26,10 +54,15 @@ def get_forecast(location_name = None):
     # 3. Request the forecast
     M = metoffer.MetOffer(API_KEY)
     forecast = M.loc_forecast(location_id, metoffer.DAILY)
-    today = forecast['SiteRep']['DV']['Location']['Period'][0]
-    details = today['Rep'][0]
-    readable_forecast = f"Forecast for {location_name.capitalize()}: {metoffer.WEATHER_CODES[int(details['W'])]}, chance of rain {details['PPd']}%, temperature {details['Dm']}C (feels like {details['FDm']}C). Humidity {details['Hn']}%, wind {details['S']} knots - gusting upto {details['Gn']}.\n"
+    plain_forcasts = get_forecast_for_dates(forecast, dates)
+    forecasts = []
+    for date, period in plain_forcasts:
+        details = period['Rep'][0]  # Assuming you want the first representation of the day
+        weather_code = metoffer.WEATHER_CODES[int(details['W'])]
+        forecast_str = f"Forecast for {location_name.capitalize()}: {metoffer.WEATHER_CODES[int(details['W'])]}, chance of rain {details['PPd']}%, temperature {details['Dm']}C (feels like {details['FDm']}C). Humidity {details['Hn']}%, wind {details['S']} knots - gusting upto {details['Gn']}.\n"
+        forecasts.append(forecast_str)
 
+    readable_forecast = "\n".join(forecasts)
     return readable_forecast
 
 async def get_weather_location_from_prompt(prompt, chatbot):
@@ -64,13 +97,14 @@ async def get_weather_location_from_prompt(prompt, chatbot):
 async def get_friendly_forecast(question, chatbot):
     forecast = ""
     locations, total_tokens = await get_weather_location_from_prompt(question.strip(), chatbot)
+    dates = get_relative_date(question)
     if locations is None:
         response = await chatbot.chat([{"role": "user", "content": question}])
         forecast = response.message
         total_tokens += response.tokens
     else:
         for location in locations:
-            temp_forecast = get_forecast(location.strip())
+            temp_forecast = get_forecast(location.strip(), dates)
             forecast += temp_forecast + "\n"
         date_and_time = datetime.datetime.now().strftime("%A %d %B %Y at %H:%M")
         question = f"It is currently {date_and_time}. The user asked me ''{question.strip()}''. I have the following plain weather forecasts for you based on their question.  Could you make the a bit more natural - like a weather presenter would give at the end of a drive-time news segment on the radio or TV?  ONLY reply with the rewritten forecast.  NEVER add any extra context - the user only wants to see the friendly, drive-time style forecast.  If the wind speed is given in knots, convert it to MPH. Feel free to use weather-specific emoji.  FORECAST : ''{forecast}''"
