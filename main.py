@@ -365,6 +365,10 @@ async def random_chat():
 @tasks.loop(minutes=60)
 async def horror_chat():
     global horror_history
+    # if the latest horror_history timestamp is within 8hrs, then don't do horror chat
+    if horror_history and (datetime.now() - datetime.strptime(horror_history[-1]['timestamp'], "%B %dth, %Y %I:%M %p")).total_seconds() < 8 * 60 * 60:
+        logger.info("Not doing horror chat because we did it recently")
+        return
     logger.info("In horror chat")
     if not isinstance(chatbot, claude.ClaudeModel):
         logger.info("Not doing horror chat because we are not appropriate models")
@@ -389,6 +393,7 @@ async def horror_chat():
     #     logger.info("Not joining in with chat because it is too quiet")
     #     return
     system_prompt = f"You are an AI bot who lurks in a Discord server for UK adult horror novelists.  You task is to write one or two short sentences that are creepy, scary or unsettling and convey the sense of an out-of-context line from a horror film.  You will be given the date and time and you can use that to add a sense of timeliness and season to your response. You should ONLY respond with those sentences, no other text. <example>I'm scared.</example> <example>I think I can hear someone outside. In the dark.</example> <example>There's something in the shadows.</example> <example>I think the bleeding has stopped now.  But he deserved it.</example>  <example>That's not the first time I've had to bury a body.</example>"
+    previous_horror_history_messages = [x['message'] for x in horror_history]
     context = [
         {
             'role': 'system',
@@ -396,11 +401,14 @@ async def horror_chat():
         },
         {
             'role': 'user',
-            'content': f"It is {formatted_date_time}. Please give me a horror line - the creepier, the more unsettling, the more disturbing the better.  It should NOT repeat any of the following :" + "\n<previous-sentences>" + "\n- ".join(horror_history) + "\n</previous-sentences>",
+            'content': f"It is {formatted_date_time}. Please give me a horror line - the creepier, the more unsettling, the more disturbing the better.  It should NOT repeat any of the following :" + "\n<previous-sentences>" + "\n- ".join(previous_horror_history_messages) + "\n</previous-sentences>",
         }
     ]
     response = await chatbot.chat(context, temperature=1.0, model="claude-3-sonnet-20240229")
-    horror_history.append(response.message)
+    horror_history.append({
+        "message": response.message,
+        "timestamp": formatted_date_time
+    })
     if len(horror_history) > 40:
         # truncate the history to the most recent 40 entries
         horror_history = horror_history[-40:]
