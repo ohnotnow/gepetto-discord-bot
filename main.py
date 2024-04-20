@@ -285,7 +285,7 @@ async def on_message(message):
                         context = []
                         question = question.lower().replace("--no-logs", "")
                     else:
-                        if isinstance(chatbot, gpt.GPTModel):
+                        if chatbot.uses_logs:
                             context = await get_history_as_openai_messages(message.channel)
                         else:
                             context = []

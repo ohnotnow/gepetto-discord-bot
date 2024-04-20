@@ -9,7 +9,7 @@ class ChatResponse:
         cost (float): The estimated cost of the request in USD.
         model (str): The model used to generate the response.
     """
-    def __init__(self, message, tokens, cost, model="Unknown"):
+    def __init__(self, message, tokens, cost, model="Unknown", uses_logs=False):
         self.message = message
         self.tokens = tokens
         self.cost = cost

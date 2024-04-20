@@ -5,6 +5,7 @@ from gepetto.response import ChatResponse, FunctionResponse
 
 class OllamaModel():
     name = "Servalan"
+    uses_logs = False
     def get_token_price(self, token_count, direction="output", model_engine="dolphin-mistral"):
         return 0
 

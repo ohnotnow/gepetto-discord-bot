@@ -11,6 +11,7 @@ class Model(Enum):
 
 class ClaudeModel():
     name = "Minxie"
+    uses_logs = False
     def get_token_price(self, token_count, direction="output", model_engine="claude-3-haiku-20240307"):
         token_price_input = 0
         token_price_output = 0

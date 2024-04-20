@@ -15,6 +15,8 @@ class Model(Enum):
 
 class GPTModel():
     name = "Gepetto"
+    uses_logs = True
+
     def get_token_price(self, token_count, direction="output", model_engine="gpt-4-turbo"):
         token_price_input = 0
         token_price_output = 0
