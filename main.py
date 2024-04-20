@@ -440,7 +440,7 @@ async def say_something_random():
 async def make_chat_image():
     global previous_image_description
     logger.info("In make_chat_image")
-    if not isinstance(chatbot, gpt.GPTModel):
+    if not isinstance(bot, gpt.GPTModel):
         logger.info("Not saying something random because we are not using GPT")
         return
     channel = bot.get_channel(int(os.getenv('DISCORD_BOT_CHANNEL_ID', 'Invalid').strip()))
