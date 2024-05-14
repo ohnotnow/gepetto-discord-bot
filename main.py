@@ -86,9 +86,9 @@ async def get_history_as_openai_messages(channel, include_bot_messages=True, lim
         # The role is 'assistant' if the author is the bot, 'user' otherwise
         role = 'assistant' if msg.author == bot.user else 'user'
         username = "" if msg.author == bot.user else msg.author.name
-        # message_content = f"At {msg.created_at.astimezone(timezone.utc).astimezone()} '{msg.author.name}' said: {msg.content}"
         content = remove_emoji(msg.content)
-        message_content = f"{content}"
+        message_content = f"At {msg.created_at.astimezone(timezone.utc).astimezone()} '{msg.author.name}' said: {content}"
+        # message_content = f"User '{username}' said : {content}"
         message_content = re.sub(r'\[tokens used.+Estimated cost.+]', '', message_content, flags=re.MULTILINE)
         message_content = remove_nsfw_words(message_content) if nsfw_filter else message_content
         message_length = len(message_content)
