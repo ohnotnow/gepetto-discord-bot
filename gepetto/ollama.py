@@ -6,10 +6,10 @@ from gepetto.response import ChatResponse, FunctionResponse
 class OllamaModel():
     name = "Servalan"
     uses_logs = False
-    def get_token_price(self, token_count, direction="output", model_engine="dolphin-mistral"):
+    def get_token_price(self, token_count, direction="output", model_engine="dolphin-llama3"):
         return 0
 
-    async def chat(self, messages, temperature=1.1, model="dolphin-mistral"):
+    async def chat(self, messages, temperature=1.1, model="dolphin-llama3"):
         """Chat with the model.
 
         Args:
