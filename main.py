@@ -443,7 +443,7 @@ async def make_chat_image():
     if not isinstance(bot, gpt.GPTModel):
         logger.info("Not saying something random because we are not using GPT")
         return
-    logger.info('Generating chat image using model: ' + type(chatbot).__name__)
+    # logger.info('Generating chat image using model: ' + type(chatbot).__name__)
     channel = bot.get_channel(int(os.getenv('DISCORD_BOT_CHANNEL_ID', 'Invalid').strip()))
     async with channel.typing():
         history = await get_history_as_openai_messages(channel, limit=50, nsfw_filter=True)
