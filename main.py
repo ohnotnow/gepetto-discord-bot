@@ -249,6 +249,8 @@ async def on_message(message):
                 page_summary = ""
                 async with message.channel.typing():
                     page_text = await summary.get_text(message, question.strip())
+                    if 'recipe' in question.lower():
+                        question = "Can you give me the ingredients (with quantities) and the method for a recipe"
                     messages = [
                         {
                             'role': 'system',
