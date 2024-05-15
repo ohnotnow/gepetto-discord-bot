@@ -190,10 +190,7 @@ async def on_message(message):
 
         # If the user is a bot then send an abusive response
         if message.author.bot:
-            if random.random() < 0.5:
-                await message.reply(f"{message.author.mention} {random.choice(abusive_responses)}.")
-            else:
-                await message.channel.send(f"{random.choice(abusive_responses)}.")
+            await message.channel.send(f"{random.choice(abusive_responses)}.")
             return
 
         # Current time
