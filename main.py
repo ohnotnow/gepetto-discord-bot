@@ -236,8 +236,10 @@ async def on_message(message):
         try:
             lq = question.lower().strip()
             if lq.startswith("create an image") or lq.startswith("📷") or lq.startswith("🖌️") or lq.startswith("🖼️"):
+                logger.info("Generating image using prompt : " + question)
                 async with message.channel.typing():
                     base64_image = await dalle.generate_image(question)
+                logger.info("Image generated")
                 stats.update(message.author.id, message.author.name, 0, 0.04)
                 await message.reply(f'{message.author.mention}\n_[Estimated cost: US$0.04]_', file=base64_image, mention_author=True)
             elif re.search(pattern, lq):
