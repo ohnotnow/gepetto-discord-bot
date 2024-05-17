@@ -437,11 +437,11 @@ async def say_something_random():
     channel = bot.get_channel(int(os.getenv('DISCORD_BOT_CHANNEL_ID', 'Invalid').strip()))
     await channel.send(f"{fact[:1900]}")
 
-@tasks.loop(time=time(hour=18, tzinfo=pytz.timezone('Europe/London')))
+@tasks.loop(time=time(hour=17, tzinfo=pytz.timezone('Europe/London')))
 async def make_chat_image():
     global previous_image_description
     logger.info("In make_chat_image")
-    if not isinstance(bot, gpt.GPTModel):
+    if bot.name != "Gepetto":
         logger.info("Not saying something random because we are not using GPT")
         return
     # logger.info('Generating chat image using model: ' + type(chatbot).__name__)
