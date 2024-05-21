@@ -441,7 +441,7 @@ async def say_something_random():
 async def make_chat_image():
     global previous_image_description
     logger.info("In make_chat_image")
-    if bot.name != "Gepetto":
+    if chatbot.name != "Gepetto":
         logger.info("Not saying something random because we are not using GPT")
         return
     # logger.info('Generating chat image using model: ' + type(chatbot).__name__)
