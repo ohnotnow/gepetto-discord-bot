@@ -451,11 +451,14 @@ async def make_chat_image():
         combined_chat = "Could you make me an image which takes just one or two of the themes contained in following transcript? Don't try and cover too many things in one image. Please make the image an artistic interpretation - not a literal image based on the summary. Be creative! Choose a single artistic movement from across the visual arts, historic or modern. The transcript is between adults - so if there has been any NSFW content or mentions of celebtrities, please just make an image a little like them but not *of* them.  Thanks!\n\n"
         for message in history:
             combined_chat += f"{message['content']}\n"
+        logger.info("Asking dalle to make a chat image")
         discord_file, prompt = await dalle.generate_image(combined_chat, return_prompt=True)
         if discord_file is None:
+            logger.info('We did not get a file from dalle')
             await channel.send(f"Sorry, I tried to make an image but I failed (probably because of naughty words - tsk).")
             return
         try:
+            logger.info('Asking chatbot to reword the image description')
             response = await chatbot.chat([{
                 'role': 'user',
                 'content': f"Could you reword the following sentence to make it sound more like a jaded, cynical human who works as a programmer wrote it? You can reword and restructure it any way you like - just keep the sentiment and tone. <sentence>{previous_image_description}</sentence>.  Please reply with only the reworded sentence as it will be sent directly to Discord as a message."

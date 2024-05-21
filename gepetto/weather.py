@@ -10,7 +10,7 @@ def get_relative_date(keyword):
         return [today]
     elif "tomorrow" in keyword.lower():
         return [today + datetime.timedelta(days=1)]
-    elif "this week" in keyword.lower():
+    elif "week" in keyword.lower():
         return [today + datetime.timedelta(days=i) for i in range(7)]  # next 7 days
     else:
         return [today]  # default to today if unsure
