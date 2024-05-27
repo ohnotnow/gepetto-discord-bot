@@ -3,16 +3,22 @@ import base64
 import io
 from openai import OpenAI
 from discord import File
+import random
 
-async def generate_image(prompt, return_prompt=False):
+async def generate_image(prompt, return_prompt=False, style=None):
+    import random  # Import the random module
+
     api_key = os.getenv("OPENAI_API_KEY")
     client = OpenAI(api_key=api_key, base_url="https://api.openai.com/v1/")
+    if not style:
+        style = random.choice(['vivid', 'natural'])  # Pick one item at random from the style list
     try:
         response = client.images.generate(
             prompt=prompt,
             n=1,
             # size="512x512",
             size="1024x1024",
+            style=style,
             model="dall-e-3",
             response_format="b64_json",
         )
