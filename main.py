@@ -466,6 +466,7 @@ Thank you!
         """
         for message in history:
             combined_chat += f"{message['content']}\n"
+        combined_chat = combined_chat + "\n\n----\n\nRemember - only pick one or two (at most) themes from the transcript to focus on in the image. Be creative and imaginative in your approach!"
         logger.info("Asking dalle to make a chat image")
         discord_file, prompt = await dalle.generate_image(combined_chat, return_prompt=True)
         if discord_file is None:
