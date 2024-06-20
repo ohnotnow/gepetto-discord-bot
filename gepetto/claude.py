@@ -7,12 +7,13 @@ from gepetto.response import ChatResponse, FunctionResponse
 class Model(Enum):
     CLAUDE_3_HAIKU = ('claude-3-haiku-20240229', 0.25, 1.25)
     CLAUDE_3_SONNET = ('claude-3-sonnet-20240229', 3.00, 15.00)
+    CLAUDE_35_SONNET = ('claude-3.5-sonnet-20240620', 3.00, 15.00)
     CLAUDE_3_OPUS = ('claude-3-opus-20240307', 15.00, 75.00)
 
 class ClaudeModel():
     name = "Minxie"
     uses_logs = False
-    def get_token_price(self, token_count, direction="output", model_engine="claude-3-haiku-20240307"):
+    def get_token_price(self, token_count, direction="output", model_engine="claude-3.5-sonnet-20240620"):
         token_price_input = 0
         token_price_output = 0
         for model in Model:
@@ -24,7 +25,7 @@ class ClaudeModel():
             return round(token_price_input * token_count, 4)
         return round(token_price_output * token_count, 4)
 
-    async def chat(self, messages, temperature=0.7, model="claude-3-haiku-20240307"):
+    async def chat(self, messages, temperature=0.7, model="claude-3.5-sonnet-20240620"):
         """Chat with the model.
 
         Args:
