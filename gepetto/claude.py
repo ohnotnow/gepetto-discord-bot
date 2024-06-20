@@ -13,7 +13,7 @@ class Model(Enum):
 class ClaudeModel():
     name = "Minxie"
     uses_logs = False
-    def get_token_price(self, token_count, direction="output", model_engine="claude-3.5-sonnet-20240620"):
+    def get_token_price(self, token_count, direction="output", model_engine="claude-3-5-sonnet-20240620"):
         token_price_input = 0
         token_price_output = 0
         for model in Model:
@@ -25,7 +25,7 @@ class ClaudeModel():
             return round(token_price_input * token_count, 4)
         return round(token_price_output * token_count, 4)
 
-    async def chat(self, messages, temperature=0.7, model="claude-3.5-sonnet-20240620"):
+    async def chat(self, messages, temperature=0.7, model="claude-3-5-sonnet-20240620"):
         """Chat with the model.
 
         Args:
