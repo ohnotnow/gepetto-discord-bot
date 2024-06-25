@@ -450,13 +450,13 @@ async def make_chat_image():
         history = await get_history_as_openai_messages(channel, limit=50, nsfw_filter=True)
         # combined_chat = "Could you make me an image which takes just one or two of the themes contained in following transcript? Don't try and cover too many things in one image. Please make the image an artistic interpretation - not a literal image based on the summary. Be creative! Choose a single artistic movement from across the visual arts, historic or modern. The transcript is between adults - so if there has been any NSFW content or mentions of celebtrities, please just make an image a little like them but not *of* them.  Thanks!\n\n"
         combined_chat = """
-Please create an artistic image inspired by the following Discord transcript. Focus on one or two main topics rather than covering multiple themes in a single image.
+Please create an artistic image inspired by the following Discord server transcript between UK-based caucasian adult male IT workers. Chose on one or two topics for the image to give it focus.
 
 1. **Artistic Interpretation**: The image should be an artistic interpretation, not a literal depiction of the themes. Be creative and imaginative in your approach.
 
-2. **Artistic Style**: Choose a specific artistic movement or style from visual arts, whether historic or modern. This could include styles from painting, photography, or film. Lean towards an artistic visual style which matches the topics you are focussing on.
+2. **Artistic Style**: Choose a specific artistic movement or style from visual arts, whether historic or modern. This could include styles from painting, photography, or film.
 
-3. **Content Sensitivity**: The transcript is between adults. If there is any NSFW content or mentions of celebrities, please depict them in a way that is suggestive but not explicit or directly identifiable.
+3. **Content Sensitivity**: The transcript is of a conversation between adults. If there is any NSFW content or mentions of celebrities, please depict them in a way that is suggestive but not explicit or directly identifiable.
 
 4. **Visual Appeal**: Aim for the image to be exciting, thought-provoking, and visually appealing.
 
@@ -466,7 +466,7 @@ Thank you!
         """
         for message in history:
             combined_chat += f"{message['content']}\n"
-        combined_chat = combined_chat + "\n\n----\n\nRemember - only pick one or two (at most) themes from the transcript to focus on in the image. Be creative and imaginative in your approach!"
+        combined_chat = combined_chat + "\n\n----\n\nRemember - only pick one or at most two topics from the transcript to focus on in the image. Be creative and imaginative in your approach!"
         logger.info("Asking dalle to make a chat image")
         discord_file, prompt = await dalle.generate_image(combined_chat, return_prompt=True)
         if discord_file is None:
