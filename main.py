@@ -450,7 +450,7 @@ async def make_chat_image():
         history = await get_history_as_openai_messages(channel, limit=50, nsfw_filter=True)
         # combined_chat = "Could you make me an image which takes just one or two of the themes contained in following transcript? Don't try and cover too many things in one image. Please make the image an artistic interpretation - not a literal image based on the summary. Be creative! Choose a single artistic movement from across the visual arts, historic or modern. The transcript is between adults - so if there has been any NSFW content or mentions of celebtrities, please just make an image a little like them but not *of* them.  Thanks!\n\n"
         combined_chat = """
-Please create an artistic image inspired by the following Discord server transcript between UK-based caucasian adult male IT workers. Chose on one or two topics for the image to give it focus.
+Please create an artistic image inspired by the following Discord server transcript between UK-based Caucasian adult male IT workers. Chose on one or two topics for the image to give it focus.
 
 1. **Artistic Interpretation**: The image should be an artistic interpretation, not a literal depiction of the themes. Be creative and imaginative in your approach.
 
