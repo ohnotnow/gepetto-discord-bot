@@ -454,7 +454,9 @@ Please create an artistic image inspired by the following Discord server transcr
 
 1. **Artistic Interpretation**: The image should be an artistic interpretation, not a literal depiction of the chosen themes. Be creative and imaginative in your approach.
 
-2. **Artistic Style**: Choose a specific artistic movement or style from visual arts, whether historic or modern. This could include styles from painting, photography, or cinema.
+2. **Artistic Style**: Choose a specific artistic movement or style from visual arts, whether historic or modern. This could include styles from painting, photography, or cinema. If the theme
+is 'dark' it might be appropriate to choose a style like 'film noir' or 'gothic art'.  If the theme is technology, it might be appropriate to choose a style like 'cyberpunk' or 'retro-futurism'.  Use your
+imagination!
 
 3. **Content Sensitivity**: The transcript is of a conversation between adults. If there is any NSFW content or mentions of celebrities, please depict them in a way that is suggestive but not explicit or directly identifiable.
 
