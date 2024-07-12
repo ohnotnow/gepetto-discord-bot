@@ -5,9 +5,7 @@ from openai import OpenAI
 from discord import File
 import random
 
-async def generate_image(prompt, return_prompt=False, style=None):
-    import random  # Import the random module
-
+async def generate_image(prompt, return_prompt=False, style="natural"):
     api_key = os.getenv("OPENAI_API_KEY")
     client = OpenAI(api_key=api_key, base_url="https://api.openai.com/v1/")
     if not style:
