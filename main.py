@@ -452,21 +452,13 @@ async def make_chat_image():
         combined_chat = """
 Please create an artistic image inspired by the following Discord server transcript between UK-based Caucasian adult male IT workers. Focus on one or, at most, two topics from the transcript to give the image clarity and impact.
 
-1. **Artistic Interpretation**: The image should be an artistic interpretation, not a literal depiction of the chosen themes. Be creative and imaginative in your approach.
+1. **Artistic Interpretation**: The image should be an artistic interpretation, not a literal depiction of the chosen themes.
 
-2. **Artistic Style**: Choose a specific artistic movement or style from visual arts, whether historic or modern. This could include styles from painting, photography, or cinema. If the theme
-is 'dark' it might be appropriate to choose a style like 'film noir' or 'gothic art'.  If the theme is technology, it might be appropriate to choose a style like 'cyberpunk', '1950s Sci-Fi Film Poster' or 'retro-futurism'.  Use your
-imagination!
+2. **Artistic Style**: Choose a specific artistic movement or style from the visual arts, whether historic or modern.
 
 3. **Content Sensitivity**: The transcript is of a conversation between adults. If there is any NSFW content or mentions of celebrities, please depict them in a way that is suggestive but not explicit or directly identifiable.
 
-4. **Theme Selection**: Select only one or two themes from the transcript to focus on for the image. Avoid incorporating multiple themes to maintain the visual clarity and impact.
-
-5. **Visual Appeal**: Aim for the image to be exciting, thought-provoking, and visually appealing.
-
-Thank you!
-
-**Transcript**:
+** Transcript **:
         """
         for message in history:
             combined_chat += f"{message['content']}\n"
