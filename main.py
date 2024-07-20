@@ -452,11 +452,7 @@ async def make_chat_image():
         combined_chat = """
 Please create an artistic image inspired by the following Discord server transcript between UK-based adult male IT workers. Focus on one or, at most, two topics from the transcript to give the image clarity and impact.
 
-1. **Artistic Interpretation**: The image should be an artistic interpretation, not a literal depiction of the chosen themes.
-
-2. **Artistic Style**: Choose a specific artistic movement or style from the visual arts, whether historic or modern.
-
-3. **Content Sensitivity**: The transcript is of a conversation between adults. If there is any NSFW content or mentions of celebrities, please depict them in a way that is suggestive but not explicit or directly identifiable.
+**Content Sensitivity**: The transcript is of a conversation between adults. If there is any NSFW content or mentions of celebrities, please depict them in a way that is suggestive but not explicit or directly identifiable.
 
 ** Transcript **:
         """
