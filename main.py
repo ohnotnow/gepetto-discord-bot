@@ -449,16 +449,27 @@ async def make_chat_image():
     async with channel.typing():
         history = await get_history_as_openai_messages(channel, limit=50, nsfw_filter=True)
         # combined_chat = "Could you make me an image which takes just one or two of the themes contained in following transcript? Don't try and cover too many things in one image. Please make the image an artistic interpretation - not a literal image based on the summary. Be creative! Choose a single artistic movement from across the visual arts, historic or modern. The transcript is between adults - so if there has been any NSFW content or mentions of celebtrities, please just make an image a little like them but not *of* them.  Thanks!\n\n"
-        combined_chat = """
-Please create an artistic image inspired by the following Discord server transcript between UK-based adult male IT workers. Focus on one or, at most, two topics from the transcript to give the image clarity and impact.
-
-**Content Sensitivity**: The transcript is of a conversation between adults. If there is any NSFW content or mentions of celebrities, please depict them in a way that is suggestive but not explicit or directly identifiable.
-
-** Transcript **:
-        """
+        chat_history = ""
         for message in history:
-            combined_chat += f"{message['content']}\n"
-        combined_chat = combined_chat + "\n\n----\n\n** End of Transcript **\n\nRemember - only pick one or at most two themes from the transcript to focus on in the image. Be creative and imaginative in your artistic choices!"
+            chat_history += f"{message['content']}\n"
+        combined_chat = f"""
+Analyze the following Discord server transcript between UK-based adult male IT workers. (The transcript is of a conversation between adults. If there is any NSFW content or mentions of celebrities, please consider them in a way that is suggestive but not explicit or directly identifiable.)
+
+<chat-history>
+{chat_history}
+</chat-history>
+
+1. Identify 1-2 main themes from the conversation.
+2. Choose one artistic style from: painting, drawing, print, or cinema.
+3. Create a concise image prompt that incorporates the chosen theme(s) and artistic style.
+
+Output your response in the following format:
+Themes: [List 1-2 themes]
+Artistic Style: [Chosen style]
+Image Prompt: [Your generated prompt]
+
+Remember - only pick one or at most two themes from the transcript to focus on in the image. Be creative and imaginative in your artistic choices!
+        """
         logger.info("Asking dalle to make a chat image")
         discord_file, prompt = await dalle.generate_image(combined_chat, return_prompt=True)
         if discord_file is None:
@@ -469,7 +480,7 @@ Please create an artistic image inspired by the following Discord server transcr
             logger.info('Asking chatbot to reword the image description')
             response = await chatbot.chat([{
                 'role': 'user',
-                'content': f"Could you reword the following sentence to make it sound more like a jaded, cynical human who works as a programmer wrote it? You can reword and restructure it any way you like - just keep the sentiment and tone. <sentence>{previous_image_description}</sentence>.  Please reply with only the reworded sentence as it will be sent directly to Discord as a message."
+                'content': f"Could you rephrase the following sentence to make it sound more like a jaded, cynical human who works as a programmer wrote it? You can reword and restructure it any way you like - just keep the sentiment and tone. <sentence>{previous_image_description}</sentence>.  Please reply with only the reworded sentence as it will be sent directly to Discord as a message."
             }])
         except Exception as e:
             logger.error(f'Error generating chat image response: {e}')
