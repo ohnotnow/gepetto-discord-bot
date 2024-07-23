@@ -453,7 +453,7 @@ async def make_chat_image():
         for message in history:
             chat_history += f"{message['content']}\n"
         combined_chat = f"""
-Analyze the following Discord server transcript between UK-based adult male IT workers. (The transcript is of a conversation between adults. If there is any NSFW content or mentions of celebrities, please consider them in a way that is suggestive but not explicit or directly identifiable.)
+Analyze the following Discord server transcript between UK-based Caucasian adult male IT workers. (The transcript is of a conversation between adults. If there is any NSFW content or mentions of celebrities, please consider them in a way that is suggestive but not explicit or directly identifiable.)
 
 <chat-history>
 {chat_history}
