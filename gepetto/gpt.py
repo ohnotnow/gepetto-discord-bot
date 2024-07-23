@@ -31,7 +31,7 @@ class GPTModel():
             return round(token_price_input * token_count, 4)
         return round(token_price_output * token_count, 4)
 
-    async def chat(self, messages, temperature=1.8, model="gpt-4o-mini", top_p=0.6):
+    async def chat(self, messages, temperature=1.0, model="gpt-4o-mini", top_p=0.6):
         """Chat with the model.
 
         Args:

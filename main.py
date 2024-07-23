@@ -460,18 +460,19 @@ Analyze the following Discord server transcript between UK-based Caucasian adult
 </chat-history>
 
 1. Identify 1-2 main themes from the conversation.
-2. Choose one artistic style from: painting, drawing, print, or cinema.
+2. Choose one artistic movement or style from painting or cinema.
 3. Create a concise image prompt that incorporates the chosen theme(s) and artistic style.
+
+Remember - only pick one or at most two themes from the transcript to focus on in the image. Be creative and imaginative in your artistic choices!
 
 Output your response in the following format:
 Themes: [List 1-2 themes]
 Artistic Style: [Chosen style]
 Image Prompt: [Your generated prompt]
-
-Remember - only pick one or at most two themes from the transcript to focus on in the image. Be creative and imaginative in your artistic choices!
         """
+        response = await chatbot.chat([{ 'role': 'user', 'content': combined_chat }], temperature=1.0)
         logger.info("Asking dalle to make a chat image")
-        discord_file, prompt = await dalle.generate_image(combined_chat, return_prompt=True)
+        discord_file, prompt = await dalle.generate_image(response.message, return_prompt=True)
         if discord_file is None:
             logger.info('We did not get a file from dalle')
             await channel.send(f"Sorry, I tried to make an image but I failed (probably because of naughty words - tsk).")
