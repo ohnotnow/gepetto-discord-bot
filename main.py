@@ -472,6 +472,7 @@ Image Prompt: [Your generated prompt]
         """
         response = await chatbot.chat([{ 'role': 'user', 'content': combined_chat }], temperature=1.0)
         logger.info("Asking dalle to make a chat image")
+        await channel.send(f"I'm asking Dalle to make an image based on this prompt\n>{response.message}")
         discord_file, prompt = await dalle.generate_image(response.message, return_prompt=True)
         if discord_file is None:
             logger.info('We did not get a file from dalle')
