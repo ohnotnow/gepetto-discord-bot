@@ -5,10 +5,10 @@ from gepetto.response import ChatResponse, FunctionResponse
 class GroqModel():
     name = "RecipeThis"
     uses_logs = False
-    def get_token_price(self, token_count, direction="output", model_engine="llama-3.1-405b-reasoning"):
+    def get_token_price(self, token_count, direction="output", model_engine="llama3-70b-8192"):
         return (0.50 / 1000000) * token_count
 
-    async def chat(self, messages, temperature=0.7, model="llama-3.1-405b-reasoning"):
+    async def chat(self, messages, temperature=0.7, model="llama3-70b-8192"):
         """Chat with the model.
 
         Args:
