@@ -70,7 +70,7 @@ async def get_text(message, url):
         else:
             downloaded = fetch_url(url_string)
             if downloaded is None:
-                return "Sorry, I couldn't download that URL."
+                return f"Sorry, I couldn't download content from the URL {url_string}."
             page_text = extract(downloaded)
 
     return page_text
