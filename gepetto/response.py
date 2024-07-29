@@ -13,7 +13,7 @@ class ChatResponse:
         self.message = message
         self.tokens = tokens
         self.cost = cost
-        self.usage = f"_[Tokens used: {self.tokens} | Estimated cost US${round(self.cost, 5)}] | Model: {model}_"
+        self.usage = f"```ini\n[Tokens used: {self.tokens} | Estimated cost US${round(self.cost, 5)} | Model: {model}]\n```"
 
     def __str__(self):
         return f"{self.message}\n{self.usage}"
