@@ -165,15 +165,11 @@ async def on_ready():
 
 @bot.event
 async def on_message(message):
-    if guard.should_block(message, bot, server_id):
+    message_blocked, abusive_reply = guard.should_block(message, bot, server_id)
+    if message_blocked:
         logger.info("Blocked message")
-        if message.author.bot:
-            logger.info("Blocked message because it was from a bot")
+        if abusive_reply:
             await message.channel.send(f"{random.choice(abusive_responses)}.")
-        elif bot.user in message.mentions:
-            if len(message.content.split(' ', 1)) == 1:
-                logger.info("Blocked message because it was a mention without content")
-                await message.reply(f"{message.author.mention} {random.choice(abusive_responses)}.")
         return
     # # ignore direct messages
     # if message.guild is None:

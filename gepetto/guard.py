@@ -7,35 +7,47 @@ class BotGuard:
         self.max_mentions = max_mentions
         self.mention_window = mention_window
 
-    def should_block(self, message, bot, server_id):
+    def should_block(self, message, bot, server_id) -> tuple[bool, bool]:
+        """
+        Check if a message should be blocked.
+
+        Args:
+            message (discord.Message): The message to check.
+            bot (discord.Client): The bot instance.
+            server_id (str): The ID of the server the bot is running on.
+
+        Returns:
+            bool: True if the message should be blocked, False otherwise.
+            bool: True if the message should get an abusive reply, False otherwise.
+        """
         # ignore DM's
         if message.guild is None:
             print("Ignoring DM")
-            return True
+            return True, False
         # ignore messages not from our our server
         if str(message.guild.id) != server_id:
             print("Ignoring message from another server")
-            return True
+            return True, False
         # ignore messages from the bot itself
         if message.author == bot.user:
             print("Ignoring message from the bot itself")
-            return True
+            return True, False
         # ignore messages from other bots
         if message.author.bot:
             print("Ignoring message from another bot")
-            return True
+            return True, False
         # ignore messages without mentions
         if len(message.mentions) == 0:
             print("Ignoring message without mentions")
-            return True
+            return True, True
         # ignore messages where the bot is not mentioned
         if bot.user not in message.mentions:
             print("Ignoring message where the bot is not mentioned")
-            return True
+            return True, False
         # ignore messages without content
         if len(message.content.split(' ', 1)) == 1:
             print("Ignoring message without content")
-            return True
+            return True, True
 
         # keep track of how many times a user has mentioned the bot recently
         user_id = message.author.id
@@ -47,14 +59,14 @@ class BotGuard:
         # ignore when the user has mentioned the bot too many times recently
         if len(self.mention_counts[user_id]) > self.max_mentions:
             print("Ignoring message from user who has mentioned the bot too many times recently")
-            return True
+            return True, True
 
         # ignore when the message doesn't contain regular text (ie only contains mentions, emojis, spaces, etc)
         question = message.content.split(' ', 1)[1][:500].replace('\r', ' ').replace('\n', ' ')
         if not any(char.isalpha() for char in question):
             print("Ignoring message without regular text")
-            return True
+            return True, True
 
         # all good, allow the message
         print("Allowing message")
-        return False
+        return False, False
