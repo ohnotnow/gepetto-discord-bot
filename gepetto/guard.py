@@ -13,7 +13,7 @@ class BotGuard:
             print("Ignoring DM")
             return True
         # ignore messages not from our our server
-        if message.guild.id != server_id:
+        if str(message.guild.id) != server_id:
             print("Ignoring message from another server")
             return True
         # ignore messages from the bot itself
