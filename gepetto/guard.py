@@ -22,31 +22,24 @@ class BotGuard:
         """
         # ignore DM's
         if message.guild is None:
-            print("Ignoring DM")
             return True, False
         # ignore messages not from our our server
         if str(message.guild.id) != server_id:
-            print("Ignoring message from another server")
             return True, False
         # ignore messages from the bot itself
         if message.author == bot.user:
-            print("Ignoring message from the bot itself")
             return True, False
         # ignore messages from other bots
         if message.author.bot:
-            print("Ignoring message from another bot")
             return True, False
         # ignore messages without mentions
         if len(message.mentions) == 0:
-            print("Ignoring message without mentions")
             return True, False
         # ignore messages where the bot is not mentioned
         if bot.user not in message.mentions:
-            print("Ignoring message where the bot is not mentioned")
             return True, False
         # ignore messages without content
         if len(message.content.split(' ', 1)) == 1:
-            print("Ignoring message without content")
             return True, True
 
         # keep track of how many times a user has mentioned the bot recently
@@ -58,15 +51,12 @@ class BotGuard:
 
         # ignore when the user has mentioned the bot too many times recently
         if len(self.mention_counts[user_id]) > self.max_mentions:
-            print("Ignoring message from user who has mentioned the bot too many times recently")
             return True, True
 
         # ignore when the message doesn't contain regular text (ie only contains mentions, emojis, spaces, etc)
         question = message.content.split(' ', 1)[1][:500].replace('\r', ' ').replace('\n', ' ')
         if not any(char.isalpha() for char in question):
-            print("Ignoring message without regular text")
             return True, True
 
         # all good, allow the message
-        print("Allowing message")
         return False, False
