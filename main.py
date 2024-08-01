@@ -167,8 +167,8 @@ async def on_ready():
 async def on_message(message):
     message_blocked, abusive_reply = guard.should_block(message, bot, server_id)
     if message_blocked:
-        logger.info("Blocked message from: " + message.author.name)
         if abusive_reply:
+            logger.info("Blocked message from: " + message.author.name + " and abusing them")
             await message.channel.send(f"{random.choice(abusive_responses)}.")
         return
     # # ignore direct messages
