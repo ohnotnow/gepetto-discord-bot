@@ -11,7 +11,7 @@ import pytz
 from enum import Enum
 import requests
 
-from gepetto import mistral, dalle, summary, weather, random_facts, birthdays, gpt, stats, groq, claude, ollama
+from gepetto import mistral, dalle, summary, weather, random_facts, birthdays, gpt, stats, groq, claude, ollama, guard
 
 import discord
 from discord import File
@@ -165,148 +165,155 @@ async def on_ready():
 
 @bot.event
 async def on_message(message):
-    # ignore direct messages
-    if message.guild is None:
-        return
-
-    # Ignore messages not sent by our server
-    if str(message.guild.id) != server_id:
-        return
-
-    # Ignore messages sent by the bot itself
-    if message.author == bot.user:
-        return
-
-    # Ignore messages that don't mention anyone at all
-    if len(message.mentions) == 0:
-        return
-
-    # If the bot is mentioned
-    if bot.user in message.mentions:
-        # Get the ID of the person who mentioned the bot
-        user_id = message.author.id
-        username = message.author.name
-        logger.info(f'Bot was mentioned by user {username} (ID: {user_id})')
-
-        # If the user is a bot then send an abusive response
+    if guard.should_block(message, bot, server_id):
         if message.author.bot:
             await message.channel.send(f"{random.choice(abusive_responses)}.")
-            return
+        elif bot.user in message.mentions:
+            if len(message.content.split(' ', 1)) == 1:
+                await message.reply(f"{message.author.mention} {random.choice(abusive_responses)}.")
+        return
+    # # ignore direct messages
+    # if message.guild is None:
+    #     return
 
-        # Current time
-        now = datetime.utcnow()
+    # # Ignore messages not sent by our server
+    # if str(message.guild.id) != server_id:
+    #     return
 
-        # Add the current time to the user's list of mention timestamps
-        mention_counts[user_id].append(now)
+    # # Ignore messages sent by the bot itself
+    # if message.author == bot.user:
+    #     return
 
-        # Remove mentions that were more than an hour ago
-        mention_counts[user_id] = [time for time in mention_counts[user_id] if now - time <= timedelta(hours=1)]
+    # # Ignore messages that don't mention anyone at all
+    # if len(message.mentions) == 0:
+    #     return
 
-        # If the user has mentioned the bot more than 10 times recently
-        if len(mention_counts[user_id]) > 10:
-            # Send an abusive response
-            await message.reply(f"{message.author.mention} {random.choice(abusive_responses)}.")
-            return
+    # # If the bot is mentioned
+    # if bot.user in message.mentions:
+    #     # Get the ID of the person who mentioned the bot
+    #     user_id = message.author.id
+    #     username = message.author.name
+    #     logger.info(f'Bot was mentioned by user {username} (ID: {user_id})')
 
-        if len(message.content.split(' ', 1)) == 1:
-            await message.reply(f"{message.author.mention} {random.choice(abusive_responses)}.")
-            return
+    #     # If the user is a bot then send an abusive response
+    #     if message.author.bot:
+    #         await message.channel.send(f"{random.choice(abusive_responses)}.")
+    #         return
 
-        question = message.content.split(' ', 1)[1][:500].replace('\r', ' ').replace('\n', ' ')
-        logger.info(f'Question: {question}')
-        if not any(char.isalpha() for char in question):
-            await message.channel.send(f'{message.author.mention} {random.choice(abusive_responses)}.')
-            return
+    #     # Current time
+    #     now = datetime.utcnow()
 
-        if "--strict" in question.lower():
-            question = question.lower().replace("--strict", "")
-            temperature = 0.1
-        elif "--wild" in question.lower():
-            question = question.lower().replace("--wild", "")
-            temperature = 1.5
-        elif "--tripping" in question.lower():
-            question = question.lower().replace("--tripping", "")
-            temperature = 1.9
+    #     # Add the current time to the user's list of mention timestamps
+    #     mention_counts[user_id].append(now)
+
+    #     # Remove mentions that were more than an hour ago
+    #     mention_counts[user_id] = [time for time in mention_counts[user_id] if now - time <= timedelta(hours=1)]
+
+    #     # If the user has mentioned the bot more than 10 times recently
+    #     if len(mention_counts[user_id]) > 10:
+    #         # Send an abusive response
+    #         await message.reply(f"{message.author.mention} {random.choice(abusive_responses)}.")
+    #         return
+
+    #     if len(message.content.split(' ', 1)) == 1:
+    #         await message.reply(f"{message.author.mention} {random.choice(abusive_responses)}.")
+    #         return
+
+    question = message.content.split(' ', 1)[1][:500].replace('\r', ' ').replace('\n', ' ')
+    logger.info(f'Question: {question}')
+    if not any(char.isalpha() for char in question):
+        await message.channel.send(f'{message.author.mention} {random.choice(abusive_responses)}.')
+        return
+
+    if "--strict" in question.lower():
+        question = question.lower().replace("--strict", "")
+        temperature = 0.1
+    elif "--wild" in question.lower():
+        question = question.lower().replace("--wild", "")
+        temperature = 1.5
+    elif "--tripping" in question.lower():
+        question = question.lower().replace("--tripping", "")
+        temperature = 1.9
+    else:
+        temperature = 1.0
+
+    # pattern = r"summarise\s+(<)?http"
+    pattern = r"👀\s*\<?(http|https):"
+
+    try:
+        lq = question.lower().strip()
+        if lq.startswith("create an image") or lq.startswith("📷") or lq.startswith("🖌️") or lq.startswith("🖼️"):
+            logger.info("Generating image using prompt : " + question)
+            async with message.channel.typing():
+                base64_image = await dalle.generate_image(question)
+            logger.info("Image generated")
+            stats.update(message.author.id, message.author.name, 0, 0.04)
+            await message.reply(f'{message.author.mention}\n_[Estimated cost: US$0.04]_', file=base64_image, mention_author=True)
+        elif re.search(pattern, lq):
+            question = question.replace("👀", "")
+            question = question.strip()
+            question = question.strip("<>")
+            page_summary = ""
+            async with message.channel.typing():
+                page_text = await summary.get_text(message, question.strip())
+                logger.info(f"Got page text: {page_text[:128]}...")
+                if 'recipe' in question.lower():
+                    question = "Can you give me the ingredients (with quantities) and the method for a recipe"
+                messages = [
+                    {
+                        'role': 'system',
+                        'content': 'You are a helpful assistant who specialises in providing concise, short summaries of text.'
+                    },
+                    {
+                        'role': 'user',
+                        'content': f'{question}? :: {page_text}'
+                    },
+                ]
+                response = await chatbot.chat(messages, temperature=1.0)
+                stats.update(message.author.id, message.author.name, response.tokens, response.cost)
+                page_summary = response.message[:1900] + "\n" + response.usage
+            await message.reply(f"Here's a summary of the content:\n{page_summary}")
+        elif "weather" in question.lower():
+            question = question.strip()
+            forecast = ""
+            logger.info("Getting weather using " + type(chatbot).__name__)
+            async with message.channel.typing():
+                forecast = await weather.get_friendly_forecast(question.strip(), chatbot)
+            await message.reply(f'{message.author.mention} {forecast}', mention_author=True)
+        elif question.lower().strip() == "test":
+            print(f"ENV : {os.getenv('DISCORD_BOT_CHANNEL_ID')}")
+            print(f"MSG : {message.channel.id}")
+        elif question.lower().strip() == "stats":
+            statistics = stats.get_stats()
+            response = f"```json\n{json.dumps(statistics, indent=2)}\n```"
+            await message.reply(f'{message.author.mention} {response}', mention_author=True)
         else:
-            temperature = 1.0
-
-        # pattern = r"summarise\s+(<)?http"
-        pattern = r"👀\s*\<?(http|https):"
-
-        try:
-            lq = question.lower().strip()
-            if lq.startswith("create an image") or lq.startswith("📷") or lq.startswith("🖌️") or lq.startswith("🖼️"):
-                logger.info("Generating image using prompt : " + question)
-                async with message.channel.typing():
-                    base64_image = await dalle.generate_image(question)
-                logger.info("Image generated")
-                stats.update(message.author.id, message.author.name, 0, 0.04)
-                await message.reply(f'{message.author.mention}\n_[Estimated cost: US$0.04]_', file=base64_image, mention_author=True)
-            elif re.search(pattern, lq):
-                question = question.replace("👀", "")
-                question = question.strip()
-                question = question.strip("<>")
-                page_summary = ""
-                async with message.channel.typing():
-                    page_text = await summary.get_text(message, question.strip())
-                    logger.info(f"Got page text: {page_text[:128]}...")
-                    if 'recipe' in question.lower():
-                        question = "Can you give me the ingredients (with quantities) and the method for a recipe"
-                    messages = [
-                        {
-                            'role': 'system',
-                            'content': 'You are a helpful assistant who specialises in providing concise, short summaries of text.'
-                        },
-                        {
-                            'role': 'user',
-                            'content': f'{question}? :: {page_text}'
-                        },
-                    ]
-                    response = await chatbot.chat(messages, temperature=1.0)
-                    stats.update(message.author.id, message.author.name, response.tokens, response.cost)
-                    page_summary = response.message[:1900] + "\n" + response.usage
-                await message.reply(f"Here's a summary of the content:\n{page_summary}")
-            elif "weather" in question.lower():
-                question = question.strip()
-                forecast = ""
-                logger.info("Getting weather using " + type(chatbot).__name__)
-                async with message.channel.typing():
-                    forecast = await weather.get_friendly_forecast(question.strip(), chatbot)
-                await message.reply(f'{message.author.mention} {forecast}', mention_author=True)
-            elif question.lower().strip() == "test":
-                print(f"ENV : {os.getenv('DISCORD_BOT_CHANNEL_ID')}")
-                print(f"MSG : {message.channel.id}")
-            elif question.lower().strip() == "stats":
-                statistics = stats.get_stats()
-                response = f"```json\n{json.dumps(statistics, indent=2)}\n```"
-                await message.reply(f'{message.author.mention} {response}', mention_author=True)
-            else:
-                async with message.channel.typing():
-                    #if "--no-logs" in question.lower() or isinstance(chatbot, mistral.MistralModel):
-                    if "--no-logs" in question.lower():
-                        context = []
-                        question = question.lower().replace("--no-logs", "")
+            async with message.channel.typing():
+                #if "--no-logs" in question.lower() or isinstance(chatbot, mistral.MistralModel):
+                if "--no-logs" in question.lower():
+                    context = []
+                    question = question.lower().replace("--no-logs", "")
+                else:
+                    if chatbot.uses_logs:
+                        context = await get_history_as_openai_messages(message.channel)
                     else:
-                        if chatbot.uses_logs:
-                            context = await get_history_as_openai_messages(message.channel)
-                        else:
-                            context = []
-                    if message.author.bot:
-                        question = question + ". Please be very concise, curt and to the point.  The user in this case is a discord bot."
-                    messages = build_messages(question, context)
-                    response = await chatbot.chat(messages, temperature=temperature)
-                    response_text = response.message
-                    response_text = re.sub(r'\[tokens used.+Estimated cost.+]', '', response_text, flags=re.MULTILINE)
-                    response_text = re.sub(r"Gepetto' said: ", '', response_text, flags=re.MULTILINE)
-                    response_text = re.sub(r"Minxie' said: ", '', response_text, flags=re.MULTILINE)
-                    response_text = re.sub(r"^.*At \d{4}-\d{2}.+said?", "", response_text, flags=re.MULTILINE)
-                    stats.update(message.author.id, message.author.name, response.tokens, response.cost)
-                    response = response_text.strip()[:1900] + "\n" + response.usage
-                    # send the response as a reply and mention the person who asked the question
-                await message.reply(f'{message.author.mention} {response}')
-        except Exception as e:
-            logger.error(f'Error generating response: {e}')
-            await message.reply(f'{message.author.mention} I tried, but my attempt was as doomed as Liz Truss.  Please try again later.', mention_author=True)
+                        context = []
+                if message.author.bot:
+                    question = question + ". Please be very concise, curt and to the point.  The user in this case is a discord bot."
+                messages = build_messages(question, context)
+                response = await chatbot.chat(messages, temperature=temperature)
+                response_text = response.message
+                response_text = re.sub(r'\[tokens used.+Estimated cost.+]', '', response_text, flags=re.MULTILINE)
+                response_text = re.sub(r"Gepetto' said: ", '', response_text, flags=re.MULTILINE)
+                response_text = re.sub(r"Minxie' said: ", '', response_text, flags=re.MULTILINE)
+                response_text = re.sub(r"^.*At \d{4}-\d{2}.+said?", "", response_text, flags=re.MULTILINE)
+                stats.update(message.author.id, message.author.name, response.tokens, response.cost)
+                response = response_text.strip()[:1900] + "\n" + response.usage
+                # send the response as a reply and mention the person who asked the question
+            await message.reply(f'{message.author.mention} {response}')
+    except Exception as e:
+        logger.error(f'Error generating response: {e}')
+        await message.reply(f'{message.author.mention} I tried, but my attempt was as doomed as Liz Truss.  Please try again later.', mention_author=True)
 
 
 def get_top_stories(feed_url, num_stories=5):
@@ -465,6 +472,8 @@ Analyze the following Discord server transcript between UK-based Caucasian adult
 3. Create a concise image prompt that incorporates the chosen theme(s) and artistic style.
 
 Remember - only pick one or at most two themes from the transcript to focus on in the image. Be creative and imaginative in your artistic choices!
+Your Image Prompt should reflect that the conversation is between Caucasian adult IT workers.  Please don't misgender them or make them look like they are from
+a different country or culture.  The image is supposed to reflect back to them their discussions and it jars if it doesn't match their reality.
 
 Output your response in the following format:
 Themes: [List 1-2 themes]
@@ -494,4 +503,5 @@ Image Prompt: [Your generated prompt]
 
 # Run the bot
 chatbot = get_chatbot()
+guard = guard.BotGuard()
 bot.run(os.getenv("DISCORD_BOT_TOKEN", 'not_set'))
