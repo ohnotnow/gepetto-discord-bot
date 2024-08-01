@@ -39,7 +39,7 @@ class BotGuard:
         # ignore messages without mentions
         if len(message.mentions) == 0:
             print("Ignoring message without mentions")
-            return True, True
+            return True, False
         # ignore messages where the bot is not mentioned
         if bot.user not in message.mentions:
             print("Ignoring message where the bot is not mentioned")
