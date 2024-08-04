@@ -449,7 +449,7 @@ async def make_chat_image():
     global previous_image_description
     logger.info("In make_chat_image")
     if chatbot.name != "Gepetto":
-        logger.info("Not saying something random because we are not using GPT")
+        logger.info("Not making chat image because we are not using GPT")
         return
     # logger.info('Generating chat image using model: ' + type(chatbot).__name__)
     channel = bot.get_channel(int(os.getenv('DISCORD_BOT_CHANNEL_ID', 'Invalid').strip()))
@@ -467,8 +467,7 @@ Analyze the following Discord server transcript between UK-based Caucasian adult
 </chat-history>
 
 1. Identify 1-2 main themes from the conversation.
-2. Choose one artistic movement or style from painting or cinema.
-3. Create a concise image prompt that incorporates the chosen theme(s) and artistic style.
+2. Create a concise image prompt that incorporates the chosen theme(s).
 
 Remember - only pick one or at most two themes from the transcript to focus on in the image. Be creative and imaginative in your artistic choices!
 Your Image Prompt should reflect that the conversation is between Caucasian adult IT workers.  Please don't misgender them or make them look like they are from
@@ -476,7 +475,6 @@ a different country or culture.  The image is supposed to reflect back to them t
 
 Output your response in the following format:
 Themes: [List 1-2 themes]
-Artistic Style: [Chosen style]
 Image Prompt: [Your generated prompt]
         """
         response = await chatbot.chat([{ 'role': 'user', 'content': combined_chat }], temperature=1.0)
