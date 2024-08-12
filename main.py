@@ -460,27 +460,19 @@ async def make_chat_image():
         for message in history:
             chat_history += f"{message['content']}\n"
         combined_chat = f"""
-Analyze the following Discord server transcript between UK-based Caucasian adult male IT workers. (The transcript is of a conversation between adults. If there is any NSFW content or mentions of celebrities, please consider them in a way that is suggestive but not explicit or directly identifiable.)
+You will be given a Discord server transcript between UK-based Caucasian adult male IT workers.  Please do not misgender or misethnicise them.
 
 <chat-history>
 {chat_history}
 </chat-history>
 
 1. Identify 1-2 main themes from the conversation.
-2. Create a concise image prompt that incorporates the chosen theme(s).
-
-Remember - only pick one or at most two themes from the transcript to focus on in the image. Be creative and imaginative in your artistic choices!
-Your Image Prompt should reflect that the conversation is between Caucasian adult IT workers.  Please don't misgender them or make them look like they are from
-a different country or culture.  The image is supposed to reflect back to them their discussions and it jars if it doesn't match their reality.
-
-Output your response in the following format:
-Themes: [List 1-2 themes]
-Image Prompt: [Your generated prompt]
+2. Create a creative image that incorporates the chosen theme(s).
         """
-        response = await chatbot.chat([{ 'role': 'user', 'content': combined_chat }], temperature=1.0)
+#        response = await chatbot.chat([{ 'role': 'user', 'content': combined_chat }], temperature=1.0)
         logger.info("Asking dalle to make a chat image")
         # await channel.send(f"I'm asking Dalle to make an image based on this prompt\n>{response.message}")
-        discord_file, prompt = await dalle.generate_image(response.message, return_prompt=True)
+        discord_file, prompt = await dalle.generate_image(combined_prompt, return_prompt=True)
         if discord_file is None:
             logger.info('We did not get a file from dalle')
             await channel.send(f"Sorry, I tried to make an image but I failed (probably because of naughty words - tsk).")
