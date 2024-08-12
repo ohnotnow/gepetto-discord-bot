@@ -15,5 +15,5 @@ async def generate_image(prompt, model="black-forest-labs/flux-schnell", aspect_
         }
     )
     parsed = json.loads(output)
-    image_url = parsed["output"][0]
+    image_url = parsed[0]
     return image_url
