@@ -249,7 +249,7 @@ async def on_message(message):
             logger.info("Image generated")
             stats.update(message.author.id, message.author.name, 0, 0.04)
             # await message.reply(f'{message.author.mention}\n_[Estimated cost: US$0.04]_', file=base64_image, mention_author=True)
-            await message.reply(f'{message.author.mention}\n{image_url}_[Estimated cost: US$0.003]_', mention_author=True)
+            await message.reply(f'{message.author.mention}\n{image_url}\n_[Estimated cost: US$0.003]_', mention_author=True)
         elif re.search(pattern, lq):
             question = question.replace("👀", "")
             question = question.strip()
