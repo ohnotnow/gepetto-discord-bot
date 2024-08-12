@@ -11,7 +11,7 @@ import pytz
 from enum import Enum
 import requests
 
-from gepetto import mistral, dalle, summary, weather, random_facts, birthdays, gpt, stats, groq, claude, ollama, guard
+from gepetto import mistral, dalle, summary, weather, random_facts, birthdays, gpt, stats, groq, claude, ollama, guard, replicate
 
 import discord
 from discord import File
@@ -467,16 +467,21 @@ You will be given a Discord server transcript between UK-based Caucasian adult m
 </chat-history>
 
 1. Identify 1-2 main themes from the conversation.
-2. Create a creative image that incorporates the chosen theme(s).
+2. Create a descriptive creative image prompt for a Stable Diffusion model that incorporates the chosen theme(s).
         """
-#        response = await chatbot.chat([{ 'role': 'user', 'content': combined_chat }], temperature=1.0)
-        logger.info("Asking dalle to make a chat image")
+        response = await chatbot.chat([{ 'role': 'user', 'content': combined_chat }], temperature=1.0)
+        logger.info("Asking model to make a chat image")
         # await channel.send(f"I'm asking Dalle to make an image based on this prompt\n>{response.message}")
-        discord_file, prompt = await dalle.generate_image(combined_chat, return_prompt=True, style="vivid")
-        if discord_file is None:
+        # discord_file, prompt = await dalle.generate_image(combined_chat, return_prompt=True, style="vivid")
+        image_url = await replicate.generate_image(response.message)
+        if not image_url:
             logger.info('We did not get a file from dalle')
             await channel.send(f"Sorry, I tried to make an image but I failed (probably because of naughty words - tsk).")
             return
+        # if discord_file is None:
+        #     logger.info('We did not get a file from dalle')
+        #     await channel.send(f"Sorry, I tried to make an image but I failed (probably because of naughty words - tsk).")
+        #     return
         try:
             logger.info('Asking chatbot to reword the image description')
             response = await chatbot.chat([{
@@ -488,7 +493,8 @@ You will be given a Discord server transcript between UK-based Caucasian adult m
             await channel.send(f"Sorry, I tried to make an image but I failed (probably because of naughty words - tsk).")
             return
     previous_image_description = response.message
-    await channel.send(f'{response.message}\n> {prompt}\n_[Estimated cost: US$0.05]_', file=discord_file)
+    # await channel.send(f'{response.message}\n> {prompt}\n_[Estimated cost: US$0.05]_', file=discord_file)
+    await channel.send(f'{response.message}\n> {image_url}\n_[Estimated cost: US$0.003]_')
 
 # Run the bot
 chatbot = get_chatbot()

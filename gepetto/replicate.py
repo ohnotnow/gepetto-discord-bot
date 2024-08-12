@@ -1,6 +1,8 @@
+import json
+import requests
 import replicate
 
-def generate_image(prompt, model="black-forest-labs/flux-schnell", aspect_ratio="1:1", output_format="webp", output_quality=90):
+async def generate_image(prompt, model="black-forest-labs/flux-schnell", aspect_ratio="1:1", output_format="webp", output_quality=90):
     output = replicate.run(
         model,
         input={
@@ -8,7 +10,10 @@ def generate_image(prompt, model="black-forest-labs/flux-schnell", aspect_ratio=
             "num_outputs": 1,
             "aspect_ratio": aspect_ratio,
             "output_format": output_format,
-            "output_quality": output_quality
+            "output_quality": output_quality,
+            "disable_safety_checker": True,
         }
     )
-    print(output)
+    parsed = json.loads(output)
+    image_url = parsed["output"][0]
+    return image_url
