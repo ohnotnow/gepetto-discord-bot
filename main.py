@@ -245,7 +245,8 @@ async def on_message(message):
             logger.info("Generating image using prompt : " + question)
             async with message.channel.typing():
                 # base64_image = await dalle.generate_image(question)
-                image_url = await replicate.generate_image(question)
+                response = await chatbot.chat([{ 'role': 'user', 'content': f"Please take this request and give me a detailed prompt for a Stable Diffusion image model to create a dramatic and intriguing image. <query>{question}</query>"}], temperature=1.0)
+                image_url = await replicate.generate_image(response.message)
             logger.info("Image generated")
             stats.update(message.author.id, message.author.name, 0, 0.04)
             # await message.reply(f'{message.author.mention}\n_[Estimated cost: US$0.04]_', file=base64_image, mention_author=True)
