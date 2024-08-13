@@ -474,6 +474,7 @@ You will be given a Discord server transcript between UK-based Caucasian adult m
         """
         response = await chatbot.chat([{ 'role': 'user', 'content': combined_chat }], temperature=1.0)
         logger.info("Asking model to make a chat image")
+        llm_chat_prompt = response.message
         # await channel.send(f"I'm asking Dalle to make an image based on this prompt\n>{response.message}")
         # discord_file, prompt = await dalle.generate_image(combined_chat, return_prompt=True, style="vivid")
         image_url = await replicate.generate_image(response.message)
@@ -497,7 +498,7 @@ You will be given a Discord server transcript between UK-based Caucasian adult m
             return
     previous_image_description = response.message
     # await channel.send(f'{response.message}\n> {prompt}\n_[Estimated cost: US$0.05]_', file=discord_file)
-    await channel.send(f'{response.message}\n> {image_url}\n_[Estimated cost: US$0.003]_')
+    await channel.send(f'{response.message}\n> {llm_chat_prompt}\n{image_url}\n_[Estimated cost: US$0.003]_')
 
 # Run the bot
 chatbot = get_chatbot()
