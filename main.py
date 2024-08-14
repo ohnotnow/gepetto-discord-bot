@@ -300,9 +300,14 @@ async def on_message(message):
                         context = await get_history_as_openai_messages(message.channel)
                     else:
                         context = []
+                if '--serious' in question.lower():
+                    question = question.lower().replace("--serious", "")
+                    system_prompt = "You should respond in a very serious, professional and formal manner.  The user is a professional and simply wants a clear answer to their question."
+                else:
+                    system_prompt = None
                 if message.author.bot:
                     question = question + ". Please be very concise, curt and to the point.  The user in this case is a discord bot."
-                messages = build_messages(question, context)
+                messages = build_messages(question, context, system_prompt=system_prompt)
                 response = await chatbot.chat(messages, temperature=temperature)
                 response_text = response.message
                 response_text = re.sub(r'\[tokens used.+Estimated cost.+]', '', response_text, flags=re.MULTILINE)
