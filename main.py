@@ -479,7 +479,25 @@ You will be given a Discord server transcript between UK-based Caucasian adult m
 capture the essence of the conversation and be a unique and artistic interpretation.  It could be a literal or abstract representation of the theme(s).
 3. The image should be vivid, colourful and visually striking.
 4. You could choose a single artistic movement from across the visual arts, historic or modern, to inspire the image - cinematic, film noir, sci-fi, modernist, surrealist, anime, charcoal illustration - the world is your oyster!
-5. The prompt should be very detailed and imaginative, as suits a Stable Diffusion image model.  For example "a beautiful and powerful mysterious sorceress, smile, sitting on a rock, lightning magic, hat, detailed leather clothing with gemstones, dress, castle background, digital art, hyperrealistic, fantasy, dark art, artstation, highly detailed, sharp focus, sci-fi, dystopian, iridescent gold, studio lighting"
+5. The prompt should be very detailed and imaginative, as suits a Stable Diffusion image model.
+
+Examples of good prompts :
+
+"a beautiful and powerful mysterious sorceress, smile, sitting on a rock, lightning magic, hat, detailed leather clothing with gemstones, dress, castle background, digital art, hyperrealistic, fantasy, dark art, artstation, highly detailed, sharp focus, sci-fi, dystopian, iridescent gold, studio lighting"
+
+"3 magical wizards stand on a yellow table. On the left, a wizard in black robes holds a sign that says 'AI', In the middle, a witch in red robes holds a sign that says 'is', and on the right, a wizard in blue robes holds a sign that says 'cool'. Behind them a purple dragon"
+
+"detailed cinematic dof render of an old dusty detailed CRT monitor on a wooden desk in a dim room with items around, messy dirty room. On the screen are the letters “FLUX” glowing softly. High detail hard surface render"
+
+"black forest gateau cake spelling out the words "FLUX DEV", tasty, food photography, dynamic shot"
+
+"Create a surreal, ethereal dreamscape with floating islands, bioluminescent plants, and a sky filled with multiple moons of different colors. Include a solitary figure on one of the islands, gazing at the celestial display"
+
+"Generate a bustling cyberpunk cityscape at night, with neon-lit skyscrapers, flying vehicles, and holographic advertisements. Include street-level details like food vendors and diverse pedestrians, all bathed in the glow of futuristic lighting."
+
+"Create a highly detailed, colorful representation of a microscopic world inside a water droplet. Include various microorganisms, cellular structures, and organic patterns, with a sense of depth and movement"
+
+"Generate a single landscape that seamlessly transitions through all four seasons from left to right. Include a central feature, like a tree or a small house, that changes with each season"
         """
         response = await chatbot.chat([{ 'role': 'user', 'content': combined_chat }], temperature=1.0)
         logger.info("Asking model to make a chat image")
