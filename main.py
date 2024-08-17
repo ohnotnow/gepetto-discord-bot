@@ -249,8 +249,12 @@ async def on_message(message):
                 image_url = await replicate.generate_image(response.message)
             logger.info("Image generated")
             stats.update(message.author.id, message.author.name, 0, 0.04)
+            image = requests.get(image_url)
+            discord_file = File(io.BytesIO(image.content), filename=f'channel_summary.png')
+            await message.reply(f'{message.author.mention}\n_[Estimated cost: US$0.003]_', file=discord_file)
+
             # await message.reply(f'{message.author.mention}\n_[Estimated cost: US$0.04]_', file=base64_image, mention_author=True)
-            await message.reply(f'{message.author.mention}\n{image_url}\n_[Estimated cost: US$0.003]_', mention_author=True)
+            # await message.reply(f'{message.author.mention}\n{image_url}\n_[Estimated cost: US$0.003]_', mention_author=True)
         elif re.search(pattern, lq):
             question = question.replace("👀", "")
             question = question.strip()
@@ -498,6 +502,8 @@ Examples of good prompts :
 "Create a highly detailed, colorful representation of a microscopic world inside a water droplet. Include various microorganisms, cellular structures, and organic patterns, with a sense of depth and movement"
 
 "Generate a single landscape that seamlessly transitions through all four seasons from left to right. Include a central feature, like a tree or a small house, that changes with each season"
+
+Please respond with just the prompt for the Stable Diffusion image model.  It will be passed to the model, so any extra text will make the model confused.
         """
         response = await chatbot.chat([{ 'role': 'user', 'content': combined_chat }], temperature=1.0)
         logger.info("Asking model to make a chat image")
@@ -524,8 +530,10 @@ Examples of good prompts :
             await channel.send(f"Sorry, I tried to make an image but I failed (probably because of naughty words - tsk).")
             return
     previous_image_description = response.message
-    # await channel.send(f'{response.message}\n> {prompt}\n_[Estimated cost: US$0.05]_', file=discord_file)
-    await channel.send(f'{response.message}\n> {llm_chat_prompt}\n{image_url}\n_[Estimated cost: US$0.003]_')
+    image = requests.get(image_url)
+    discord_file = File(io.BytesIO(image.content), filename=f'channel_summary.png')
+    await channel.send(f'{response.message}\n> {llm_chat_prompt}\n_[Estimated cost: US$0.003]_', file=discord_file)
+    # await channel.send(f'{response.message}\n> {llm_chat_prompt}\n{image_url}\n_[Estimated cost: US$0.003]_')
 
 # Run the bot
 chatbot = get_chatbot()
