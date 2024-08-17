@@ -246,7 +246,7 @@ async def on_message(message):
             async with message.channel.typing():
                 # base64_image = await dalle.generate_image(question)
                 response = await chatbot.chat([{ 'role': 'user', 'content': f"Please take this request and give me a detailed prompt for a Stable Diffusion image model to create a dramatic and intriguing image. <query>{question}</query>"}], temperature=1.0)
-                image_url = await replicate.generate_image(response.message, model="black-forest-labs/flux-dev")
+                image_url = await replicate.generate_image(response.message)
             logger.info("Image generated")
             stats.update(message.author.id, message.author.name, 0, 0.04)
             image = requests.get(image_url)
