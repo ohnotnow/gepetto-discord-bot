@@ -489,19 +489,19 @@ Examples of good prompts :
 
 "a beautiful and powerful mysterious sorceress, smile, sitting on a rock, lightning magic, hat, detailed leather clothing with gemstones, dress, castle background, digital art, hyperrealistic, fantasy, dark art, artstation, highly detailed, sharp focus, sci-fi, dystopian, iridescent gold, studio lighting"
 
-"3 magical wizards stand on a yellow table. On the left, a wizard in black robes holds a sign that says 'AI', In the middle, a witch in red robes holds a sign that says 'is', and on the right, a wizard in blue robes holds a sign that says 'cool'. Behind them a purple dragon"
+"Moulin Rouge, cabaret style, burlesque, photograph of a gorgeous beautiful woman, slender toned body, at a burlesque club, highly detailed, posing, smoky room, dark lit, low key, alluring, seductive, muted colors, red color pop, rim light, lingerie, photorealistic, shot with professional DSLR camera, F1. 4, 1/800s, ISO 100, sharp focus, depth of field, cinematic composition"
 
-"detailed cinematic dof render of an old dusty detailed CRT monitor on a wooden desk in a dim room with items around, messy dirty room. On the screen are the letters “FLUX” glowing softly. High detail hard surface render"
+"A portrait of a woman with horns, split into two contrasting halves. One side is grayscale with intricate tattoos and a serious expression, while the other side is in vivid colors with a more intense and fierce look. The background is divided into gray and red, enhancing the contrast between the two halves. The overall style is edgy and artistic, blending elements of fantasy and modern tattoo art."
 
-"black forest gateau cake spelling out the words "FLUX DEV", tasty, food photography, dynamic shot"
+"A charismatic speaker is captured mid-speech. He has short, tousled brown hair that's slightly messy on top. He has a round circle face, clean shaven, adorned with rounded rectangular-framed glasses with dark rims, is animated as he gestures with his left hand. He is holding a black microphone in his right hand, speaking passionately.  The man is wearing a light grey sweater over a white t-shirt. He's also wearing a simple black lanyard hanging around his neck. The lanyard badge has the text "Anakin AI".  Behind him, there is a blurred background with a white banner containing logos and text (including Anakin AI), a professional conference setting."
 
-"Create a surreal, ethereal dreamscape with floating islands, bioluminescent plants, and a sky filled with multiple moons of different colors. Include a solitary figure on one of the islands, gazing at the celestial display"
+"A quirky inventor in his mid-60s stands proudly next to his latest creation in his cluttered workshop. He has wild, Einstein-like white hair, twinkling blue eyes behind round spectacles, and an excited grin. His face is smudged with grease, and he's wearing a lab coat covered in colorful stains and patches. The background is filled with an assortment of bizarre contraptions, blueprints, and tools. Soft, warm lighting from an old-fashioned desk lamp illuminates the scene."
 
-"Generate a bustling cyberpunk cityscape at night, with neon-lit skyscrapers, flying vehicles, and holographic advertisements. Include street-level details like food vendors and diverse pedestrians, all bathed in the glow of futuristic lighting."
+"A candid photograph of a beautiful woman, looking away from the viewer, long straight dark blonde hair, light blue eyes, fair complexion, full lips, sitting in a comfy chair, looking out the window, snowing outside, wearing nothing, covered in a thin blanket, showing some cleavage, enjoying the view"
 
-"Create a highly detailed, colorful representation of a microscopic world inside a water droplet. Include various microorganisms, cellular structures, and organic patterns, with a sense of depth and movement"
+"A verification selfie webcam pic of an attractive woman smiling. Holding up a sign written in blue ballpoint pen that says "KEEP THINGS REAL" on an crumpled index card with one hand. Potato quality. Indoors, night, Low light, no natural light. Compressed. Reddit selfie. Low quality."
 
-"Generate a single landscape that seamlessly transitions through all four seasons from left to right. Include a central feature, like a tree or a small house, that changes with each season"
+"Evening Love Song,.Ornamental clouds.compose an evening love song;.a road leaves evasively..The new moon begins.a new chapter of our nights,.of those frail nights.we stretch out and which mingle.with these black horizontals...by Posuka Demizu, Arthur Rackham and Tony DiTerlizzi, meticulous, intricate, entangled, intricately detailed"
 
 Please respond with just the prompt for the Stable Diffusion image model.  It will be passed to the model, so any extra text will make the model confused.
         """
