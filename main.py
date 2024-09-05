@@ -460,8 +460,8 @@ async def say_something_random():
 async def make_chat_image():
     global previous_image_description
     logger.info("In make_chat_image")
-    if chatbot.name != "Gepetto":
-        logger.info("Not making chat image because we are not using GPT")
+    if chatbot.name != "Minxie":
+        logger.info("Not making chat image because we are not using Claude")
         return
     # logger.info('Generating chat image using model: ' + type(chatbot).__name__)
     channel = bot.get_channel(int(os.getenv('DISCORD_BOT_CHANNEL_ID', 'Invalid').strip()))
@@ -505,6 +505,7 @@ Examples of good prompts :
 
 Please respond with just the prompt for the Stable Diffusion image model.  It will be passed to the model, so any extra text will make the model confused.
         """
+
         response = await chatbot.chat([{ 'role': 'user', 'content': combined_chat }], temperature=1.0)
         logger.info("Asking model to make a chat image")
         llm_chat_prompt = response.message
