@@ -10,6 +10,7 @@ class Model(Enum):
     GPT_4_TURBO = ('gpt-4-turbo', 0.01, 0.03)
     GPT_4_OMNI_MINI = ('gpt-4o-mini', 0.000150, 0.000075)
     GPT_4_OMNI = ('gpt-4o', 0.005, 0.015)
+    GPT_O1_MINI = ('o1-mini', 0.003, 0.012)
     GPT4 = ('gpt-4', 0.06, 0.12)
     GPT3_5_Turbo_gpt_1106 = ('gpt-3.5-turbo-1106', 0.001, 0.002)
     GPT3_5_Turbo_16k = ('gpt-3.5-turbo-16k', 0.003, 0.004)
@@ -23,7 +24,7 @@ class GPTModel():
         token_price_input = 0
         token_price_output = 0
         for model in Model:
-            if model_engine.startswith(model.value[0]):
+            if model_engine == model.value[0]:
                 token_price_input = model.value[1] / 1000
                 token_price_output = model.value[2] / 1000
                 break

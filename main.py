@@ -311,8 +311,13 @@ async def on_message(message):
                     system_prompt = None
                 if message.author.bot:
                     question = question + ". Please be very concise, curt and to the point.  The user in this case is a discord bot."
+                if '--o1' in question.lower():
+                    question = question.lower().replace("--o1", "")
+                    override_model = gpt.Model.GPT_O1_MINI.value[0]
+                else:
+                    override_model = model_engine
                 messages = build_messages(question, context, system_prompt=system_prompt)
-                response = await chatbot.chat(messages, temperature=temperature)
+                response = await chatbot.chat(messages, temperature=temperature, model=override_model)
                 response_text = response.message
                 response_text = re.sub(r'\[tokens used.+Estimated cost.+]', '', response_text, flags=re.MULTILINE)
                 response_text = re.sub(r"Gepetto' said: ", '', response_text, flags=re.MULTILINE)
