@@ -512,16 +512,16 @@ You will be given a Discord server transcript between UK-based Caucasian adult m
 {chat_history}
 </chat-history>
 
-1. Identify 1-2 main themes from the conversation.
+1. Identify 1-2 key themes from the conversation.
 2. Create a descriptive and creative image prompt for a Stable Diffusion image model that incorporates the chosen theme(s).  It should
-capture the essence of the conversation and be a unique and artistic interpretation.  It could be a literal or abstract representation of the theme(s).
+capture the essence of the conversation themes and be a unique and artistic interpretation.  It could be a literal, or an abstract, or a comedic, or... representation of the theme(s).
 3. The image should be visually striking.
 4. You could choose a single artistic movement from across the visual arts, historic or modern, to inspire the image - cinematic, film noir, sci-fi, modernist, surrealist, anime, charcoal illustration - the world is your oyster!
 5. The prompt should be highly detailed and imaginative, as suits a Stable Diffusion image model.
 
 {extra_guidelines}
 
-Examples of good prompts :
+Examples of good Stable Diffusion model prompts :
 
 "a beautiful and powerful mysterious sorceress, smile, sitting on a rock, lightning magic, hat, detailed leather clothing with gemstones, dress, castle background, digital art, hyperrealistic, fantasy, dark art, artstation, highly detailed, sharp focus, sci-fi, dystopian, iridescent gold, studio lighting"
 
