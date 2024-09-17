@@ -476,6 +476,35 @@ async def make_chat_image():
         chat_history = ""
         for message in history:
             chat_history += f"{message['content']}\n"
+        extra_guidelines = ""
+        random_1 = random.random()
+        random_2 = random.random()
+        random_3 = random.random()
+        if random_1 > 0.9:
+            if random.random() > 0.5:
+                extra_guidelines += "- If you can somehow shoehorn a reference to UK Politician Liz Truss into the image, please do so.\n"
+        if random_2 > 0.9:
+            if random.random() > 0.5:
+                extra_guidelines += "- The image should be wildly colourful, surreal and mind-bending.\n"
+            if random.random() > 0.5:
+                extra_guidelines += "- The image should be a single object, such as a vase or a teacup.\n"
+        if random_3 > 0.9:
+            if random.random() > 0.9:
+                extra_guidelines += "- The image should be in the style of a medieval painting.\n"
+            elif random.random() > 0.7:
+                extra_guidelines += "- The image should be in the style of a 1950s budget sci-fi movie poster.\n"
+            elif random.random() > 0.6:
+                extra_guidelines += "- The image should echo the style of De Chirico.\n"
+            elif random.random() > 0.6:
+                extra_guidelines += "- The image should echo the style of Hieronymus Bosch.\n"
+            elif random.random() > 0.5:
+                extra_guidelines += "- The image should be in the style of a 1980s computer game.\n"
+            elif random.random() > 0.4:
+                extra_guidelines += "- Ideally echo the style of Eduard Munch.\n"
+            elif random.random() > 0.5:
+                extra_guidelines += "- Please make the image a little bit like a famous painting.\n"
+            if random.random() > 0.5:
+                extra_guidelines += "- The image should be set in a Pork Market.\n"
         combined_chat = f"""
 You will be given a Discord server transcript between UK-based Caucasian adult male IT workers.  Please do not misgender or misethnicise them.
 
@@ -489,6 +518,8 @@ capture the essence of the conversation and be a unique and artistic interpretat
 3. The image should be visually striking.
 4. You could choose a single artistic movement from across the visual arts, historic or modern, to inspire the image - cinematic, film noir, sci-fi, modernist, surrealist, anime, charcoal illustration - the world is your oyster!
 5. The prompt should be highly detailed and imaginative, as suits a Stable Diffusion image model.
+
+{extra_guidelines}
 
 Examples of good prompts :
 
