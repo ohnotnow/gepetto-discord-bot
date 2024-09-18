@@ -243,15 +243,24 @@ async def on_message(message):
         lq = question.lower().strip()
         if lq.startswith("create an image") or lq.startswith("📷") or lq.startswith("🖌️") or lq.startswith("🖼️"):
             logger.info("Generating image using prompt : " + question)
+            if '--better' in question.lower():
+                model = "black-forest-labs/flux-dev"
+                question = question.replace("--better", "")
+            else:
+                model = "black-forest-labs/flux-schnell"
             async with message.channel.typing():
                 # base64_image = await dalle.generate_image(question)
                 response = await chatbot.chat([{ 'role': 'user', 'content': f"Please take this request and give me a detailed prompt for a Stable Diffusion image model to create a dramatic and intriguing image. <query>{question}</query>"}], temperature=1.0)
-                image_url = await replicate.generate_image(response.message)
+                image_url = await replicate.generate_image(response.message, model=model)
             logger.info("Image generated")
             stats.update(message.author.id, message.author.name, 0, 0.04)
             image = requests.get(image_url)
             discord_file = File(io.BytesIO(image.content), filename=f'channel_summary.png')
-            await message.reply(f'{message.author.mention}\n_[Estimated cost: US$0.003]_', file=discord_file)
+            if model == "black-forest-labs/flux-dev":
+                cost = 0.03
+            else:
+                cost = 0.003
+            await message.reply(f'{message.author.mention}\n_[Estimated cost: US${cost}]_', file=discord_file)
 
             # await message.reply(f'{message.author.mention}\n_[Estimated cost: US$0.04]_', file=base64_image, mention_author=True)
             # await message.reply(f'{message.author.mention}\n{image_url}\n_[Estimated cost: US$0.003]_', mention_author=True)
