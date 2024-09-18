@@ -489,31 +489,40 @@ async def make_chat_image():
         random_1 = random.random()
         random_2 = random.random()
         random_3 = random.random()
+
+        # Content guidelines
         if random_1 > 0.9:
             if random.random() > 0.5:
                 extra_guidelines += "- If you can somehow shoehorn a reference to UK Politician Liz Truss into the image, please do so.\n"
-        if random_2 > 0.9:
-            if random.random() > 0.5:
-                extra_guidelines += "- The image should be wildly colourful, surreal and mind-bending.\n"
-            if random.random() > 0.5:
-                extra_guidelines += "- The image should be a single object, such as a vase or a teacup.\n"
-        if random_3 > 0.9:
-            if random.random() > 0.9:
-                extra_guidelines += "- The image should be in the style of a medieval painting.\n"
-            elif random.random() > 0.7:
-                extra_guidelines += "- The image should be in the style of a 1950s budget sci-fi movie poster.\n"
-            elif random.random() > 0.6:
-                extra_guidelines += "- The image should echo the style of De Chirico.\n"
-            elif random.random() > 0.6:
-                extra_guidelines += "- The image should echo the style of Hieronymus Bosch.\n"
-            elif random.random() > 0.5:
-                extra_guidelines += "- The image should be in the style of a 1980s computer game.\n"
-            elif random.random() > 0.4:
-                extra_guidelines += "- Ideally echo the style of Eduard Munch.\n"
-            elif random.random() > 0.5:
-                extra_guidelines += "- Please make the image a little bit like a famous painting.\n"
             if random.random() > 0.5:
                 extra_guidelines += "- The image should be set in a Pork Market.\n"
+
+        # Style guidelines
+        if random_2 > 0.9:
+            style_choice = random.random()
+            if style_choice > 0.8:
+                extra_guidelines += "- The image should be in the style of a medieval painting.\n"
+            elif style_choice > 0.6:
+                extra_guidelines += "- The image should be in the style of a 1950s budget sci-fi movie poster.\n"
+            elif style_choice > 0.4:
+                extra_guidelines += "- The image should echo the style of De Chirico.\n"
+            elif style_choice > 0.2:
+                extra_guidelines += "- The image should echo the style of Hieronymus Bosch.\n"
+            else:
+                extra_guidelines += "- Ideally echo the style of Eduard Munch.\n"
+
+        # Visual characteristics
+        if random_3 > 0.9:
+            visual_choice = random.random()
+            if visual_choice > 0.7:
+                extra_guidelines += "- The image should be wildly colourful, surreal and mind-bending.\n"
+            elif visual_choice > 0.4:
+                extra_guidelines += "- The image should be a single object, such as a vase or a teacup.\n"
+            elif visual_choice > 0.2:
+                extra_guidelines += "- The image should be in the style of a 1980s computer game.\n"
+            else:
+                extra_guidelines += "- Please make the image a little bit like a famous painting.\n"
+
         combined_chat = f"""
 You will be given a Discord server transcript between UK-based Caucasian adult male IT workers.  Please do not misgender or misethnicise them.
 
