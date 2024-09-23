@@ -71,7 +71,7 @@ def remove_nsfw_words(message):
     message = re.sub(r"(fuck|prick|asshole|shit|wanker|dick)", "", message)
     return message
 
-async def get_history_as_openai_messages(channel, include_bot_messages=True, limit=10, since_hours=None, nsfw_filter=False):
+async def get_history_as_openai_messages(channel, include_bot_messages=True, limit=10, since_hours=None, nsfw_filter=False, max_length=1000):
     messages = []
     total_length = 0
     total_tokens = 0
@@ -92,7 +92,7 @@ async def get_history_as_openai_messages(channel, include_bot_messages=True, lim
         message_content = re.sub(r'\[tokens used.+Estimated cost.+]', '', message_content, flags=re.MULTILINE)
         message_content = remove_nsfw_words(message_content) if nsfw_filter else message_content
         message_length = len(message_content)
-        if total_length + message_length > 1000:
+        if total_length + message_length > max_length:
             break
         # token_length = get_token_count(message_content)
         # if total_tokens + token_length > 3500:
@@ -480,7 +480,7 @@ async def make_chat_image():
     # logger.info('Generating chat image using model: ' + type(chatbot).__name__)
     channel = bot.get_channel(int(os.getenv('DISCORD_BOT_CHANNEL_ID', 'Invalid').strip()))
     async with channel.typing():
-        history = await get_history_as_openai_messages(channel, limit=50, nsfw_filter=True)
+        history = await get_history_as_openai_messages(channel, limit=100, nsfw_filter=True, max_length=5000)
         # combined_chat = "Could you make me an image which takes just one or two of the themes contained in following transcript? Don't try and cover too many things in one image. Please make the image an artistic interpretation - not a literal image based on the summary. Be creative! Choose a single artistic movement from across the visual arts, historic or modern. The transcript is between adults - so if there has been any NSFW content or mentions of celebtrities, please just make an image a little like them but not *of* them.  Thanks!\n\n"
         chat_history = ""
         for message in history:
