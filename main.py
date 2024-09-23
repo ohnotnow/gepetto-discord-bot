@@ -296,8 +296,8 @@ async def on_message(message):
                 forecast = await weather.get_friendly_forecast(question.strip(), chatbot)
             await message.reply(f'{message.author.mention} {forecast}', mention_author=True)
         elif question.lower().strip() == "test":
-            print(f"ENV : {os.getenv('DISCORD_BOT_CHANNEL_ID')}")
-            print(f"MSG : {message.channel.id}")
+            async with message.channel.typing():
+                await make_chat_image()
         elif question.lower().strip() == "stats":
             statistics = stats.get_stats()
             response = f"```json\n{json.dumps(statistics, indent=2)}\n```"
