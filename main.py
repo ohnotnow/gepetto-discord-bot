@@ -491,11 +491,6 @@ async def make_chat_image():
         random_3 = random.random()
 
         # Content guidelines
-        if random_1 > 0.9:
-            if random.random() > 0.5:
-                extra_guidelines += "- If you can somehow shoehorn a reference to UK Politician Liz Truss into the image, please do so.\n"
-            if random.random() > 0.5:
-                extra_guidelines += "- The image should be set in a Pork Market.\n"
 
         # Style guidelines
         if random_2 > 0.9:
@@ -557,15 +552,36 @@ Examples of good Stable Diffusion model prompts :
 
 "Evening Love Song,.Ornamental clouds.compose an evening love song;.a road leaves evasively..The new moon begins.a new chapter of our nights,.of those frail nights.we stretch out and which mingle.with these black horizontals...by Posuka Demizu, Arthur Rackham and Tony DiTerlizzi, meticulous, intricate, entangled, intricately detailed"
 
-Please respond with just the prompt for the Stable Diffusion image model.  It will be passed to the model, so any extra text will make the model confused.
-        """
+Please respond with the following JSON object  with the prompt for the Stable Diffusion image model and the themes you identified.
 
-        response = await chatbot.chat([{ 'role': 'user', 'content': combined_chat }], temperature=1.0)
+{
+    "prompt": "Your stable diffusion prompt here",
+    "themes": ["theme1", "theme2"]
+}
+
+"""
+
+        response = await chatbot.chat([{ 'role': 'user', 'content': combined_chat }], temperature=1.0, json_mode=True)
+        try:
+            decoded_response = json.loads(response.message)
+        except json.JSONDecodeError:
+            logger.error(f'Error decoding JSON: {response.message}')
+            decoded_response = {
+                "prompt": response.message,
+                "themes": []
+            }
         logger.info("Asking model to make a chat image")
-        llm_chat_prompt = response.message
+        llm_chat_prompt = decoded_response["prompt"]
+        llm_chat_themes = decoded_response["themes"]
+        if random_1 > 0.9:
+            if random.random() > 0.5:
+                llm_chat_prompt += "\n- If you can somehow shoehorn a grotesque reference to UK Politician Liz Truss into the image, please do so.\n"
+            if random.random() > 0.5:
+                llm_chat_prompt += "\n- The image should be set in a Pork Market.\n"
+
         # await channel.send(f"I'm asking Dalle to make an image based on this prompt\n>{response.message}")
         # discord_file, prompt = await dalle.generate_image(combined_chat, return_prompt=True, style="vivid")
-        image_url = await replicate.generate_image(response.message)
+        image_url = await replicate.generate_image(llm_chat_prompt)
         if not image_url:
             logger.info('We did not get a file from dalle')
             await channel.send(f"Sorry, I tried to make an image but I failed (probably because of naughty words - tsk).")
@@ -587,7 +603,7 @@ Please respond with just the prompt for the Stable Diffusion image model.  It wi
     previous_image_description = response.message
     image = requests.get(image_url)
     discord_file = File(io.BytesIO(image.content), filename=f'channel_summary.png')
-    await channel.send(f'{response.message}\n> {llm_chat_prompt}\n_[Estimated cost: US$0.003]_', file=discord_file)
+    await channel.send(f'{response.message}\n> {llm_chat_prompt}\n*Themes*: {llm_chat_themes}\n_[Estimated cost: US$0.003]_', file=discord_file)
     # await channel.send(f'{response.message}\n> {llm_chat_prompt}\n{image_url}\n_[Estimated cost: US$0.003]_')
 
 # Run the bot

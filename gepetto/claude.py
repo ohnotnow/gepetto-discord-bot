@@ -25,7 +25,7 @@ class ClaudeModel():
             return round(token_price_input * token_count, 4)
         return round(token_price_output * token_count, 4)
 
-    async def chat(self, messages, temperature=0.7, model="claude-3-5-sonnet-20240620"):
+    async def chat(self, messages, temperature=0.7, model="claude-3-5-sonnet-20240620", json_mode=False):
         """Chat with the model.
 
         Args:

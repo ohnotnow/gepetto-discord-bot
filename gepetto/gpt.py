@@ -32,7 +32,7 @@ class GPTModel():
             return round(token_price_input * token_count, 4)
         return round(token_price_output * token_count, 4)
 
-    async def chat(self, messages, temperature=1.0, model="gpt-4o-mini", top_p=0.6):
+    async def chat(self, messages, temperature=1.0, model="gpt-4o-mini", top_p=0.6, json_mode=False):
         """Chat with the model.
 
         Args:
@@ -52,6 +52,7 @@ class GPTModel():
             messages=messages,
             temperature=temperature,
             top_p=top_p,
+            response_format={ "type": "json_object" } if json_mode else { "type": "text" },
         )
         # print(str(response.choices[0].message))
         input_tokens = response.usage.prompt_tokens
