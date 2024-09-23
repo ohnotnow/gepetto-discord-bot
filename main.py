@@ -554,10 +554,10 @@ Examples of good Stable Diffusion model prompts :
 
 Please respond with the following JSON object  with the prompt for the Stable Diffusion image model and the themes you identified.
 
-{
+{{
     "prompt": "Your stable diffusion prompt here",
     "themes": ["theme1", "theme2"]
-}
+}}
 
 """
 
