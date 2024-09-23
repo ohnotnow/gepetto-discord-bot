@@ -560,7 +560,7 @@ Please respond with the following JSON object  with the prompt for the Stable Di
 }}
 
 """
-
+        logger.info(f"Asking model to make a chat image with prompt: {combined_chat}")
         response = await chatbot.chat([{ 'role': 'user', 'content': combined_chat }], temperature=1.0, json_mode=True)
         try:
             decoded_response = json.loads(response.message)
