@@ -578,6 +578,8 @@ Please respond with the following JSON object  with the prompt for the Stable Di
                 llm_chat_prompt += "\n- If you can somehow shoehorn a grotesque reference to UK Politician Liz Truss into the image, please do so.\n"
             if random.random() > 0.5:
                 llm_chat_prompt += "\n- The image should be set in a Pork Market.\n"
+            if random.random() > 0.5:
+                llm_chat_prompt += "\n- The image should be reflective of a blood-curdling, gory, horror film.\n"
 
         # await channel.send(f"I'm asking Dalle to make an image based on this prompt\n>{response.message}")
         # discord_file, prompt = await dalle.generate_image(combined_chat, return_prompt=True, style="vivid")
@@ -603,8 +605,7 @@ Please respond with the following JSON object  with the prompt for the Stable Di
     previous_image_description = response.message
     image = requests.get(image_url)
     discord_file = File(io.BytesIO(image.content), filename=f'channel_summary.png')
-    await channel.send(f'{response.message}\n> {llm_chat_prompt}\n*Themes*: {llm_chat_themes}\n_[Estimated cost: US$0.003]_', file=discord_file)
-    # await channel.send(f'{response.message}\n> {llm_chat_prompt}\n{image_url}\n_[Estimated cost: US$0.003]_')
+    await channel.send(f'{response.message}\n_{chatbot.name} chose themes: {", ".join(llm_chat_themes)}_\n_[Estimated cost: US$0.003]_', file=discord_file)
 
 # Run the bot
 chatbot = get_chatbot()
