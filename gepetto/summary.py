@@ -35,20 +35,16 @@ def extract_video_id_and_trailing_text(input_string):
 
     return video_id, trailing_text
 
-async def get_text(message, url):
+async def get_text(url: str) -> str:
     page_text = ""
     if '//www.youtube.com/' in url:
         video_id, trailing_text = extract_video_id_and_trailing_text(url.strip("<>"))
-        if trailing_text:
-            prompt = trailing_text
         try:
             transcript_list = YouTubeTranscriptApi.get_transcript(video_id)
         except Exception as e:
             return "Sorry, I couldn't get a transcript for that video."
         transcript_text = [x['text'] for x in transcript_list]
         page_text = ' '.join(transcript_text)
-        # if len(page_text) > 8000:
-        #     model = 'gpt-3.5-turbo-16k'
         if "The copyright belongs to Google LLC" in page_text:
             page_text = "Could not get the transcript - possibly I am being geoblocked"
         page_text = page_text[:12000]

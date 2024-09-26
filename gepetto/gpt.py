@@ -32,7 +32,7 @@ class GPTModel():
             return round(token_price_input * token_count, 4)
         return round(token_price_output * token_count, 4)
 
-    async def chat(self, messages, temperature=1.0, model="gpt-4o-mini", top_p=0.6, json_mode=False):
+    async def chat(self, messages, temperature=1.0, model="gpt-4o-mini", top_p=0.6, json_mode=False, tools=[]):
         """Chat with the model.
 
         Args:
@@ -47,14 +47,17 @@ class GPTModel():
         api_key = os.getenv("OPENAI_API_KEY")
         api_base = "https://api.openai.com/v1/"
         client = OpenAI(api_key=api_key, base_url=api_base)
-        response = client.chat.completions.create(
-            model=model,
-            messages=messages,
-            temperature=temperature,
-            top_p=top_p,
-            response_format={ "type": "json_object" } if json_mode else { "type": "text" },
-        )
-        # print(str(response.choices[0].message))
+        params = {
+            "model": model,
+            "messages": messages,
+            "temperature": temperature,
+            "top_p": top_p,
+            "response_format": {"type": "json_object"} if json_mode else {"type": "text"}
+        }
+        if tools:
+            params["tools"] = tools
+            params["tool_choice"] = "auto"
+        response = client.chat.completions.create(**params)
         input_tokens = response.usage.prompt_tokens
         output_tokens = response.usage.completion_tokens
         tokens = input_tokens + output_tokens
@@ -62,7 +65,9 @@ class GPTModel():
         input_cost = self.get_token_price(input_tokens, "input", model)
         cost = input_cost + output_cost
         message = str(response.choices[0].message.content)
-        return ChatResponse(message, tokens, cost, model)
+        tool_calls = response.choices[0].message.tool_calls
+        print(f'Tool calls: {tool_calls}')
+        return ChatResponse(message, tokens, cost, model, tool_calls=tool_calls)
 
     async def function_call(self, messages = [], tools = [], temperature=0.7, model="gpt-4o"):
         api_key = os.getenv("OPENAI_API_KEY")
