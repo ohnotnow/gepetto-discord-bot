@@ -8,7 +8,7 @@ class GroqModel():
     def get_token_price(self, token_count, direction="output", model_engine="llama-3.1-70b-versatile"):
         return (0.50 / 1000000) * token_count
 
-    async def chat(self, messages, temperature=0.7, model="llama-3.1-70b-versatile"):
+    async def chat(self, messages, temperature=0.7, model="llama-3.1-70b-versatile", tools=[]):
         """Chat with the model.
 
         Args:
