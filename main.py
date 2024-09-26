@@ -55,6 +55,7 @@ import re
 
 def get_chatbot():
     chatbot = None
+    logger.info("BOT_PROVIDER: " + os.getenv("BOT_PROVIDER"))
     if os.getenv("BOT_PROVIDER") == 'mistral':
         chatbot = mistral.MistralModel()
     elif os.getenv("BOT_PROVIDER") == 'groq':
@@ -152,9 +153,7 @@ def remove_emoji(text):
 
 @bot.event
 async def on_ready():
-    say_something_random.start()
     say_happy_birthday.start()
-    random_chat.start()
     make_chat_image.start()
     horror_chat.start()
     logger.info(f"Using model type : {type(chatbot)}")

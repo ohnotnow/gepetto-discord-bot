@@ -33,7 +33,7 @@ def convert_openai_tools_to_anthropic(openai_tool_list):
 
 def anthropic_tool_call_to_openai(anthropic_tool_call):
     tool = tool_call.ChatCompletionMessageToolCall(
-        function=tool_call.Function(name=anthropic_tool_call["name"], arguments=anthropic_tool_call["input"]),
+        function=tool_call.Function(name=anthropic_tool_call.name, arguments=json.dumps(anthropic_tool_call.input)),
         id="made-up-id",
         type="function"
     )
@@ -91,15 +91,12 @@ class ClaudeModel():
         tokens = response.usage.input_tokens + response.usage.output_tokens
         cost = self.get_token_price(tokens, "output", model) + self.get_token_price(response.usage.input_tokens, "input", model)
         message = str(response.content[0].text)
+        tool_calls = []
         if response.stop_reason == "tool_use":
-            # find the response.content entry with type "tool_use"
-            tool_name = ""
-            tool_params = ""
             for content in response.content:
                 if content.type == "tool_use":
-                    tool_name = content.name
-                    tool_params = json.loads(content.input)
-        return ChatResponse(message, tokens, cost, model)
+                    tool_calls.append(anthropic_tool_call_to_openai(content))
+        return ChatResponse(message, tokens, cost, model, tool_calls=tool_calls)
 
     async def function_call(self, messages = [], tools = [], temperature=0.7, model="mistralai/Mistral-7B-Instruct-v0.1"):
         raise NotImplementedError
