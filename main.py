@@ -22,6 +22,7 @@ import feedparser
 
 AVATAR_PATH="avatar.png"
 previous_image_description = "Here is my image based on recent chat in my Discord server!"
+previous_themes = ""
 horror_history = []
 
 # Setup logging
@@ -444,6 +445,9 @@ capture the essence of the conversation themes and be a unique and artistic inte
 
 {extra_guidelines}
 
+Please try and avoid repeating themes from the previous image descriptions.  Previously used themes are:
+{previous_themes}
+
 Examples of good Stable Diffusion model prompts :
 
 "a beautiful and powerful mysterious sorceress, smile, sitting on a rock, lightning magic, hat, detailed leather clothing with gemstones, dress, castle background, digital art, hyperrealistic, fantasy, dark art, artstation, highly detailed, sharp focus, sci-fi, dystopian, iridescent gold, studio lighting"
@@ -512,6 +516,7 @@ Please respond with the following JSON object  with the prompt for the Stable Di
             await channel.send(f"Sorry, I tried to make an image but I failed (probably because of naughty words - tsk).")
             return
     previous_image_description = response.message
+    previous_themes.append(llm_chat_themes)
     image = requests.get(image_url)
     discord_file = File(io.BytesIO(image.content), filename=f'channel_summary.png')
     await channel.send(f'{response.message}\n_{chatbot.name}\'s chosen themes: {", ".join(llm_chat_themes)}_\n_[Estimated cost: US$0.003]_', file=discord_file)
