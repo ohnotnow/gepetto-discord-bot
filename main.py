@@ -185,16 +185,16 @@ async def summarise_webpage_content(discord_message: discord.Message, prompt: st
     messages = [
         {
             'role': 'system',
-            'content': 'You are a helpful assistant who specialises in providing concise, short summaries of text.'
+            'content': 'You are a helpful assistant who specialises in providing concise, short summaries of text for Discord users. If the user doesn\'t seem to have provided text, then please politely ask them to provide it - they have probably just made a mistake when pasting into Discord. If it looks like they have pasted in some sort of "access denied" message, then please politely explain that the content is not available to a helpful assistant like yourself..'
         },
         {
             'role': 'user',
-            'content': f'{prompt}? :: {summarised_text}'
+            'content': f'{prompt}? :: <text-to-summarise>\n\n{summarised_text}\n\n</text-to-summarise>'
         },
     ]
     response = await chatbot.chat(messages, temperature=1.0)
     page_summary = response.message[:1800] + "\n" + response.usage
-    await discord_message.reply(f"Here's a summary of the content:\n{page_summary}", mention_author=True)
+    await discord_message.reply(f"{page_summary}", mention_author=True)
 
 async def extract_recipe_from_webpage(discord_message: discord.Message, prompt: str, url: str) -> None:
     recipe_prompt = """
