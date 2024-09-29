@@ -9,10 +9,18 @@ tool_list = [
                 "properties": {
                 "prompt": {
                     "type": "string",
-                    "description": "The user prompt containing their full request for the weather forecast."
+                    "description": "The full user prompt containing their request for the weather forecast."
+                },
+                "locations": {
+                    "type": "array",
+                    "items": {
+                        "type": "string",
+                        "description": "The UK town or city where the weather forecast is requested."
+                    },
+                    "description": "An array of UK towns or cities where the weather forecast is requested."
                 }
             },
-            "required": ["prompt"]
+            "required": ["prompt", "location"]
         }
     }
 },

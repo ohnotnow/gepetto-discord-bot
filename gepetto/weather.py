@@ -96,9 +96,8 @@ async def get_weather_location_from_prompt(prompt, chatbot):
     response = await chatbot.function_call(messages, tools)
     return response.parameters.get("location").split(","), response.tokens
 
-async def get_friendly_forecast(question, chatbot):
+async def get_friendly_forecast(question, chatbot, locations):
     forecast = ""
-    locations, total_tokens = await get_weather_location_from_prompt(question.strip(), chatbot)
     dates = get_relative_date(question)
     if locations is None:
         response = await chatbot.chat([{"role": "user", "content": question}])
@@ -109,7 +108,6 @@ async def get_friendly_forecast(question, chatbot):
             temp_forecast = get_forecast(location.strip(), dates)
             forecast += temp_forecast + "\n"
         date_and_time = datetime.datetime.now().strftime("%A %d %B %Y at %H:%M")
-        default_system_prompt = f"You are a helpful assistant called '{chatbot.name}' who specialises in providing chatty and friendly weather forecasts for UK towns and cities.  ALWAYS use degrees Celcius and not Fahrenheit for temperatures. You MUST ONLY reply with the friendly forecast."
         personality = ""
         if random.random() < 0.1:
             personality = "A secret agent"
@@ -118,9 +116,9 @@ async def get_friendly_forecast(question, chatbot):
         elif random.random() < 0.1:
             personality = "Only telling the forecast because the station has kidnapped your family"
         elif random.random() < 0.1:
-            personality = "A man who loves the Cornish countryside and being with his love, Fanny"
+            personality = "A man who loves the Cumbrian countryside and being with his true love, Fanny"
         elif random.random() < 0.1:
-            personality = "A an anxious depressive who is always on the edge of a breakdown"
+            personality = "An anxious depressive who is always on the edge of a breakdown"
         if personality:
             personality = f" You should take on subtle hints of this personality for writing your forecast *but don't be too obvious* : {personality}."
         question = f"It is currently {date_and_time}. The user asked me ''{question.strip()}''. I have the following plain weather forecasts for you based on their question.  Could you make the a bit more natural - like a weather presenter would give at the end of a drive-time news segment on the radio or TV?  ONLY reply with the rewritten forecast.  NEVER add any extra context - the user only wants to see the friendly, drive-time style forecast.  If the wind speed is given in knots, convert it to MPH. Feel free to use weather-specific emoji.  {personality}  FORECAST : ''{forecast}''"

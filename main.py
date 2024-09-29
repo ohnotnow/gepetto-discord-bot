@@ -174,8 +174,8 @@ async def create_image(discord_message: discord.Message, prompt: str, model: str
         cost = 0.003
     await discord_message.reply(f'{discord_message.author.mention}\n_[Estimated cost: US${cost}]_', file=discord_file)
 
-async def get_weather_forecast(discord_message: discord.Message, prompt: str) -> None:
-    forecast = await weather.get_friendly_forecast(prompt, chatbot)
+async def get_weather_forecast(discord_message: discord.Message, prompt: str, locations: list[str]) -> None:
+    forecast = await weather.get_friendly_forecast(prompt, chatbot, locations)
     await discord_message.reply(f'{discord_message.author.mention} {forecast}', mention_author=True)
 
 async def summarise_webpage_content(discord_message: discord.Message, prompt: str, url: str) -> None:
