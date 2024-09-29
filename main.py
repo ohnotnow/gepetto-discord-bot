@@ -22,7 +22,7 @@ import feedparser
 
 AVATAR_PATH="avatar.png"
 previous_image_description = "Here is my image based on recent chat in my Discord server!"
-previous_themes = ""
+previous_themes = []
 horror_history = []
 
 # Setup logging
