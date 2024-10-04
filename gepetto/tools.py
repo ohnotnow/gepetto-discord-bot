@@ -34,7 +34,7 @@ tool_list = [
             "properties": {
                 "prompt": {
                     "type": "string",
-                    "description": "The user's prompt specifying the image they want to generate."
+                    "description": "The user's full prompt specifying the image they want to generate, including any flags or modifiers they gave."
                 }
             },
             "required": ["prompt"]
