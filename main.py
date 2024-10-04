@@ -171,8 +171,8 @@ async def create_image(discord_message: discord.Message, prompt: str, model: str
     image_url = await replicate.generate_image(response.message, model=model)
     image = requests.get(image_url)
     discord_file = File(io.BytesIO(image.content), filename=f'channel_summary.png')
-    if model == "black-forest-labs/flux-dev":
-        cost = 0.03
+    if model == "black-forest-labs/flux-1.1-pro":
+        cost = 0.04
     else:
         cost = 0.003
     await discord_message.reply(f'{discord_message.author.mention}\n_[Estimated cost: US${cost}]_', file=discord_file)
