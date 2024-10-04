@@ -3,7 +3,7 @@ import requests
 import replicate
 
 async def generate_image(prompt, model="black-forest-labs/flux-schnell", aspect_ratio="1:1", output_format="webp", output_quality=90):
-    output = replicate.run(
+    output = await replicate.async_run(
         model,
         input={
             "prompt": prompt,
@@ -11,6 +11,7 @@ async def generate_image(prompt, model="black-forest-labs/flux-schnell", aspect_
             "aspect_ratio": aspect_ratio,
             "output_format": output_format,
             "output_quality": output_quality,
+            "prompt_upsampling": True,
             "disable_safety_checker": True,
         }
     )

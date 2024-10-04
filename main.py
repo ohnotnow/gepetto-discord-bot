@@ -168,14 +168,16 @@ async def create_image(discord_message: discord.Message, prompt: str, model: str
         prompt = prompt.replace("--better", "")
         model = "black-forest-labs/flux-1.1-pro"
     logger.info(f"Creating image with model: {model} and prompt: {prompt}")
-    response = await chatbot.chat([{ 'role': 'user', 'content': f"Please take this request and give me a detailed prompt for a Stable Diffusion image model so that it gives me a dramatic and intriguing image. <query>{prompt}</query>"}], temperature=1.0)
-    image_url = await replicate.generate_image(response.message, model=model)
+    # response = await chatbot.chat([{ 'role': 'user', 'content': f"Please take this request and give me a detailed prompt for a Stable Diffusion image model so that it gives me a dramatic and intriguing image. <query>{prompt}</query>"}], temperature=1.0)
+    image_url = await replicate.generate_image(prompt, model=model)
+    logger.info("Fetching image")
     image = requests.get(image_url)
     discord_file = File(io.BytesIO(image.content), filename=f'channel_summary.png')
     if model == "black-forest-labs/flux-1.1-pro":
         cost = 0.04
     else:
         cost = 0.003
+    logger.info("Sending image to discord")
     await discord_message.reply(f'{discord_message.author.mention}\n_[Estimated cost: US${cost}] | Model: {model}_', file=discord_file)
 
 async def get_weather_forecast(discord_message: discord.Message, prompt: str, locations: list[str]) -> None:
