@@ -164,6 +164,9 @@ async def on_ready():
     logger.info("Avatar has been changed!")
 
 async def create_image(discord_message: discord.Message, prompt: str, model: str = "black-forest-labs/flux-schnell") -> None:
+    if '--better' in prompt.lower():
+        prompt = prompt.replace("--better", "")
+        model = "black-forest-labs/flux-1.1-pro"
     response = await chatbot.chat([{ 'role': 'user', 'content': f"Please take this request and give me a detailed prompt for a Stable Diffusion image model so that it gives me a dramatic and intriguing image. <query>{prompt}</query>"}], temperature=1.0)
     image_url = await replicate.generate_image(response.message, model=model)
     image = requests.get(image_url)
