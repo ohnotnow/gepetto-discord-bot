@@ -517,7 +517,7 @@ Please respond with the following JSON object  with the prompt for the Stable Di
     previous_themes.append(llm_chat_themes)
     image = requests.get(image_url)
     discord_file = File(io.BytesIO(image.content), filename=f'channel_summary.png')
-    await channel.send(f'{response.message}\n_{chatbot.name}\'s chosen themes: {", ".join(llm_chat_themes)}_\n_[Estimated cost: US$0.003]_', file=discord_file)
+    await channel.send(f'{response.message}\n_{chatbot.name}\'s chosen themes: {", ".join(llm_chat_themes)}\n`Debug Prompt`:\n||{llm_chat_prompt}||\n_[Estimated cost: US$0.003]_', file=discord_file)
 
 # Run the bot
 chatbot = get_chatbot()
