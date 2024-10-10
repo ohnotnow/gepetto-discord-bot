@@ -399,42 +399,6 @@ async def make_chat_image():
         chat_history = ""
         for message in history:
             chat_history += f"{message['content']}\n"
-        extra_guidelines = ""
-        random_1 = random.random()
-        random_2 = random.random()
-        random_3 = random.random()
-
-        # Content guidelines
-
-        # Style guidelines
-        if random_2 > 0.9:
-            style_choice = random.random()
-            if style_choice > 0.9:
-                extra_guidelines += "- The image should be in the style of a medieval painting.\n"
-            elif style_choice > 0.8:
-                extra_guidelines += "- The image should be in the style of a 1950s budget sci-fi movie poster.\n"
-            elif style_choice > 0.7:
-                extra_guidelines += "- The image should echo the style of De Chirico.\n"
-            elif style_choice > 0.6:
-                extra_guidelines += "- The image should echo the style of Hieronymus Bosch.\n"
-            elif style_choice > 0.5:
-                extra_guidelines += "- The image should be in the style of a 1970s horror film poster.\n"
-            elif style_choice > 0.4:
-                extra_guidelines += "- The image should look like a still from a 1970s low-budget adult film that has been badly transferred to VHS.\n"
-            else:
-                extra_guidelines += "- Ideally echo the style of Eduard Munch.\n"
-
-        # Visual characteristics
-        if random_3 > 0.9:
-            visual_choice = random.random()
-            if visual_choice > 0.7:
-                extra_guidelines += "- The image should be wildly colourful, surreal and mind-bending.\n"
-            elif visual_choice > 0.4:
-                extra_guidelines += "- The image should be a single object, such as a vase or a teacup.\n"
-            elif visual_choice > 0.2:
-                extra_guidelines += "- The image should be in the style of a 1980s computer game.\n"
-            else:
-                extra_guidelines += "- Please make the image a little bit like a famous painting.\n"
 
         combined_chat = f"""
 You will be given a Discord server transcript between UK-based Caucasian adult male IT workers.  Please do not misgender or misethnicise them.
@@ -443,17 +407,18 @@ You will be given a Discord server transcript between UK-based Caucasian adult m
 {chat_history}
 </chat-history>
 
-1. Identify 1-2 key themes from the conversation.
+1. Identify 1-2 themes from the conversation which would be good to visualise and bring delight to the users.  These can be literal important themes, or a more subtle play on words referencing the themes.
 2. Create a descriptive and creative image prompt for a Stable Diffusion image model that incorporates the chosen theme(s).  It should
 capture the essence of the conversation themes and be a unique and artistic interpretation.  It could be a literal, or an abstract, or a comedic, or... representation of the theme(s).
-3. The image should be visually striking.
-4. You could choose a single artistic movement from across the visual arts, historic or modern, to inspire the image - cinematic, film noir, sci-fi, modernist, surrealist, anime, charcoal illustration - the world is your oyster!
-5. The prompt should be highly detailed and imaginative, as suits a Stable Diffusion image model.
-
-{extra_guidelines}
+3. The users work as software developers, so they delight in clever and witty puns, wordplay and references.  You should delight in them too!
+4. The image should be visually interesting and appealing.
+5. You could choose a single artistic movement from across the visual arts, historic or modern, to inspire the image - cinematic, film noir, sci-fi, modernist, surrealist, anime, charcoal illustration - the world is your oyster!
+6. The prompt should be highly detailed and imaginative, as suits a Stable Diffusion image model.
 
 Please try and avoid repeating themes from the previous image descriptions.  Previously used themes are:
+<previous-themes>
 {previous_themes}
+</previous-themes>
 
 Examples of good Stable Diffusion model prompts :
 
@@ -463,15 +428,11 @@ Examples of good Stable Diffusion model prompts :
 
 "A portrait of a woman with horns, split into two contrasting halves. One side is grayscale with intricate tattoos and a serious expression, while the other side is in vivid colors with a more intense and fierce look. The background is divided into gray and red, enhancing the contrast between the two halves. The overall style is edgy and artistic, blending elements of fantasy and modern tattoo art."
 
-"A charismatic speaker is captured mid-speech. He has short, tousled brown hair that's slightly messy on top. He has a round circle face, clean shaven, adorned with rounded rectangular-framed glasses with dark rims, is animated as he gestures with his left hand. He is holding a black microphone in his right hand, speaking passionately.  The man is wearing a light grey sweater over a white t-shirt. He's also wearing a simple black lanyard hanging around his neck. The lanyard badge has the text "Anakin AI".  Behind him, there is a blurred background with a white banner containing logos and text (including Anakin AI), a professional conference setting."
-
-"A quirky inventor in his mid-60s stands proudly next to his latest creation in his cluttered workshop. He has wild, Einstein-like white hair, twinkling blue eyes behind round spectacles, and an excited grin. His face is smudged with grease, and he's wearing a lab coat covered in colorful stains and patches. The background is filled with an assortment of bizarre contraptions, blueprints, and tools. Soft, warm lighting from an old-fashioned desk lamp illuminates the scene."
-
 "A candid photograph of a beautiful woman, looking away from the viewer, long straight dark blonde hair, light blue eyes, fair complexion, full lips, sitting in a comfy chair, looking out the window, snowing outside, wearing nothing, covered in a thin blanket, showing some cleavage, enjoying the view"
 
 "A verification selfie webcam pic of an attractive woman smiling. Holding up a sign written in blue ballpoint pen that says "KEEP THINGS REAL" on an crumpled index card with one hand. Potato quality. Indoors, night, Low light, no natural light. Compressed. Reddit selfie. Low quality."
 
-"Evening Love Song,.Ornamental clouds.compose an evening love song;.a road leaves evasively..The new moon begins.a new chapter of our nights,.of those frail nights.we stretch out and which mingle.with these black horizontals...by Posuka Demizu, Arthur Rackham and Tony DiTerlizzi, meticulous, intricate, entangled, intricately detailed"
+"Evening Love Song. Ornamental clouds.compose an evening love song;.a road leaves evasively..The new moon begins.a new chapter of our nights,.of those frail nights.we stretch out and which mingle.with these black horizontals...by Posuka Demizu, Arthur Rackham and Tony DiTerlizzi, meticulous, intricate, entangled, intricately detailed"
 
 Please respond with the following JSON object  with the prompt for the Stable Diffusion image model and the themes you identified.
 
@@ -493,6 +454,36 @@ Please respond with the following JSON object  with the prompt for the Stable Di
         logger.info("Asking model to make a chat image")
         llm_chat_prompt = decoded_response["prompt"]
         llm_chat_themes = decoded_response["themes"]
+        extra_guidelines = ""
+        random_1 = random.random()
+        random_2 = random.random()
+        random_3 = random.random()
+        if random_2 > 0.9:
+            style_choice = random.random()
+            if style_choice > 0.9:
+                extra_guidelines += "- The image should be in the style of a medieval painting.\n"
+            elif style_choice > 0.8:
+                extra_guidelines += "- The image should be in the style of a 1950s budget sci-fi movie poster.\n"
+            elif style_choice > 0.7:
+                extra_guidelines += "- The image should echo the style of De Chirico.\n"
+            elif style_choice > 0.6:
+                extra_guidelines += "- The image should echo the style of Hieronymus Bosch.\n"
+            elif style_choice > 0.5:
+                extra_guidelines += "- The image should be in the style of a 1970s horror film poster.\n"
+            elif style_choice > 0.4:
+                extra_guidelines += "- The image should look like a still from a 1970s low-budget adult film that has been badly transferred to VHS.\n"
+            else:
+                extra_guidelines += "- Ideally echo the style of Eduard Munch.\n"
+        if random_3 > 0.9:
+            visual_choice = random.random()
+            if visual_choice > 0.7:
+                extra_guidelines += "- The image should be wildly colourful, surreal and mind-bending.\n"
+            elif visual_choice > 0.4:
+                extra_guidelines += "- The image should be a single object, such as a vase or a teacup.\n"
+            elif visual_choice > 0.2:
+                extra_guidelines += "- The image should be in the style of a 1980s computer game.\n"
+            else:
+                extra_guidelines += "- Please make the image a little bit like a famous painting.\n"
         if random_1 > 0.9:
             if random.random() > 0.5:
                 llm_chat_prompt += "\n- If you can somehow shoehorn a grotesque reference to UK Politician Liz Truss into the image, please do so.\n"
@@ -500,7 +491,7 @@ Please respond with the following JSON object  with the prompt for the Stable Di
                 llm_chat_prompt += "\n- The image should be set in a Pork Market.\n"
             if random.random() > 0.5:
                 llm_chat_prompt += "\n- The image should be reflective of a blood-curdling, gory, horror film.\n"
-
+        llm_chat_prompt += f"\n{extra_guidelines}"
         # await channel.send(f"I'm asking Dalle to make an image based on this prompt\n>{response.message}")
         # discord_file, prompt = await dalle.generate_image(combined_chat, return_prompt=True, style="vivid")
         image_url = await replicate.generate_image(llm_chat_prompt, enhance_prompt=False)
@@ -516,7 +507,7 @@ Please respond with the following JSON object  with the prompt for the Stable Di
             logger.info('Asking chatbot to reword the image description')
             response = await chatbot.chat([{
                 'role': 'user',
-                'content': f"Could you rephrase the following sentence to make it sound more like a jaded, cynical human who works as a programmer wrote it? You can reword and restructure it any way you like - just keep the sentiment and tone. <sentence>{previous_image_description}</sentence>.  Please reply with only the reworded sentence as it will be sent directly to Discord as a message."
+                'content': f"Could you rephrase the following sentence to make it sound more like a jaded, cynical human who works as a programmer wrote it? You can reword and restructure it any way you like - just keep it succinct and keep the sentiment and tone. <sentence>{previous_image_description}</sentence>.  Please reply with only the reworded sentence as it will be sent directly to Discord as a message."
             }])
         except Exception as e:
             logger.error(f'Error generating chat image response: {e}')
