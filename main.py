@@ -503,7 +503,7 @@ Please respond with the following JSON object  with the prompt for the Stable Di
 
         # await channel.send(f"I'm asking Dalle to make an image based on this prompt\n>{response.message}")
         # discord_file, prompt = await dalle.generate_image(combined_chat, return_prompt=True, style="vivid")
-        image_url = await replicate.generate_image(llm_chat_prompt)
+        image_url = await replicate.generate_image(llm_chat_prompt, enhance_prompt=False)
         if not image_url:
             logger.info('We did not get a file from dalle')
             await channel.send(f"Sorry, I tried to make an image but I failed (probably because of naughty words - tsk).")
