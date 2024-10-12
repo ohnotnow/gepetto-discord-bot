@@ -459,21 +459,23 @@ Please respond with the following JSON object  with the prompt for the Stable Di
         random_2 = random.random()
         random_3 = random.random()
         if random_2 > 0.9:
-            style_choice = random.random()
-            if style_choice > 0.9:
+            style_choice =
+            if random.random() > 0.9:
                 extra_guidelines += "- The image should be in the style of a medieval painting.\n"
-            elif style_choice > 0.8:
+            elif random.random() > 0.8:
                 extra_guidelines += "- The image should be in the style of a 1950s budget sci-fi movie poster.\n"
-            elif style_choice > 0.7:
+            elif random.random() > 0.7:
                 extra_guidelines += "- The image should echo the style of De Chirico.\n"
-            elif style_choice > 0.6:
+            elif random.random() > 0.6:
                 extra_guidelines += "- The image should echo the style of Hieronymus Bosch.\n"
-            elif style_choice > 0.5:
+            elif random.random() > 0.5:
                 extra_guidelines += "- The image should be in the style of a 1970s horror film poster.\n"
-            elif style_choice > 0.4:
+            elif random.random() > 0.4:
                 extra_guidelines += "- The image should look like a still from a 1970s low-budget adult film that has been badly transferred to VHS.\n"
-            else:
+            elif random.random() > 0.3:
                 extra_guidelines += "- Ideally echo the style of Eduard Munch.\n"
+            elif random.random() > 0.5:
+                extra_guidelines += f"- The image should be in the style of a instagram post IMG_{int(random.random() * 1000)}.CR2.\n"
         if random_3 > 0.9:
             visual_choice = random.random()
             if visual_choice > 0.7:
