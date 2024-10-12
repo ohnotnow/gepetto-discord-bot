@@ -459,7 +459,6 @@ Please respond with the following JSON object  with the prompt for the Stable Di
         random_2 = random.random()
         random_3 = random.random()
         if random_2 > 0.9:
-            style_choice =
             if random.random() > 0.9:
                 extra_guidelines += "- The image should be in the style of a medieval painting.\n"
             elif random.random() > 0.8:
