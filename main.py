@@ -407,7 +407,7 @@ You will be given a Discord server transcript between UK-based Caucasian adult m
 {chat_history}
 </chat-history>
 
-1. Identify 1-2 themes from the conversation which would be good to visualise and bring delight to the users.  These can be literal important themes, or a more subtle play on words referencing the themes.
+1. Identify 1-3 themes from the conversation which would be good to visualise and bring delight to the users.  These can be literal important themes, or a more subtle play on words referencing the themes.
 2. Create a descriptive and creative image prompt for a Stable Diffusion image model that incorporates the chosen theme(s).  It should
 capture the essence of the conversation themes and be a unique and artistic interpretation.  It could be a literal, or an abstract, or a comedic, or... representation of the theme(s).
 3. The users work as software developers, so they delight in clever and witty puns, wordplay and references.  You should delight in them too!
@@ -438,7 +438,7 @@ Please respond with the following JSON object  with the prompt for the Stable Di
 
 {{
     "prompt": "Your stable diffusion prompt here",
-    "themes": ["theme1", "theme2"]
+    "themes": ["theme1", ...]
 }}
 
 """
@@ -517,7 +517,8 @@ Please respond with the following JSON object  with the prompt for the Stable Di
     previous_image_description = response.message
     previous_themes.append(llm_chat_themes)
     image = requests.get(image_url)
-    discord_file = File(io.BytesIO(image.content), filename=f'channel_summary.png')
+    today_string = datetime.now().strftime("%Y-%m-%d")
+    discord_file = File(io.BytesIO(image.content), filename=f'channel_summary_{today_string}.png')
     await channel.send(f'{response.message}\n_{chatbot.name}\'s chosen themes: {", ".join(llm_chat_themes)}_\nHidden prompt: _||{llm_chat_prompt}||_\n[Estimated cost: US$0.003]_', file=discord_file)
 
 # Run the bot
