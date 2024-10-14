@@ -492,10 +492,10 @@ Please respond with the following JSON object  with the prompt for the Stable Di
                 llm_chat_prompt += "\n- The image should be set in a Pork Market.\n"
             if random.random() > 0.5:
                 llm_chat_prompt += "\n- The image should be reflective of a blood-curdling, gory, horror film.\n"
-        llm_chat_prompt += f"\n{extra_guidelines}"
+        full_prompt = llm_chat_prompt + f"\n{extra_guidelines}"
         # await channel.send(f"I'm asking Dalle to make an image based on this prompt\n>{response.message}")
         # discord_file, prompt = await dalle.generate_image(combined_chat, return_prompt=True, style="vivid")
-        image_url = await replicate.generate_image(llm_chat_prompt, enhance_prompt=False)
+        image_url = await replicate.generate_image(full_prompt, enhance_prompt=False)
         if not image_url:
             logger.info('We did not get a file from dalle')
             await channel.send(f"Sorry, I tried to make an image but I failed (probably because of naughty words - tsk).")
@@ -518,7 +518,7 @@ Please respond with the following JSON object  with the prompt for the Stable Di
     previous_themes.append(llm_chat_themes)
     image = requests.get(image_url)
     discord_file = File(io.BytesIO(image.content), filename=f'channel_summary.png')
-    await channel.send(f'{response.message}\n_{chatbot.name}\'s chosen themes: {", ".join(llm_chat_themes)}_\n_[Estimated cost: US$0.003]_', file=discord_file)
+    await channel.send(f'{response.message}\n_{chatbot.name}\'s chosen themes: {", ".join(llm_chat_themes)}_\nHidden prompt: _||{llm_chat_prompt}||_\n[Estimated cost: US$0.003]_', file=discord_file)
 
 # Run the bot
 chatbot = get_chatbot()
