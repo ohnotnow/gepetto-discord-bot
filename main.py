@@ -272,7 +272,13 @@ async def on_message(message):
                 arguments = json.loads(tool_call.function.arguments)
                 fname = tool_call.function.name
                 if fname == 'extract_recipe_from_webpage':
-                    await extract_recipe_from_webpage(message, arguments.get('prompt', ''), arguments.get('url', ''))
+                    recipe_url = arguments.get('url', '')
+                    if ('example.com' in recipe_url) or ('http' not in recipe_url):
+                        response = await chatbot.chat(messages, temperature=temperature, model=override_model, tools=tools.tool_list)
+                        response = response.message.strip()[:1800] + "\n" + response.usage
+                        await message.reply(f'{message.author.mention} {response}')
+                    else:
+                        await extract_recipe_from_webpage(message, arguments.get('prompt', ''), arguments.get('url', ''))
                 elif fname == 'get_weather_forecast':
                     await get_weather_forecast(message, arguments.get('prompt', ''), arguments.get('locations', []))
                 elif fname == 'summarise_webpage_content':
