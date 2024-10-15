@@ -273,7 +273,7 @@ async def on_message(message):
                 fname = tool_call.function.name
                 if fname == 'extract_recipe_from_webpage':
                     recipe_url = arguments.get('url', '')
-                    if ('example.com' in recipe_url) or ('http' not in recipe_url):
+                    if ('example.com' in recipe_url) or ('http' not in question.lower()):
                         response = await chatbot.chat(messages, temperature=temperature, model=override_model, tools=tools.tool_list)
                         response = response.message.strip()[:1800] + "\n" + response.usage
                         await message.reply(f'{message.author.mention} {response}')
