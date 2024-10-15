@@ -186,6 +186,7 @@ async def get_weather_forecast(discord_message: discord.Message, prompt: str, lo
     await discord_message.reply(f'{discord_message.author.mention} {forecast}', mention_author=True)
 
 async def summarise_webpage_content(discord_message: discord.Message, prompt: str, url: str) -> None:
+    logger.info(f"Summarising {url} with prompt: {prompt}")
     summarised_text = await summary.get_text(url)
     prompt = prompt.replace("👀", "")
     prompt = prompt.strip()
