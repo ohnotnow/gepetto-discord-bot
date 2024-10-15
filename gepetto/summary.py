@@ -4,6 +4,8 @@ import requests
 from youtube_transcript_api import YouTubeTranscriptApi
 import PyPDF2
 from trafilatura import fetch_url, extract
+from trafilatura.settings import DEFAULT_CONFIG
+from copy import deepcopy
 
 def get_text_from_pdf(url: str) -> str:
     try:
@@ -64,7 +66,9 @@ async def get_text(url: str) -> str:
         if url_string.endswith('.pdf'):
             page_text = get_text_from_pdf(url_string)[:10000]
         else:
-            downloaded = fetch_url(url_string)
+            my_config = deepcopy(DEFAULT_CONFIG)
+            my_config['DEFAULT']['user_agent'] = 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10.15; rv:131.0) Gecko/20100101 Firefox/131.0'
+            downloaded = fetch_url(url_string, config=my_config)
             if downloaded is None:
                 return f"Sorry, I couldn't download content from the URL {url_string}."
             page_text = extract(downloaded)
