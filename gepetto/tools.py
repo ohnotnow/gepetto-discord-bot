@@ -66,13 +66,13 @@ tool_list = [
     "type": "function",
     "function": {
         "name": "extract_recipe_from_webpage",
-        "description": "Extracts a list of ingredients and steps for a recipe from a webpage if the user provided a URL and recipe-related prompt. This should only be used if the user is specifically asking for a recipe and includes a URL in their prompt. It should not be used in cases where the URL simply contains the word 'recipe' or when the user requests a recipe without a URL, such as asking for a pancake recipe or a script recipe.",
+        "description": "Extracts a list of ingredients and steps for a recipe from a webpage if the user provided a URL and recipe-related question.",
         "parameters": {
             "type": "object",
             "properties": {
                 "url": {
                     "type": "string",
-                    "description": "The URL of the webpage containing the recipe."
+                    "description": "The user-provided URL of the webpage containing the recipe."
                 },
                 "prompt": {
                     "type": "string",
