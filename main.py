@@ -190,6 +190,9 @@ async def summarise_webpage_content(discord_message: discord.Message, prompt: st
     if len(original_text) > 10000:
         logger.info(f"Original text to summarise is too long, truncating to 10000 characters")
         original_text = original_text[:10000]
+        was_truncated = True
+    else:
+        was_truncated = False
     prompt = prompt.replace("👀", "")
     prompt = prompt.strip()
     prompt = prompt.strip("<>")
@@ -206,7 +209,8 @@ async def summarise_webpage_content(discord_message: discord.Message, prompt: st
     logger.info(f"Messages: {messages}")
     response = await chatbot.chat(messages, temperature=1.0)
     page_summary = response.message[:1800] + "\n" + response.usage
-    logger.info(f"Page Summary: {page_summary}")
+    if was_truncated:
+        page_summary = page_summary + "\n\n[Note: The above summary is a truncated version of the original text as it was too long.]"
     await discord_message.reply(f"{page_summary}", mention_author=True)
 
 async def extract_recipe_from_webpage(discord_message: discord.Message, prompt: str, url: str) -> None:
