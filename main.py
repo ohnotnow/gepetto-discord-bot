@@ -186,9 +186,10 @@ async def get_weather_forecast(discord_message: discord.Message, prompt: str, lo
     await discord_message.reply(f'{discord_message.author.mention} {forecast}', mention_author=True)
 
 async def summarise_webpage_content(discord_message: discord.Message, prompt: str, url: str) -> None:
-    logger.info(f"Summarising {url} with prompt: {prompt}")
     original_text = await summary.get_text(url)
-    logger.info(f"Original Webpage Text: {original_text}")
+    if len(original_text) > 10000:
+        logger.info(f"Original text to summarise is too long, truncating to 10000 characters")
+        original_text = original_text[:10000]
     prompt = prompt.replace("👀", "")
     prompt = prompt.strip()
     prompt = prompt.strip("<>")
