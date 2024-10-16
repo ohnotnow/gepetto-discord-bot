@@ -187,7 +187,8 @@ async def get_weather_forecast(discord_message: discord.Message, prompt: str, lo
 
 async def summarise_webpage_content(discord_message: discord.Message, prompt: str, url: str) -> None:
     logger.info(f"Summarising {url} with prompt: {prompt}")
-    summarised_text = await summary.get_text(url)
+    original_text = await summary.get_text(url)
+    logger.info(f"Original Webpage Text: {original_text}")
     prompt = prompt.replace("👀", "")
     prompt = prompt.strip()
     prompt = prompt.strip("<>")
@@ -198,11 +199,13 @@ async def summarise_webpage_content(discord_message: discord.Message, prompt: st
         },
         {
             'role': 'user',
-            'content': f'{prompt}? :: <text-to-summarise>\n\n{summarised_text}\n\n</text-to-summarise>'
+            'content': f'{prompt}? :: <text-to-summarise>\n\n{original_text}\n\n</text-to-summarise>'
         },
     ]
+    logger.info(f"Messages: {messages}")
     response = await chatbot.chat(messages, temperature=1.0)
     page_summary = response.message[:1800] + "\n" + response.usage
+    logger.info(f"Page Summary: {page_summary}")
     await discord_message.reply(f"{page_summary}", mention_author=True)
 
 async def extract_recipe_from_webpage(discord_message: discord.Message, prompt: str, url: str) -> None:
