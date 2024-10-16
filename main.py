@@ -206,11 +206,10 @@ async def summarise_webpage_content(discord_message: discord.Message, prompt: st
             'content': f'{prompt}? :: <text-to-summarise>\n\n{original_text}\n\n</text-to-summarise>'
         },
     ]
-    logger.info(f"Messages: {messages}")
     response = await chatbot.chat(messages, temperature=1.0)
     page_summary = response.message[:1800] + "\n" + response.usage
     if was_truncated:
-        page_summary = page_summary + "\n\n[Note: The above summary is a truncated version of the original text as it was too long.]"
+        page_summary = "[Note: The summary is based on a truncated version of the original text as it was too long.]\n\n" + page_summary
     await discord_message.reply(f"{page_summary}", mention_author=True)
 
 async def extract_recipe_from_webpage(discord_message: discord.Message, prompt: str, url: str) -> None:
