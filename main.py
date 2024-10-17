@@ -449,11 +449,12 @@ Examples of good Stable Diffusion model prompts :
 
 "Evening Love Song. Ornamental clouds.compose an evening love song;.a road leaves evasively..The new moon begins.a new chapter of our nights,.of those frail nights.we stretch out and which mingle.with these black horizontals...by Posuka Demizu, Arthur Rackham and Tony DiTerlizzi, meticulous, intricate, entangled, intricately detailed"
 
-Please respond with the following JSON object  with the prompt for the Stable Diffusion image model and the themes you identified.
+Please respond with the following JSON object with the prompt for the Stable Diffusion image model and the themes you identified.
 
 {{
     "prompt": "Your stable diffusion prompt here",
-    "themes": ["theme1", ...]
+    "themes": ["theme1", ...],
+    "reasoning": "Your reasoning for choosing the themes"
 }}
 
 """
@@ -469,6 +470,7 @@ Please respond with the following JSON object  with the prompt for the Stable Di
         logger.info("Asking model to make a chat image")
         llm_chat_prompt = decoded_response["prompt"]
         llm_chat_themes = decoded_response["themes"]
+        llm_chat_reasoning = decoded_response["reasoning"]
         extra_guidelines = ""
         random_1 = random.random()
         random_2 = random.random()
@@ -534,7 +536,7 @@ Please respond with the following JSON object  with the prompt for the Stable Di
     image = requests.get(image_url)
     today_string = datetime.now().strftime("%Y-%m-%d")
     discord_file = File(io.BytesIO(image.content), filename=f'channel_summary_{today_string}.png')
-    await channel.send(f'{response.message}\n_{chatbot.name}\'s chosen themes: {", ".join(llm_chat_themes)}_\nHidden prompt: _||{llm_chat_prompt}||_\n[Estimated cost: US$0.003]_', file=discord_file)
+    await channel.send(f'{response.message}\n_{chatbot.name}\'s chosen themes: {", ".join(llm_chat_themes)}_\n_Reasoning: {llm_chat_reasoning}_\nHidden prompt: _||{llm_chat_prompt}||_\n[Estimated cost: US$0.003]_', file=discord_file)
 
 # Run the bot
 chatbot = get_chatbot()
