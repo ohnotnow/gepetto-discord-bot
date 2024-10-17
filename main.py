@@ -454,7 +454,7 @@ Please respond with the following JSON object with the prompt for the Stable Dif
 {{
     "prompt": "Your stable diffusion prompt here",
     "themes": ["theme1", ...],
-    "reasoning": "Your reasoning for choosing the themes"
+    "reasoning": "Your reasoning for choosing the themes and prompt"
 }}
 
 """
