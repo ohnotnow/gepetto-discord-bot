@@ -14,7 +14,7 @@ async def generate_image(prompt, model="black-forest-labs/flux-schnell", aspect_
             "prompt_upsampling": enhance_prompt,
             "disable_safety_checker": True,
         },
-        use_file_output=False
+        # use_file_output=False
     )
     if isinstance(output, list):
         image_url = output[0]
