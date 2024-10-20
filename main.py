@@ -274,6 +274,8 @@ async def on_message(message):
             if '--o1' in question.lower():
                 question = question.lower().replace("--o1", "")
                 override_model = gpt.Model.GPT_O1_MINI.value[0]
+            else:
+                override_model = None
             if question.lower().startswith("!image"):
                 await make_chat_image()
             messages = build_messages(question, context, system_prompt=system_prompt)
