@@ -404,8 +404,12 @@ async def horror_chat():
 
 @tasks.loop(time=time(hour=17, tzinfo=pytz.timezone('Europe/London')))
 async def make_chat_image():
-    global previous_image_description
     logger.info("In make_chat_image")
+    global previous_image_description
+    with open('previous_image_themes.txt', 'r') as file:
+        previous_image_themes = file.read()
+    if previous_image_themes:
+        previous_image_themes = f"Please try and avoid repeating themes from the previous image themes.  Previously used themes are:\n{previous_image_themes}\n\n"
     if chatbot.name != "Minxie":
         logger.info("Not making chat image because we are not using Claude")
         return
@@ -433,10 +437,7 @@ capture the essence of the conversation themes and be a unique and artistic inte
 5. You could choose a single artistic movement from across the visual arts, historic or modern, to inspire the image - cinematic, film noir, sci-fi, modernist, surrealist, anime, charcoal illustration - the world is your oyster!
 6. The prompt should be highly detailed and imaginative, as suits a Stable Diffusion image model.
 
-Please try and avoid repeating themes from the previous image descriptions.  Previously used themes are:
-<previous-themes>
-{previous_themes}
-</previous-themes>
+{previous_image_themes}
 
 Examples of good Stable Diffusion model prompts :
 
@@ -468,7 +469,8 @@ Please respond with the following JSON object with the prompt for the Stable Dif
             logger.error(f'Error decoding JSON: {response.message}')
             decoded_response = {
                 "prompt": response.message,
-                "themes": []
+                "themes": [],
+                "reasoning": ""
             }
         logger.info("Asking model to make a chat image")
         llm_chat_prompt = decoded_response["prompt"]
@@ -535,11 +537,17 @@ Please respond with the following JSON object with the prompt for the Stable Dif
             await channel.send(f"Sorry, I tried to make an image but I failed (probably because of naughty words - tsk).")
             return
     previous_image_description = response.message
-    previous_themes.append(llm_chat_themes)
+    previous_image_themes += "\n" + ", ".join(llm_chat_themes) + "\n"
     image = requests.get(image_url)
     today_string = datetime.now().strftime("%Y-%m-%d")
     discord_file = File(io.BytesIO(image.content), filename=f'channel_summary_{today_string}.png')
     await channel.send(f'{response.message}\n_{chatbot.name}\'s chosen themes: {", ".join(llm_chat_themes)}_\n_Reasoning: {llm_chat_reasoning}_\nHidden prompt: _||{llm_chat_prompt}||_\n[Estimated cost: US$0.003]_', file=discord_file)
+    previous_theme_lines = previous_image_themes.split('\n')
+    previous_theme_lines = [x for x in previous_theme_lines if x]
+    # keep only the most recent 10 lines
+    previous_theme_lines = previous_theme_lines[-10:]
+    with open('previous_image_themes.txt', 'w') as file:
+        file.write("\n* ".join(previous_theme_lines))
 
 # Run the bot
 chatbot = get_chatbot()
