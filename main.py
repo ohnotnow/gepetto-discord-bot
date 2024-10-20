@@ -406,8 +406,12 @@ async def horror_chat():
 async def make_chat_image():
     logger.info("In make_chat_image")
     global previous_image_description
-    with open('previous_image_themes.txt', 'r') as file:
-        previous_image_themes = file.read()
+    try:
+        with open('previous_image_themes.txt', 'r') as file:
+            previous_image_themes = file.read()
+    except Exception as e:
+        logger.error(f'Error reading previous_image_themes.txt: {e}')
+        previous_image_themes = ""
     if previous_image_themes:
         previous_image_themes = f"Please try and avoid repeating themes from the previous image themes.  Previously used themes are:\n{previous_image_themes}\n\n"
     if chatbot.name != "Minxie":
@@ -546,8 +550,11 @@ Please respond with the following JSON object with the prompt for the Stable Dif
     previous_theme_lines = [x for x in previous_theme_lines if x]
     # keep only the most recent 10 lines
     previous_theme_lines = previous_theme_lines[-10:]
-    with open('previous_image_themes.txt', 'w') as file:
-        file.write("\n* ".join(previous_theme_lines))
+    try:
+        with open('previous_image_themes.txt', 'w') as file:
+            file.write("\n* ".join(previous_theme_lines))
+    except Exception as e:
+        logger.error(f'Error writing previous_image_themes.txt: {e}')
 
 # Run the bot
 chatbot = get_chatbot()
