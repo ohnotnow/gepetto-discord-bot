@@ -12,7 +12,7 @@ from enum import Enum
 import requests
 
 from gepetto import mistral, dalle, summary, weather, random_facts, birthdays, gpt, stats, groq, claude, ollama, guard, replicate, tools
-
+from gepetto import response as gepetto_response
 import discord
 from discord import File
 from discord.ext import commands, tasks
@@ -274,8 +274,8 @@ async def on_message(message):
             if '--o1' in question.lower():
                 question = question.lower().replace("--o1", "")
                 override_model = gpt.Model.GPT_O1_MINI.value[0]
-            else:
-                override_model = model_engine
+            if question.lower().startswith("!image"):
+                await make_chat_image()
             messages = build_messages(question, context, system_prompt=system_prompt)
             response = await chatbot.chat(messages, temperature=temperature, model=override_model, tools=tools.tool_list)
             if response.tool_calls:
@@ -537,9 +537,8 @@ Please respond with the following JSON object with the prompt for the Stable Dif
                 'content': f"Could you rephrase the following sentence to make it sound more like a jaded, cynical human who works as a programmer wrote it? You can reword and restructure it any way you like - just keep it succinct and keep the sentiment and tone. <sentence>{previous_image_description}</sentence>.  Please reply with only the reworded sentence as it will be sent directly to Discord as a message."
             }])
         except Exception as e:
-            logger.error(f'Error generating chat image response: {e}')
-            await channel.send(f"Sorry, I tried to make an image but I failed (probably because of naughty words - tsk).")
-            return
+            logger.info(f'Error generating chat image response: {e}')
+            response = gepetto_response.ChatResponse(message='Behold!', tokens=0, cost=0.0, model=chatbot.name)
     previous_image_description = response.message
     previous_image_themes += "\n" + ", ".join(llm_chat_themes) + "\n"
     image = requests.get(image_url)
