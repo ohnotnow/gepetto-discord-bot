@@ -13,6 +13,7 @@ async def generate_image(prompt, model="black-forest-labs/flux-schnell", aspect_
             "output_quality": output_quality,
             "prompt_upsampling": enhance_prompt,
             "disable_safety_checker": True,
+            "use_file_output": False
         }
     )
     if isinstance(output, list):
