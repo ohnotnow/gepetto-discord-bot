@@ -271,15 +271,20 @@ async def on_message(message):
                 system_prompt = None
             if message.author.bot:
                 question = question + ". Please be very concise, curt and to the point.  The user in this case is a discord bot."
+            if question.lower().startswith("!image"):
+                await make_chat_image()
+                return
             if '--o1' in question.lower():
                 question = question.lower().replace("--o1", "")
                 override_model = gpt.Model.GPT_O1_MINI.value[0]
             else:
                 override_model = None
-            if question.lower().startswith("!image"):
-                await make_chat_image()
+
+            optional_args = {}
+            if override_model is not None:
+                optional_args['model'] = override_model
             messages = build_messages(question, context, system_prompt=system_prompt)
-            response = await chatbot.chat(messages, temperature=temperature, model=override_model, tools=tools.tool_list)
+            response = await chatbot.chat(messages, temperature=temperature, tools=tools.tool_list, **optional_args)
             if response.tool_calls:
                 tool_call = response.tool_calls[0]
                 arguments = json.loads(tool_call.function.arguments)
@@ -288,7 +293,7 @@ async def on_message(message):
                     recipe_url = arguments.get('url', '')
                     if ('example.com' in recipe_url) or ('http' not in question.lower()):
                         original_usage = response.usage
-                        response = await chatbot.chat(messages, temperature=temperature, model=override_model, tools=[])
+                        response = await chatbot.chat(messages, temperature=temperature, tools=[], **optional_args)
                         response = response.message.strip()[:1800] + "\n" + response.usage + "\n" + original_usage
                         await message.reply(f'{message.author.mention} {response}')
                     else:
