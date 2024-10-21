@@ -515,11 +515,11 @@ Please respond with the following JSON object with the prompt for the Stable Dif
                 extra_guidelines += "- Please make the image a little bit like a famous painting.\n"
         if random_1 > 0.9:
             if random.random() > 0.5:
-                llm_chat_prompt += "\n- If you can somehow shoehorn a grotesque reference to UK Politician Liz Truss into the image, please do so.\n"
+                extra_guidelines += "\n- If you can somehow shoehorn a grotesque reference to UK Politician Liz Truss into the image, please do so.\n"
             if random.random() > 0.5:
-                llm_chat_prompt += "\n- The image should be set in a Pork Market.\n"
+                extra_guidelines += "\n- The image should be set in a Pork Market.\n"
             if random.random() > 0.5:
-                llm_chat_prompt += "\n- The image should be reflective of a blood-curdling, gory, horror film.\n"
+                extra_guidelines += "\n- The image should be reflective of a blood-curdling, gory, horror film.\n"
         full_prompt = llm_chat_prompt + f"\n{extra_guidelines}"
         # await channel.send(f"I'm asking Dalle to make an image based on this prompt\n>{response.message}")
         # discord_file, prompt = await dalle.generate_image(combined_chat, return_prompt=True, style="vivid")
