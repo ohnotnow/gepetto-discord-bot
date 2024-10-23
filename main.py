@@ -560,8 +560,8 @@ Please respond with the following JSON object with the prompt for the Stable Dif
     logger.info("here4")
     message = f'{response.message}\n_{chatbot.name}\'s chosen themes: {", ".join(llm_chat_themes)}_\n_Reasoning: {llm_chat_reasoning}_\nHidden prompt: _||{llm_chat_prompt}||_\n'
     if len(message) > 1900:
-        message = message[:1900] + "\n_[Estimated cost: US$0.003]_"
-    await channel.send(message, file=discord_file)
+        message = message[:1900]
+    await channel.send(message + "\n_[Estimated cost: US$0.003]_", file=discord_file)
     logger.info("here5")
     previous_theme_lines = previous_image_themes.split('\n')
     previous_theme_lines = [x for x in previous_theme_lines if x]
