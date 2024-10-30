@@ -24,6 +24,7 @@ AVATAR_PATH="avatar.png"
 previous_image_description = "Here is my image based on recent chat in my Discord server!"
 previous_image_themes = "Dunno"
 previous_image_reasoning = "Dunno"
+previous_image_prompt = "Dunno"
 previous_themes = []
 horror_history = []
 
@@ -420,6 +421,7 @@ async def make_chat_image():
     global previous_image_description
     global previous_image_themes
     global previous_image_reasoning
+    global previous_image_prompt
 
     try:
         with open('previous_image_themes.txt', 'r') as file:
@@ -497,8 +499,9 @@ Please respond with the following JSON object with the prompt for the Stable Dif
         llm_chat_prompt = decoded_response["prompt"]
         llm_chat_themes = decoded_response["themes"]
         llm_chat_reasoning = decoded_response["reasoning"]
-        previous_image_themes = decoded_response["themes"]
-        previous_image_reasoning = decoded_response["reasoning"]
+        previous_image_prompt = llm_chat_prompt
+        previous_image_themes = llm_chat_themes
+        previous_image_reasoning = llm_chat_reasoning
         extra_guidelines = ""
         random_1 = random.random()
         random_2 = random.random()
@@ -568,7 +571,7 @@ Please respond with the following JSON object with the prompt for the Stable Dif
     today_string = datetime.now().strftime("%Y-%m-%d")
     discord_file = File(io.BytesIO(image.content), filename=f'channel_summary_{today_string}.png')
     logger.info("here4")
-    message = f'{response.message}\n_{chatbot.name}\'s chosen themes: {", ".join(llm_chat_themes)}_\n_Reasoning: {llm_chat_reasoning}_\nHidden prompt: _||{llm_chat_prompt}||_\n'
+    message = f'{response.message}\n_{chatbot.name}\'s chosen themes: {", ".join(llm_chat_themes)}_'
     if len(message) > 1900:
         message = message[:1900]
     await channel.send(message + "\n_[Estimated cost: US$0.003]_", file=discord_file)
