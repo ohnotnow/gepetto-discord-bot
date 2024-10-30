@@ -22,6 +22,8 @@ import feedparser
 
 AVATAR_PATH="avatar.png"
 previous_image_description = "Here is my image based on recent chat in my Discord server!"
+previous_image_themes = "Dunno"
+previous_image_reasoning = "Dunno"
 previous_themes = []
 horror_history = []
 
@@ -283,6 +285,9 @@ async def on_message(message):
             optional_args = {}
             if override_model is not None:
                 optional_args['model'] = override_model
+            if '--reasoning' in question.lower():
+                await message.reply(f'{message.author.mention} **Reasoning:** {previous_image_reasoning}\n**Themes:** {previous_image_themes}', mention_author=True)
+                return
             messages = build_messages(question, context, system_prompt=system_prompt)
             response = await chatbot.chat(messages, temperature=temperature, tools=tools.tool_list, **optional_args)
             if response.tool_calls:
@@ -413,6 +418,9 @@ async def horror_chat():
 async def make_chat_image():
     logger.info("In make_chat_image")
     global previous_image_description
+    global previous_image_themes
+    global previous_image_reasoning
+
     try:
         with open('previous_image_themes.txt', 'r') as file:
             previous_image_themes = file.read()
@@ -489,6 +497,8 @@ Please respond with the following JSON object with the prompt for the Stable Dif
         llm_chat_prompt = decoded_response["prompt"]
         llm_chat_themes = decoded_response["themes"]
         llm_chat_reasoning = decoded_response["reasoning"]
+        previous_image_themes = decoded_response["themes"]
+        previous_image_reasoning = decoded_response["reasoning"]
         extra_guidelines = ""
         random_1 = random.random()
         random_2 = random.random()
