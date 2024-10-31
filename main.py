@@ -571,7 +571,7 @@ Please respond with the following JSON object with the prompt for the Stable Dif
     today_string = datetime.now().strftime("%Y-%m-%d")
     discord_file = File(io.BytesIO(image.content), filename=f'channel_summary_{today_string}.png')
     logger.info("here4")
-    message = f'{response.message}\n_{chatbot.name}\'s chosen themes: {", ".join(llm_chat_themes)}_'
+    message = f'{response.message}\n_{chatbot.name}\'s chosen themes: _{", ".join(llm_chat_themes)}_'
     if len(message) > 1900:
         message = message[:1900]
     await channel.send(message + "\n_[Estimated cost: US$0.003]_", file=discord_file)
