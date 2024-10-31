@@ -576,7 +576,10 @@ Please respond with the following JSON object with the prompt for the Stable Dif
         message = message[:1900]
     await channel.send(message + "\n_[Estimated cost: US$0.003]_", file=discord_file)
     logger.info("here5")
-    previous_theme_lines = previous_image_themes.split('\n')
+    if isinstance(previous_image_themes, str):
+        previous_theme_lines = previous_image_themes.split('\n')
+    else:
+        previous_theme_lines = previous_image_themes
     previous_theme_lines = [x for x in previous_theme_lines if x]
     # keep only the most recent 10 lines
     previous_theme_lines = previous_theme_lines[-10:]
