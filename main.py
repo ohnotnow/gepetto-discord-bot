@@ -281,7 +281,6 @@ async def on_message(message):
                 override_model = gpt.Model.GPT_O1_MINI.value[0]
             else:
                 override_model = None
-
             optional_args = {}
             if override_model is not None:
                 optional_args['model'] = override_model
@@ -443,6 +442,7 @@ async def make_chat_image():
         response = await chatbot.chat([{ 'role': 'user', 'content': combined_chat }], temperature=1.0, json_mode=True)
         try:
             decoded_response = json.loads(response.message)
+            logger.info(f"Raw prompt response: {response.message}")
         except json.JSONDecodeError:
             logger.error(f'Error decoding JSON: {response.message}')
             decoded_response = {
@@ -454,6 +454,7 @@ async def make_chat_image():
         llm_chat_prompt = decoded_response["prompt"]
         llm_chat_themes = decoded_response["themes"]
         llm_chat_reasoning = decoded_response["reasoning"]
+        logger.info(f"Image themes: {llm_chat_themes}")
         previous_image_prompt = llm_chat_prompt
         previous_image_themes = llm_chat_themes
         previous_image_reasoning = llm_chat_reasoning
