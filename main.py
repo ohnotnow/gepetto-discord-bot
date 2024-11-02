@@ -24,6 +24,7 @@ AVATAR_PATH="avatar.png"
 previous_image_description = "Here is my image based on recent chat in my Discord server!"
 previous_image_reasoning = "Dunno"
 previous_image_prompt = "Dunno"
+previous_image_themes = ""
 previous_themes = []
 horror_history = []
 
@@ -418,6 +419,7 @@ async def make_chat_image():
     logger.info("In make_chat_image")
     global previous_image_description
     global previous_image_reasoning
+    global previous_image_themes
     global previous_image_prompt
 
     try:
@@ -426,6 +428,8 @@ async def make_chat_image():
     except Exception as e:
         logger.error(f'Error reading previous_image_themes.txt: {e}')
         previous_image_themes = ""
+    # strip any blank lines and only keep the latest 10 lines from the end of the file
+    previous_image_themes = "\n".join(previous_image_themes.splitlines()[-10:])
     if previous_image_themes:
         previous_image_themes = f"Please try and avoid repeating themes from the previous image themes.  Previously used themes are:\n{previous_image_themes}\n\n"
     if chatbot.name != "Minxie":
@@ -478,7 +482,7 @@ async def make_chat_image():
             response = gepetto_response.ChatResponse(message='Behold!', tokens=0, cost=0.0, model=chatbot.name)
     previous_image_description = response.message
     logger.info(f"Chat themes 1: {llm_chat_themes}")
-    previous_image_themes += "\n" + ", ".join(llm_chat_themes) + "\n"
+    previous_image_themes
     logger.info(f"Chat themes 2: {llm_chat_themes}")
     image = requests.get(image_url)
     today_string = datetime.now().strftime("%Y-%m-%d")
@@ -490,17 +494,8 @@ async def make_chat_image():
         message = message[:1900]
     logger.info(f"Chat themes 4: {llm_chat_themes}")
     await channel.send(f"{message}\n_[Estimated cost: US$0.003]_", file=discord_file)
-    if isinstance(previous_image_themes, str):
-        previous_theme_lines = previous_image_themes
-    else:
-        previous_theme_lines = previous_image_themes
-    previous_theme_lines = [x for x in previous_theme_lines if x]
-    previous_theme_lines = previous_theme_lines[-10:]
-    try:
-        with open('previous_image_themes.txt', 'w') as file:
-            file.write("\n* ".join(previous_theme_lines))
-    except Exception as e:
-        logger.error(f'Error writing previous_image_themes.txt: {e}')
+    with open('previous_image_themes.txt', 'a') as file:
+        file.write(f"\n{previous_image_themes}")
 
 # Run the bot
 chatbot = get_chatbot()
