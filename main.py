@@ -11,7 +11,7 @@ import pytz
 from enum import Enum
 import requests
 
-from gepetto import mistral, dalle, summary, weather, random_facts, birthdays, gpt, stats, groq, claude, ollama, guard, replicate, tools
+from gepetto import mistral, dalle, summary, weather, random_facts, birthdays, gpt, stats, groq, claude, ollama, guard, replicate, tools, images
 from gepetto import response as gepetto_response
 import discord
 from discord import File
@@ -22,7 +22,6 @@ import feedparser
 
 AVATAR_PATH="avatar.png"
 previous_image_description = "Here is my image based on recent chat in my Discord server!"
-previous_image_themes = "Dunno"
 previous_image_reasoning = "Dunno"
 previous_image_prompt = "Dunno"
 previous_themes = []
@@ -419,7 +418,6 @@ async def horror_chat():
 async def make_chat_image():
     logger.info("In make_chat_image")
     global previous_image_description
-    global previous_image_themes
     global previous_image_reasoning
     global previous_image_prompt
 
@@ -438,53 +436,10 @@ async def make_chat_image():
     channel = bot.get_channel(int(os.getenv('DISCORD_BOT_CHANNEL_ID', 'Invalid').strip()))
     async with channel.typing():
         history = await get_history_as_openai_messages(channel, limit=100, nsfw_filter=True, max_length=5000, include_timestamps=False)
-        # combined_chat = "Could you make me an image which takes just one or two of the themes contained in following transcript? Don't try and cover too many things in one image. Please make the image an artistic interpretation - not a literal image based on the summary. Be creative! Choose a single artistic movement from across the visual arts, historic or modern. The transcript is between adults - so if there has been any NSFW content or mentions of celebtrities, please just make an image a little like them but not *of* them.  Thanks!\n\n"
         chat_history = ""
         for message in history:
             chat_history += f"{message['content']}\n"
-        user_locations = os.getenv('USER_LOCATIONS', 'the UK towns of Bath and Manchester').strip()
-        combined_chat = f"""
-You will be given a Discord server transcript between UK-based Caucasian adult male IT workers.  Please do not misgender or
-misethnicise them.
-
-<chat-history>
-{chat_history}
-</chat-history>
-
-1. Identify 1-3 themes from the conversation which would be good to visualise and bring delight to the users.  These can be literal important themes, or a more subtle play on words referencing the themes.
-2. Create a descriptive and creative image prompt for a Stable Diffusion image model that incorporates the chosen theme(s).  It should
-capture the essence of the conversation themes and be a unique and artistic interpretation.  It could be a literal, or an abstract, or a comedic, or... representation of the theme(s).
-3. The users work as software developers, so they delight in clever and witty puns, wordplay and references.  You should delight in them too!
-4. The image should be visually interesting and appealing.
-5. You could choose a single artistic movement from across the visual arts, historic or modern, to inspire the image - cinematic, film noir, sci-fi, modernist, surrealist, anime, charcoal illustration - the world is your oyster!
-6. The prompt should be highly detailed and imaginative, as suits a Stable Diffusion image model.
-7. If it makes sense to use an outdoor location for the image, please choose between {user_locations}.
-
-{previous_image_themes}
-
-Examples of good Stable Diffusion model prompts :
-
-"a beautiful and powerful mysterious sorceress, smile, sitting on a rock, lightning magic, hat, detailed leather clothing with gemstones, dress, castle background, digital art, hyperrealistic, fantasy, dark art, artstation, highly detailed, sharp focus, sci-fi, dystopian, iridescent gold, studio lighting"
-
-"Moulin Rouge, cabaret style, burlesque, photograph of a gorgeous beautiful woman, slender toned body, at a burlesque club, highly detailed, posing, smoky room, dark lit, low key, alluring, seductive, muted colors, red color pop, rim light, lingerie, photorealistic, shot with professional DSLR camera, F1. 4, 1/800s, ISO 100, sharp focus, depth of field, cinematic composition"
-
-"A portrait of a woman with horns, split into two contrasting halves. One side is grayscale with intricate tattoos and a serious expression, while the other side is in vivid colors with a more intense and fierce look. The background is divided into gray and red, enhancing the contrast between the two halves. The overall style is edgy and artistic, blending elements of fantasy and modern tattoo art."
-
-"A candid photograph of a beautiful woman, looking away from the viewer, long straight dark blonde hair, light blue eyes, fair complexion, full lips, sitting in a comfy chair, looking out the window, snowing outside, wearing nothing, covered in a thin blanket, showing some cleavage, enjoying the view"
-
-"A verification selfie webcam pic of an attractive woman smiling. Holding up a sign written in blue ballpoint pen that says "KEEP THINGS REAL" on an crumpled index card with one hand. Potato quality. Indoors, night, Low light, no natural light. Compressed. Reddit selfie. Low quality."
-
-"Evening Love Song. Ornamental clouds.compose an evening love song;.a road leaves evasively..The new moon begins.a new chapter of our nights,.of those frail nights.we stretch out and which mingle.with these black horizontals...by Posuka Demizu, Arthur Rackham and Tony DiTerlizzi, meticulous, intricate, entangled, intricately detailed"
-
-Please respond with the following JSON object with the prompt for the Stable Diffusion image model and the themes you identified.
-
-{{
-    "prompt": "Your stable diffusion prompt here",
-    "themes": ["theme1", ...],
-    "reasoning": "Your reasoning for choosing the themes and prompt"
-}}
-
-"""
+        combined_chat = images.get_initial_chat_image_prompt(chat_history, previous_image_themes)
         response = await chatbot.chat([{ 'role': 'user', 'content': combined_chat }], temperature=1.0, json_mode=True)
         try:
             decoded_response = json.loads(response.message)
@@ -502,57 +457,15 @@ Please respond with the following JSON object with the prompt for the Stable Dif
         previous_image_prompt = llm_chat_prompt
         previous_image_themes = llm_chat_themes
         previous_image_reasoning = llm_chat_reasoning
-        extra_guidelines = ""
-        random_1 = random.random()
-        random_2 = random.random()
-        random_3 = random.random()
-        if random_2 > 0.9:
-            if random.random() > 0.9:
-                extra_guidelines += "- The image should be in the style of a medieval painting.\n"
-            elif random.random() > 0.8:
-                extra_guidelines += "- The image should be in the style of a 1950s budget sci-fi movie poster.\n"
-            elif random.random() > 0.7:
-                extra_guidelines += "- The image should echo the style of De Chirico.\n"
-            elif random.random() > 0.6:
-                extra_guidelines += "- The image should echo the style of Hieronymus Bosch.\n"
-            elif random.random() > 0.5:
-                extra_guidelines += "- The image should be in the style of a 1970s horror film poster.\n"
-            elif random.random() > 0.4:
-                extra_guidelines += "- The image should look like a still from a 1970s low-budget adult film that has been badly transferred to VHS.\n"
-            elif random.random() > 0.3:
-                extra_guidelines += "- Ideally echo the style of Eduard Munch.\n"
-            elif random.random() > 0.5:
-                extra_guidelines += f"- The image should be in the style of a instagram post IMG_{int(random.random() * 1000)}.CR2.\n"
-        if random_3 > 0.9:
-            visual_choice = random.random()
-            if visual_choice > 0.7:
-                extra_guidelines += "- The image should be wildly colourful, surreal and mind-bending.\n"
-            elif visual_choice > 0.4:
-                extra_guidelines += "- The image should be a single object, such as a vase or a teacup.\n"
-            elif visual_choice > 0.2:
-                extra_guidelines += "- The image should be in the style of a 1980s computer game.\n"
-            else:
-                extra_guidelines += "- Please make the image a little bit like a famous painting.\n"
-        if random_1 > 0.9:
-            if random.random() > 0.5:
-                extra_guidelines += "\n- If you can somehow shoehorn a grotesque reference to UK Politician Liz Truss into the image, please do so.\n"
-            if random.random() > 0.5:
-                extra_guidelines += "\n- The image should be set in a Pork Market.\n"
-            if random.random() > 0.5:
-                extra_guidelines += "\n- The image should be reflective of a blood-curdling, gory, horror film.\n"
+        extra_guidelines = images.get_extra_guidelines()
         full_prompt = llm_chat_prompt + f"\n{extra_guidelines}"
-        # await channel.send(f"I'm asking Dalle to make an image based on this prompt\n>{response.message}")
-        # discord_file, prompt = await dalle.generate_image(combined_chat, return_prompt=True, style="vivid")
+
         image_url = await replicate.generate_image(full_prompt, enhance_prompt=False)
         logger.info("Image URL: " + image_url)
         if not image_url:
-            logger.info('We did not get a file from dalle')
+            logger.info('We did not get a file from API')
             await channel.send(f"Sorry, I tried to make an image but I failed (probably because of naughty words - tsk).")
             return
-        # if discord_file is None:
-        #     logger.info('We did not get a file from dalle')
-        #     await channel.send(f"Sorry, I tried to make an image but I failed (probably because of naughty words - tsk).")
-        #     return
         try:
             logger.info('Asking chatbot to reword the image description')
             response = await chatbot.chat([{
@@ -563,27 +476,20 @@ Please respond with the following JSON object with the prompt for the Stable Dif
             logger.info(f'Error generating chat image response: {e}')
             response = gepetto_response.ChatResponse(message='Behold!', tokens=0, cost=0.0, model=chatbot.name)
     previous_image_description = response.message
-    logger.info("here1")
     previous_image_themes += "\n" + ", ".join(llm_chat_themes) + "\n"
-    logger.info("here2")
     image = requests.get(image_url)
-    logger.info("here3")
     today_string = datetime.now().strftime("%Y-%m-%d")
     discord_file = File(io.BytesIO(image.content), filename=f'channel_summary_{today_string}.png')
-    logger.info("here4")
-    message = f'{response.message}\n_{chatbot.name}\'s chosen themes: _{", ".join(llm_chat_themes)}_'
+    message = f'{response.message}\n{chatbot.name}\'s chosen themes: _{llm_chat_themes}_'
     if len(message) > 1900:
         message = message[:1900]
     await channel.send(message + "\n_[Estimated cost: US$0.003]_", file=discord_file)
-    logger.info("here5")
     if isinstance(previous_image_themes, str):
-        previous_theme_lines = previous_image_themes.split('\n')
+        previous_theme_lines = previous_image_themes
     else:
         previous_theme_lines = previous_image_themes
     previous_theme_lines = [x for x in previous_theme_lines if x]
-    # keep only the most recent 10 lines
     previous_theme_lines = previous_theme_lines[-10:]
-    logger.info("here6")
     try:
         with open('previous_image_themes.txt', 'w') as file:
             file.write("\n* ".join(previous_theme_lines))
