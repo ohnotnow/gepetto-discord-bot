@@ -446,7 +446,6 @@ async def make_chat_image():
         response = await chatbot.chat([{ 'role': 'user', 'content': combined_chat }], temperature=1.0, json_mode=True)
         try:
             decoded_response = json.loads(response.message)
-            logger.info(f"Raw prompt response: {response.message}")
         except json.JSONDecodeError:
             logger.error(f'Error decoding JSON: {response.message}')
             decoded_response = {
@@ -454,11 +453,9 @@ async def make_chat_image():
                 "themes": [],
                 "reasoning": ""
             }
-        logger.info("Asking model to make a chat image")
         llm_chat_prompt = decoded_response["prompt"]
         llm_chat_themes = decoded_response["themes"]
         llm_chat_reasoning = decoded_response["reasoning"]
-        logger.info(f"Image themes: {llm_chat_themes}")
         previous_image_prompt = llm_chat_prompt
         previous_image_themes = llm_chat_themes
         previous_image_reasoning = llm_chat_reasoning
@@ -472,7 +469,6 @@ async def make_chat_image():
             await channel.send(f"Sorry, I tried to make an image but I failed (probably because of naughty words - tsk).")
             return
         try:
-            logger.info('Asking chatbot to reword the image description')
             response = await chatbot.chat([{
                 'role': 'user',
                 'content': f"Could you rephrase the following sentence to make it sound more like a jaded, cynical human who works as a programmer wrote it? You can reword and restructure it any way you like - just keep it succinct and keep the sentiment and tone. <sentence>{previous_image_description}</sentence>.  Please reply with only the reworded sentence as it will be sent directly to Discord as a message."
@@ -481,18 +477,13 @@ async def make_chat_image():
             logger.info(f'Error generating chat image response: {e}')
             response = gepetto_response.ChatResponse(message='Behold!', tokens=0, cost=0.0, model=chatbot.name)
     previous_image_description = response.message
-    logger.info(f"Chat themes 1: {llm_chat_themes}")
     previous_image_themes
-    logger.info(f"Chat themes 2: {llm_chat_themes}")
     image = requests.get(image_url)
     today_string = datetime.now().strftime("%Y-%m-%d")
     discord_file = File(io.BytesIO(image.content), filename=f'channel_summary_{today_string}.png')
     message = f'{response.message}\n{chatbot.name}\'s chosen themes: _{llm_chat_themes}_'
-    logger.info(f"Chat themes 3: {llm_chat_themes}")
-    logger.info(f"Message: {message}")
     if len(message) > 1900:
         message = message[:1900]
-    logger.info(f"Chat themes 4: {llm_chat_themes}")
     await channel.send(f"{message}\n_[Estimated cost: US$0.003]_", file=discord_file)
     with open('previous_image_themes.txt', 'a') as file:
         file.write(f"\n{previous_image_themes}")
