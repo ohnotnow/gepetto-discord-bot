@@ -477,15 +477,18 @@ async def make_chat_image():
             logger.info(f'Error generating chat image response: {e}')
             response = gepetto_response.ChatResponse(message='Behold!', tokens=0, cost=0.0, model=chatbot.name)
     previous_image_description = response.message
+    logger.info(f"Chat themes 1: {llm_chat_themes}")
     previous_image_themes += "\n" + ", ".join(llm_chat_themes) + "\n"
+    logger.info(f"Chat themes 2: {llm_chat_themes}")
     image = requests.get(image_url)
     today_string = datetime.now().strftime("%Y-%m-%d")
     discord_file = File(io.BytesIO(image.content), filename=f'channel_summary_{today_string}.png')
     message = f'{response.message}\n{chatbot.name}\'s chosen themes: _{llm_chat_themes}_'
+    logger.info(f"Chat themes 3: {llm_chat_themes}")
     logger.info(f"Message: {message}")
-    logger.info(f"Image themes: {llm_chat_themes}")
     if len(message) > 1900:
         message = message[:1900]
+    logger.info(f"Chat themes 4: {llm_chat_themes}")
     await channel.send(f"{message}\n_[Estimated cost: US$0.003]_", file=discord_file)
     if isinstance(previous_image_themes, str):
         previous_theme_lines = previous_image_themes
