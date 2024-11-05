@@ -9,6 +9,7 @@ class Model(Enum):
     CLAUDE_3_HAIKU = ('claude-3-haiku-20240229', 0.25, 1.25)
     CLAUDE_3_SONNET = ('claude-3-sonnet-20240229', 3.00, 15.00)
     CLAUDE_35_SONNET = ('claude-3-5-sonnet-20241022', 3.00, 15.00)
+    CLAUDE_35_HAIKU = ('claude-3-5-haiku-20241022', 1.00, 5.00)
     # CLAUDE_35_SONNET = ('claude-3-5-sonnet-20240620', 3.00, 15.00)
     CLAUDE_3_OPUS = ('claude-3-opus-20240307', 15.00, 75.00)
 
@@ -43,11 +44,16 @@ def anthropic_tool_call_to_openai(anthropic_tool_call):
 class ClaudeModel():
     name = "Minxie"
     uses_logs = False
-    def get_token_price(self, token_count, direction="output", model_engine="claude-3-5-sonnet-20241022"):
+    model = 'claude-3-5-haiku-20241022'
+
+
+    def get_token_price(self, token_count, direction="output", model_engine=None):
         token_price_input = 0
         token_price_output = 0
+        if not model_engine:
+            model_engine = self.model
         for model in Model:
-            if model_engine.startswith(model.value[0]):
+            if model_engine == model.value[0]:
                 token_price_input = model.value[1] / 1000000
                 token_price_output = model.value[2] / 1000000
                 break
@@ -55,7 +61,7 @@ class ClaudeModel():
             return round(token_price_input * token_count, 4)
         return round(token_price_output * token_count, 4)
 
-    async def chat(self, messages, temperature=0.7, model="claude-3-5-sonnet-20241022", json_mode=False, tools=[]):
+    async def chat(self, messages, temperature=0.7, model=None, json_mode=False, tools=[]):
         """Chat with the model.
 
         Args:
@@ -67,6 +73,8 @@ class ClaudeModel():
             tokens: The number of tokens used.
             cost: The estimated cost of the request.
         """
+        if not model:
+            model = self.model
         api_key = os.getenv("CLAUDE_API_KEY")
         client = anthropic.Anthropic(
             api_key=api_key,

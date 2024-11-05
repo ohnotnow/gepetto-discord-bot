@@ -490,5 +490,7 @@ async def make_chat_image():
 
 # Run the bot
 chatbot = get_chatbot()
+if os.getenv("DISCORD_BOT_MODEL", None):
+    chatbot.model = os.getenv("DISCORD_BOT_MODEL")
 guard = guard.BotGuard()
 bot.run(os.getenv("DISCORD_BOT_TOKEN", 'not_set'))
