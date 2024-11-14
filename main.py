@@ -493,4 +493,5 @@ chatbot = get_chatbot()
 if os.getenv("DISCORD_BOT_MODEL", None):
     chatbot.model = os.getenv("DISCORD_BOT_MODEL")
 guard = guard.BotGuard()
+logger.info(f"Starting discord bot - date time in python is {datetime.now()}")
 bot.run(os.getenv("DISCORD_BOT_TOKEN", 'not_set'))
