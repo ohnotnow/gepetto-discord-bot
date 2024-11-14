@@ -4,6 +4,9 @@ from datetime import datetime
 def get_initial_chat_image_prompt(chat_history: str, previous_image_themes: str) -> str:
     user_locations = os.getenv('USER_LOCATIONS', 'the UK towns of Bath and Manchester').strip()
     today_string = datetime.now().strftime("%Y-%m-%d")
+    location_guidance = ""
+    if random.random() > 0.9:
+        location_guidance = f"8. If it makes sense to use an outdoor location for the image, please choose between {user_locations}."
     combined_chat = f"""
 You will be given a Discord server transcript between UK-based Caucasian adult male IT workers.  Please do not misgender or
 misethnicise them.
@@ -19,8 +22,8 @@ capture the essence of the conversation themes and be a unique and artistic inte
 4. The image should be visually interesting and appealing.
 5. You could choose a single artistic movement from across the visual arts, historic or modern, to inspire the image - cinematic, film noir, sci-fi, modernist, surrealist, anime, charcoal illustration - the world is your oyster!
 6. The prompt should be highly detailed and imaginative, as suits a Stable Diffusion image model.
-7. If it makes sense to use an outdoor location for the image, please choose between {user_locations}.
-8. If todays date ({today_string}) seems significant to people in the UK, please use it in your prompt.
+7. If todays date ({today_string}) seems significant to people in the UK, please use it in your prompt.
+{location_guidance}
 
 {previous_image_themes}
 
