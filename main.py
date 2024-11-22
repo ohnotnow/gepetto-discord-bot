@@ -11,7 +11,7 @@ import pytz
 from enum import Enum
 import requests
 
-from gepetto import mistral, dalle, summary, weather, random_facts, birthdays, gpt, stats, groq, claude, ollama, guard, replicate, tools, images
+from gepetto import mistral, dalle, summary, weather, random_facts, birthdays, gpt, stats, groq, claude, ollama, guard, replicate, tools, images, gemini
 from gepetto import response as gepetto_response
 import discord
 from discord import File
@@ -68,6 +68,8 @@ def get_chatbot():
         chatbot = claude.ClaudeModel()
     elif os.getenv("BOT_PROVIDER") == 'ollama':
         chatbot = ollama.OllamaModel()
+    elif os.getenv("BOT_PROVIDER") == 'gemini':
+        chatbot = gemini.GeminiModel()
     else:
         chatbot = gpt.GPTModel()
     return chatbot
