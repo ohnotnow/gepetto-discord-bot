@@ -7,4 +7,5 @@ feedparser==6.0.10
 trafilatura==1.8.1
 groq
 anthropic
+google-generativeai
 replicate==0.32.1
