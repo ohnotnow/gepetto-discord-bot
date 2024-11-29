@@ -435,8 +435,8 @@ async def make_chat_image():
     previous_image_themes = "\n".join(previous_image_themes.splitlines()[-10:])
     if previous_image_themes:
         previous_image_themes = f"Please try and avoid repeating themes from the previous image themes.  Previously used themes are:\n{previous_image_themes}\n\n"
-    if chatbot.name != "Minxie":
-        logger.info("Not making chat image because we are not using Claude")
+    if not os.getenv("CHAT_IMAGE_ENABLED", False):
+        logger.info("Not making chat image because CHAT_IMAGE_ENABLED is not set")
         return
     # logger.info('Generating chat image using model: ' + type(chatbot).__name__)
     channel = bot.get_channel(int(os.getenv('DISCORD_BOT_CHANNEL_ID', 'Invalid').strip()))
