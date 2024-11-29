@@ -42,6 +42,7 @@ server_id = os.getenv("DISCORD_SERVER_ID", "not_set")
 model_engine = os.getenv("OPENAI_MODEL_ENGINE", gpt.Model.GPT_4_OMNI.value[0])
 openai.api_key = os.getenv("OPENAI_API_KEY")
 location = os.getenv('BOT_LOCATION', 'dunno')
+chat_image_hour = int(os.getenv('CHAT_IMAGE_HOUR', 17))
 
 
 
@@ -417,7 +418,7 @@ async def horror_chat():
     await channel.send(f"{response.message[:1900]}\n{response.usage}")
 
 
-@tasks.loop(time=time(hour=17, tzinfo=pytz.timezone('Europe/London')))
+@tasks.loop(time=time(hour=chat_image_hour, tzinfo=pytz.timezone('Europe/London')))
 async def make_chat_image():
     logger.info("In make_chat_image")
     global previous_image_description
