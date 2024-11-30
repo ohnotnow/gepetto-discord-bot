@@ -205,7 +205,8 @@ async def summarise_sentry_issue(discord_message: discord.Message, url: str) -> 
         },
     ]
     response = await chatbot.chat(messages, temperature=1.0)
-    await discord_message.reply(f'{discord_message.author.mention} {response.message}\n{response.usage}', mention_author=True)
+    message = response.message.strip()[:1800] + "\n" + response.usage
+    await discord_message.reply(f'{discord_message.author.mention} {message}', mention_author=True)
 
 async def summarise_webpage_content(discord_message: discord.Message, prompt: str, url: str) -> None:
     if 'sentry.io' in url:
