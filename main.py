@@ -462,7 +462,15 @@ async def make_chat_image():
     # logger.info('Generating chat image using model: ' + type(chatbot).__name__)
     channel = bot.get_channel(int(os.getenv('DISCORD_BOT_CHANNEL_ID', 'Invalid').strip()))
     async with channel.typing():
-        history = await get_history_as_openai_messages(channel, limit=100, nsfw_filter=True, max_length=5000, include_timestamps=False)
+        history = await get_history_as_openai_messages(channel, limit=100, nsfw_filter=True, max_length=5000, include_timestamps=False, since_hours=8)
+        if len(history) < 1:
+            response = await chatbot.chat([{
+                'role': 'user',
+                'content': f"Could you please write a sentence or two about how quiet the chat is in this discord server today?  Please reply with only the sentence as it will be sent directly to Discord as a message."
+            }])
+            await channel.send(f"{response.message}\n{chatbot.name}")
+            return
+
         chat_history = ""
         for message in history:
             chat_history += f"{message['content']}\n"
