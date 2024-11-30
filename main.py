@@ -486,7 +486,7 @@ async def make_chat_image():
         extra_guidelines = images.get_extra_guidelines()
         full_prompt = llm_chat_prompt + f"\n{extra_guidelines}"
 
-        image_url = await replicate.generate_image(full_prompt, enhance_prompt=False)
+        image_url = await replicate.generate_image(full_prompt, enhance_prompt=False, model="nvidia/sana:88312dcb9eaa543d7f8721e092053e8bb901a45a5d3c63c84e0a5aa7c247df33")
         logger.info("Image URL: " + image_url)
         if not image_url:
             logger.info('We did not get a file from API')
