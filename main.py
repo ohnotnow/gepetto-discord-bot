@@ -332,7 +332,7 @@ async def on_message(message):
                 elif fname == 'summarise_webpage_content':
                     await summarise_webpage_content(message, arguments.get('prompt', ''), arguments.get('url', ''))
                 elif fname == 'create_image':
-                    await create_image(message, arguments.get('prompt', ''))
+                    await create_image(message, arguments.get('prompt', ''), model="nvidia/sana:88312dcb9eaa543d7f8721e092053e8bb901a45a5d3c63c84e0a5aa7c247df33")
                 else:
                     logger.info(f'Unknown tool call: {fname}')
                     await message.reply(f'{message.author.mention} I am a silly sausage and don\'t know how to do that.', mention_author=True)
