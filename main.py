@@ -11,7 +11,7 @@ import pytz
 from enum import Enum
 import requests
 
-from gepetto import mistral, dalle, summary, weather, random_facts, birthdays, gpt, stats, groq, claude, ollama, guard, replicate, tools, images, gemini
+from gepetto import mistral, dalle, summary, weather, random_facts, birthdays, gpt, stats, groq, claude, ollama, guard, replicate, tools, images, gemini, sentry
 from gepetto import response as gepetto_response
 import discord
 from discord import File
@@ -195,7 +195,22 @@ async def get_weather_forecast(discord_message: discord.Message, prompt: str, lo
     forecast = await weather.get_friendly_forecast(prompt, chatbot, locations)
     await discord_message.reply(f'{discord_message.author.mention} {forecast}', mention_author=True)
 
+async def summarise_sentry_issue(discord_message: discord.Message, url: str) -> None:
+    issue_details, llm_prompt = await sentry.process_sentry_issue(url)
+    await discord_message.reply(f'{discord_message.author.mention} {issue_details}', mention_author=True)
+    messages = [
+        {
+            'role': 'user',
+            'content': f'{llm_prompt}'
+        },
+    ]
+    response = await chatbot.chat(messages, temperature=1.0)
+    await discord_message.reply(f'{discord_message.author.mention} {response.message}\n{response.usage}', mention_author=True)
+
 async def summarise_webpage_content(discord_message: discord.Message, prompt: str, url: str) -> None:
+    if 'sentry.io' in url:
+        await summarise_sentry_issue(discord_message, url)
+        return
     original_text = await summary.get_text(url)
     if len(original_text) > 10000:
         logger.info(f"Original text to summarise is too long, truncating to 10000 characters")
