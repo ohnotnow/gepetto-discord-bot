@@ -14,6 +14,7 @@ async def generate_image(prompt, model="black-forest-labs/flux-schnell", aspect_
             "disable_safety_checker": True,
         }
     else:
+        # default to sana model format input parameters
         input = {
             "width": 1024,
             "height": 1024,
