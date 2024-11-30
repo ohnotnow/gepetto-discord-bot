@@ -200,6 +200,10 @@ async def summarise_sentry_issue(discord_message: discord.Message, url: str) -> 
     await discord_message.reply(f'{discord_message.author.mention} {issue_details}', mention_author=True)
     messages = [
         {
+            'role': 'system',
+            'content': 'You are a an expert in debugging and analysing software issues.  You will be given a short overview of an issue from Sentry.  Your personality should be professional, but also a little jaded and possibly sarcastic.'
+        },
+        {
             'role': 'user',
             'content': f'{llm_prompt}'
         },

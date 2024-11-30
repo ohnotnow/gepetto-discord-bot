@@ -155,7 +155,7 @@ def generate_llm_prompt(data: dict) -> str:
         ) +
         f"\n\n**Culprit**: {data['culprit']}\n"
         f"**URL**: {data['url']}\n\n"
-        "Can you provide targetted, concise insights into what might be causing this issue and suggest debugging steps for an experienced developer?"
+        "Can you provide targetted, **brief** and **concise** insights into what might be causing this issue and suggest debugging steps for an experienced developer?  Your response will be sent to a Discord server, so it **must** be quite short."
     )
     return prompt
 
