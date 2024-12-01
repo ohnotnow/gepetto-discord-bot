@@ -464,11 +464,13 @@ async def make_chat_image():
     async with channel.typing():
         history = await get_history_as_openai_messages(channel, limit=100, nsfw_filter=True, max_length=5000, include_timestamps=False, since_hours=8)
         if len(history) < 1:
+            # get the date as "Sunday, 24th November 2024"
+            date_string = datetime.now().strftime("%A, %d%^%B %Y")
             response = await chatbot.chat([{
                 'role': 'user',
-                'content': f"Could you please write a sentence or two about how quiet the chat is in this discord server today?  Please reply with only the sentence as it will be sent directly to Discord as a message."
+                'content': f"Could you please write a sentence or two about how quiet the chat is in this discord server today ({date_string})?  Please reply with only the sentence as it will be sent directly to Discord as a message."
             }])
-            await channel.send(f"{response.message}\n{chatbot.name}")
+            await channel.send(f"{response.message}")
             return
 
         chat_history = ""
