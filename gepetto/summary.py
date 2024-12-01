@@ -7,9 +7,15 @@ from trafilatura import fetch_url, extract
 from trafilatura.settings import DEFAULT_CONFIG
 from copy import deepcopy
 
+request_headers = {
+    "User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36",
+    "X-Browser-Channel": "stable",
+    "X-Browser-Copyright": "Copyright 2024 Google LLC. All rights reserved."
+}
+
 def get_text_from_pdf(url: str) -> str:
     try:
-        response = requests.get(url)
+        response = requests.get(url, headers=request_headers)
         file = io.BytesIO(response.content)
         pdf_reader = PyPDF2.PdfReader(file)
         text = ""
@@ -67,7 +73,7 @@ async def get_text(url: str) -> str:
             page_text = get_text_from_pdf(url_string)[:10000]
         else:
             my_config = deepcopy(DEFAULT_CONFIG)
-            my_config['DEFAULT']['user_agent'] = 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10.15; rv:131.0) Gecko/20100101 Firefox/131.0'
+            my_config['DEFAULT']['user_agent'] = request_headers['User-Agent']
             downloaded = fetch_url(url_string, config=my_config)
             if downloaded is None:
                 return f"Sorry, I couldn't download content from the URL {url_string}."
