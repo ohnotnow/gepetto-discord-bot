@@ -468,7 +468,7 @@ async def make_chat_image():
             date_string = datetime.now().strftime("%A, %d%^%B %Y")
             response = await chatbot.chat([{
                 'role': 'user',
-                'content': f"Could you please write a sentence or two about how quiet the chat is in this discord server today ({date_string})?  Please reply with only the sentence as it will be sent directly to Discord as a message."
+                'content': f"Could you please write a sentence or two about how quiet the chat is in this discord server today ({date_string})?  If the date looks like a weekend, or a holiday, then take that into account when writing your response.  Please reply with only the sentence as it will be sent directly to Discord as a message."
             }])
             await channel.send(f"{response.message}")
             return
