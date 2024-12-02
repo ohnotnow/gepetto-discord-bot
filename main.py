@@ -393,8 +393,8 @@ async def horror_chat():
         logger.info("Not doing horror chat because we did it recently")
         return
     logger.info("In horror chat")
-    if not isinstance(chatbot, claude.ClaudeModel):
-        logger.info("Not doing horror chat because we are not appropriate models")
+    if not os.getenv("FEATURE_HORROR_CHAT", False):
+        logger.info("Not doing horror chat because FEATURE_HORROR_CHAT is not set")
         return
     if random.random() > 0.1:
         logger.info("Not doing horror chat because random number is too high")
