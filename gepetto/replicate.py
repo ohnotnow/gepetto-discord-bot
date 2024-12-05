@@ -25,6 +25,7 @@ async def generate_image(prompt, model="black-forest-labs/flux-schnell", aspect_
             "num_inference_steps": 18
         }
 
+    print(f"Generating image with model: {model}")
     output = await replicate.async_run(
         model,
         input=input,

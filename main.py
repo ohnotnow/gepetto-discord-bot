@@ -459,9 +459,11 @@ async def make_chat_image():
     if not os.getenv("CHAT_IMAGE_ENABLED", False):
         logger.info("Not making chat image because CHAT_IMAGE_ENABLED is not set")
         return
-    image_model = os.getenv("IMAGE_MODEL", "black-forest-labs/flux-schnell")
+    #image_model = os.getenv("IMAGE_MODEL", "black-forest-labs/flux-schnell")
+    image_model = "black-forest-labs/flux-schnell"
     # logger.info('Generating chat image using model: ' + type(chatbot).__name__)
     channel = bot.get_channel(int(os.getenv('DISCORD_BOT_CHANNEL_ID', 'Invalid').strip()))
+    logger.info(f"Generating chat image with model: {image_model}")
     async with channel.typing():
         history = await get_history_as_openai_messages(channel, limit=100, nsfw_filter=True, max_length=5000, include_timestamps=False, since_hours=8)
         if len(history) < 2:
@@ -481,6 +483,7 @@ async def make_chat_image():
         chat_history = ""
         for message in history:
             chat_history += f"{message['content']}\n"
+        logger.info(f"Asking for chat prompt")
         combined_chat = images.get_initial_chat_image_prompt(chat_history, previous_image_themes)
         response = await chatbot.chat([{ 'role': 'user', 'content': combined_chat }], temperature=1.0, json_mode=True)
         try:
@@ -501,6 +504,7 @@ async def make_chat_image():
         extra_guidelines = images.get_extra_guidelines()
         full_prompt = llm_chat_prompt + f"\n{extra_guidelines}"
 
+        logger.info(f"Calling replicate to generate image")
         image_url = await replicate.generate_image(full_prompt, enhance_prompt=False, model=image_model)
         logger.info("Image URL: " + image_url)
         if not image_url:
