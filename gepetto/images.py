@@ -8,7 +8,7 @@ def get_initial_chat_image_prompt(chat_history: str, previous_image_themes: str)
     if random.random() > 0.9:
         location_guidance = f"8. If it makes sense to use an outdoor location for the image, please choose between {user_locations}."
     combined_chat = f"""
-You will be given a Discord server transcript between UK-based Caucasian adult male IT workers.  Please do not misgender or
+You will be given a Discord server transcript between {os.getenv('USER_DESCRIPTIONS', 'UK-based Caucasian adult male IT workers')}.  Please do not misgender or
 misethnicise them.
 
 <chat-history>
