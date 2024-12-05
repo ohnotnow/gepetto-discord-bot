@@ -459,6 +459,7 @@ async def make_chat_image():
     if not os.getenv("CHAT_IMAGE_ENABLED", False):
         logger.info("Not making chat image because CHAT_IMAGE_ENABLED is not set")
         return
+    image_model = os.getenv("IMAGE_MODEL", "black-forest-labs/flux-schnell")
     # logger.info('Generating chat image using model: ' + type(chatbot).__name__)
     channel = bot.get_channel(int(os.getenv('DISCORD_BOT_CHANNEL_ID', 'Invalid').strip()))
     async with channel.typing():
@@ -500,7 +501,7 @@ async def make_chat_image():
         extra_guidelines = images.get_extra_guidelines()
         full_prompt = llm_chat_prompt + f"\n{extra_guidelines}"
 
-        image_url = await replicate.generate_image(full_prompt, enhance_prompt=False, model="nvidia/sana:88312dcb9eaa543d7f8721e092053e8bb901a45a5d3c63c84e0a5aa7c247df33")
+        image_url = await replicate.generate_image(full_prompt, enhance_prompt=False, model=image_model)
         logger.info("Image URL: " + image_url)
         if not image_url:
             logger.info('We did not get a file from API')
