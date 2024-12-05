@@ -485,7 +485,9 @@ async def make_chat_image():
             chat_history += f"{message['content']}\n"
         logger.info(f"Asking for chat prompt")
         combined_chat = images.get_initial_chat_image_prompt(chat_history, previous_image_themes)
-        response = await chatbot.chat([{ 'role': 'user', 'content': combined_chat }], temperature=1.0, json_mode=True)
+        prompt_bot = claude.ClaudeModel()
+        response = await prompt_bot.chat([{ 'role': 'user', 'content': combined_chat }], temperature=1.0, json_mode=True)
+        # response = await chatbot.chat([{ 'role': 'user', 'content': combined_chat }], temperature=1.0, json_mode=True)
         try:
             decoded_response = json.loads(response.message)
         except json.JSONDecodeError:

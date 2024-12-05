@@ -89,7 +89,7 @@ class ClaudeModel():
         params = {
             "model": model,
             "max_tokens": 1000,
-            "temperature": 0,
+            "temperature": temperature,
             "system": system_prompt,
             "messages": claude_messages
         }
