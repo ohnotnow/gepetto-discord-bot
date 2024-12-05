@@ -310,7 +310,7 @@ async def on_message(message):
             if override_model is not None:
                 optional_args['model'] = override_model
             if '--reasoning' in question.lower():
-                await message.reply(f'{message.author.mention} **Reasoning:** {previous_image_reasoning}\n**Themes:** {previous_image_themes}', mention_author=True)
+                await message.reply(f'{message.author.mention} **Reasoning:** {previous_image_reasoning}\n**Themes:** {previous_image_themes}\n**Image Prompt:** {previous_image_prompt}', mention_author=True)
                 return
             messages = build_messages(question, context, system_prompt=system_prompt)
             response = await chatbot.chat(messages, temperature=temperature, tools=tools.tool_list, **optional_args)
