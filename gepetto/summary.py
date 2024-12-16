@@ -55,7 +55,7 @@ async def get_text(url: str) -> str:
         page_text = ' '.join(transcript_text)
         if "The copyright belongs to Google LLC" in page_text:
             page_text = "Could not get the transcript - possibly I am being geoblocked"
-        page_text = page_text[:12000]
+
     else:
         url_match = re.search(r"http[s]?://(?:[a-zA-Z]|[0-9]|[$-_@.&+]|[!*\\(\\),]|(?:%[0-9a-fA-F][0-9a-fA-F]))+", url)
         url_string = url_match.group(0) if url_match else None
@@ -70,7 +70,7 @@ async def get_text(url: str) -> str:
             if trailing_text:
                 prompt = trailing_text
         if url_string.endswith('.pdf'):
-            page_text = get_text_from_pdf(url_string)[:10000]
+            page_text = get_text_from_pdf(url_string)
         else:
             my_config = deepcopy(DEFAULT_CONFIG)
             my_config['DEFAULT']['user_agent'] = request_headers['User-Agent']

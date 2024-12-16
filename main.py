@@ -217,9 +217,11 @@ async def summarise_webpage_content(discord_message: discord.Message, prompt: st
         await summarise_sentry_issue(discord_message, url)
         return
     original_text = await summary.get_text(url)
-    if len(original_text) > 10000:
-        logger.info(f"Original text to summarise is too long, truncating to 10000 characters")
-        original_text = original_text[:10000]
+    # split the original_text into words, then truncate to max of 12000 words
+    words = original_text.split()
+    if len(words) > 12000:
+        logger.info(f"Original text to summarise is too long, truncating to 12000 words")
+        original_text = ' '.join(words[:12000])
         was_truncated = True
     else:
         was_truncated = False
