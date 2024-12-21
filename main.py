@@ -466,13 +466,15 @@ async def make_chat_image():
     # logger.info('Generating chat image using model: ' + type(chatbot).__name__)
     channel = bot.get_channel(int(os.getenv('DISCORD_BOT_CHANNEL_ID', 'Invalid').strip()))
     logger.info(f"Generating chat image with model: {image_model}")
+
+    # check if today is a weekend or obvious holiday
+    if datetime.now().weekday() >= 5 or datetime.now().strftime("%B %d") in ["December 25", "December 26", "December 27", "December 28", "January 1", "January 2"]:
+        logger.info("Not making chat image because today is a weekend or obvious holiday")
+        return
+
     async with channel.typing():
         history = await get_history_as_openai_messages(channel, limit=100, nsfw_filter=True, max_length=5000, include_timestamps=False, since_hours=8)
         if len(history) < 2:
-            # check if today is a weekend or obvious holiday
-            if datetime.now().weekday() >= 5 or datetime.now().strftime("%B %d") in ["December 25", "December 26", "December 27", "December 28", "January 1", "January 2"]:
-                if random.random() < 0.9:
-                    return
             # get the date as, eg "Sunday, 24th November 2024"
             date_string = datetime.now().strftime("%A, %d%^%B %Y")
             response = await chatbot.chat([{
