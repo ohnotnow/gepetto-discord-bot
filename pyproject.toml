@@ -1,0 +1,21 @@
+[project]
+name = "gepetto-discord-bot"
+version = "0.1.0"
+description = "Add your description here"
+readme = "README.md"
+requires-python = ">=3.13"
+dependencies = [
+    "discord.py==2.3.0",
+    "openai==1.55.3",
+    "beautifulsoup4==4.12.2",
+    "youtube_transcript_api==0.6.1",
+    "pypdf2==3.0.1",
+    "feedparser==6.0.10",
+    "trafilatura==1.8.1",
+    "groq",
+    "anthropic",
+    "google-generativeai",
+    "replicate==0.32.1",
+    "pydantic-ai>=0.0.14",
+    "pydantic>=2.10.4",
+]
