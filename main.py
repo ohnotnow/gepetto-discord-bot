@@ -476,6 +476,9 @@ async def make_chat_image():
             if datetime.now().weekday() >= 5 or datetime.now().strftime("%B %d") in ["December 25", "December 26", "December 27", "December 28", "January 1", "January 2"]:
                 logger.info("Not making chat image because today is a weekend or obvious holiday")
                 return
+            if random.random() < 0.9:
+                logger.info("Not making a chat image or commentbecause there's no chat to speak of")
+                return
             date_string = datetime.now().strftime("%A, %d%^%B %Y")
             response = await chatbot.chat([{
                 'role': 'user',
