@@ -24,6 +24,8 @@ capture the essence of the conversation themes and be a unique and artistic inte
 6. The prompt should be highly detailed and imaginative, as suits a Stable Diffusion image model.
 7. If todays date ({today_string}) seems significant to people in the UK, please use it in your prompt.  If it is getting close to a holiday like Christmas also take that into account.
 {location_guidance}
+8. If the chat history is empty, then please make the prompt capture something about the date, the likely weather (the users
+are based in {user_locations}).  The users are all software developers and love nice food, interesting books, obscure sci-fi, cute cats.
 
 {previous_image_themes}
 
