@@ -463,6 +463,7 @@ async def make_chat_image():
         return
     #image_model = os.getenv("IMAGE_MODEL", "black-forest-labs/flux-schnell")
     image_model = "black-forest-labs/flux-schnell"
+    image_model = "bytedance/sdxl-lightning-4step:5599ed30703defd1d160a25a63321b4dec97101d98b4674bcc56e41f62f35637"
     # logger.info('Generating chat image using model: ' + type(chatbot).__name__)
     channel = bot.get_channel(int(os.getenv('DISCORD_BOT_CHANNEL_ID', 'Invalid').strip()))
     logger.info(f"Generating chat image with model: {image_model}")

@@ -13,6 +13,18 @@ async def generate_image(prompt, model="black-forest-labs/flux-schnell", aspect_
             "prompt_upsampling": enhance_prompt,
             "disable_safety_checker": True,
         }
+    elif model.startswith("bytedance/"):
+            input={
+            "width": 1024,
+            "height": 1024,
+            "prompt": prompt,
+            "scheduler": "K_EULER",
+            "num_outputs": 1,
+            "guidance_scale": 0,
+            "negative_prompt": "worst quality, low quality",
+            "num_inference_steps": 4,
+            "disable_safety_checker": True,
+    }
     else:
         # default to sana model format input parameters
         input = {
