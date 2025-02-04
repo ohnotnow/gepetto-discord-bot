@@ -8,11 +8,11 @@ class Model(Enum):
     GEMINI_1_5_FLASH = ('gemini-1.5-flash', 0.00, 0.00)
     GEMINI_1_5_PRO = ('gemini-1.5-pro', 0.00, 0.00)
     GEMINI_1_5_PRO_EXP = ('gemini-1.5-pro-exp', 0.00, 0.00)
-
+    GEMINI_2_0_FLASH_EXP = ('gemini-2.0-flash-exp', 0.00, 0.00)
 class GeminiModel():
     name = "Gemma"
     uses_logs = False
-    model = 'gemini-1.5-flash'
+    model = 'gemini-2.0-flash-exp'
 
     def get_token_price(self, token_count, direction="output", model_engine=None):
         token_price_input = 0
