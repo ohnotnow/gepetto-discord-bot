@@ -11,6 +11,7 @@ async def generate_image(prompt, model="black-forest-labs/flux-schnell", aspect_
     ]
     # pick a random model from the list
     model = random.choice(model_options)
+    print(f"Using model: {model}")
     if model.startswith("black-forest-labs/"):
         input = {
             "prompt": prompt,
