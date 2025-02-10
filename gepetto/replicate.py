@@ -56,4 +56,6 @@ async def generate_image(prompt, model="black-forest-labs/flux-schnell", aspect_
         image_url = output[0]
     else:
         image_url = output
-    return image_url, model
+    # strip any training :hash from the model name, eg nvidia/sana:c6b5d2b7459910fec94432e9e1203c3cdce92d6db20f714f1355747990b52fa6
+    model_name = model.split(":")[0]
+    return image_url, model_name
