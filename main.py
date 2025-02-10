@@ -512,8 +512,8 @@ async def make_chat_image():
         full_prompt = llm_chat_prompt + f"\n{extra_guidelines}"
 
         logger.info(f"Calling replicate to generate image")
-        image_url = await replicate.generate_image(full_prompt, enhance_prompt=False, model=image_model)
-        logger.info("Image URL: " + image_url)
+        image_url, model_name = await replicate.generate_image(full_prompt, enhance_prompt=False, model=image_model)
+        logger.info(f"Image URL: {image_url} - model: {model_name}")
         if not image_url:
             logger.info('We did not get a file from API')
             await channel.send(f"Sorry, I tried to make an image but I failed (probably because of naughty words - tsk).")
@@ -531,7 +531,7 @@ async def make_chat_image():
     image = requests.get(image_url)
     today_string = datetime.now().strftime("%Y-%m-%d")
     discord_file = File(io.BytesIO(image.content), filename=f'channel_summary_{today_string}.png')
-    message = f'{response.message}\n{chatbot.name}\'s chosen themes: _{", ".join(llm_chat_themes)}_'
+    message = f'{response.message}\n{chatbot.name}\'s chosen themes: _{", ".join(llm_chat_themes)}_\n[Model: {model_name}]'
     if len(message) > 1900:
         message = message[:1900]
     await channel.send(f"{message}\n_[Estimated cost: US$0.003]_", file=discord_file)

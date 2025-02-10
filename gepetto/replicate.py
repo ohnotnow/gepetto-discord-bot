@@ -56,4 +56,4 @@ async def generate_image(prompt, model="black-forest-labs/flux-schnell", aspect_
         image_url = output[0]
     else:
         image_url = output
-    return image_url
+    return image_url, model
