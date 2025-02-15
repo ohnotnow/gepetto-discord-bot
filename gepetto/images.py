@@ -27,7 +27,7 @@ misethnicise them.
 2. The image should be visually interesting and appealing.
 3. You could choose a single artistic movement from across the visual arts, historic or modern, to inspire the image - cinematic, film noir, sci-fi, modernist, surrealist, anime, charcoal illustration - the world is your oyster!
 4. The prompt should be highly detailed and imaginative, as suits a Stable Diffusion image model.
-5. If todays date ({today_string}) seems significant to people in the UK, please use it in your prompt.  But never mention Valentine's Day.
+5. If todays date ({today_string}) seems significant to people in the UK, please use it in your prompt.
 {location_guidance}
 
 {previous_image_themes}
