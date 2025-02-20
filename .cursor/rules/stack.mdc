@@ -1,0 +1,18 @@
+---
+description: 
+globs: 
+---
+
+# Project technology stack
+
+- We use Python 3.13
+- We use discord.py
+- We make heavy use of LLM calls using async calls
+- Please always follow the pythonic way of writing code
+
+## Project purpose
+
+This project is a Discord bot to utilise LLM's via API calls to let Discord users interact with the bot in
+a natural way.  The bot has various tools it can call on, such as weather forecasts, image generation, web-page
+summarisation.
+

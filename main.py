@@ -490,18 +490,19 @@ async def make_chat_image():
             chat_history += f"{message['content']}\n"
         logger.info(f"Asking for chat prompt")
         combined_chat = images.get_initial_chat_image_prompt(chat_history, previous_image_themes)
-        prompt_bot = claude.ClaudeModel()
-        response = await prompt_bot.chat([{ 'role': 'user', 'content': combined_chat }], temperature=1.0, json_mode=True)
+        decoded_response = await images.get_image_response_from_llm("gemini", combined_chat)
+        # prompt_bot = claude.ClaudeModel()
+        # response = await prompt_bot.chat([{ 'role': 'user', 'content': combined_chat }], temperature=1.0, json_mode=True)
         # response = await chatbot.chat([{ 'role': 'user', 'content': combined_chat }], temperature=1.0, json_mode=True)
-        try:
-            decoded_response = json.loads(response.message)
-        except json.JSONDecodeError:
-            logger.error(f'Error decoding JSON: {response.message}')
-            decoded_response = {
-                "prompt": response.message,
-                "themes": [],
-                "reasoning": ""
-            }
+        # try:
+        #     decoded_response = json.loads(response.message)
+        # except json.JSONDecodeError:
+        #     logger.error(f'Error decoding JSON: {response.message}')
+        #     decoded_response = {
+        #         "prompt": response.message,
+        #         "themes": [],
+        #         "reasoning": ""
+        #     }
         llm_chat_prompt = decoded_response["prompt"]
         llm_chat_themes = decoded_response["themes"]
         llm_chat_reasoning = decoded_response["reasoning"]

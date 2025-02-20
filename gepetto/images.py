@@ -1,6 +1,10 @@
 import os
+import json
 import random
 from datetime import datetime
+import google.generativeai as genai
+from google.ai.generativelanguage_v1beta.types import content
+
 def get_initial_chat_image_prompt(chat_history: str, previous_image_themes: str) -> str:
     user_locations = os.getenv('USER_LOCATIONS', 'the UK towns of Bath and Manchester').strip()
     today_string = datetime.now().strftime("%Y-%m-%d")
@@ -99,3 +103,74 @@ def get_extra_guidelines() -> str:
         if random.random() > 0.5:
             extra_guidelines += "\n- The image should be reflective of a blood-curdling, gory, horror film.\n"
     return extra_guidelines
+
+async def get_image_response_from_llm(provider: str, prompt: str) -> str:
+    """
+    Install an additional SDK for JSON schema support Google AI Python SDK
+
+    $ pip install google.ai.generativelanguage
+    """
+
+    if provider == "gemini":
+        return await get_image_response_from_gemini(prompt)
+    else:
+        raise ValueError(f"Provider {provider} not supported")
+
+async def get_image_response_from_gemini(prompt: str) -> dict:
+    genai.configure(api_key=os.environ["GEMINI_API_KEY"])
+
+    generation_config = {
+        "temperature": 1.5,
+        "top_p": 0.95,
+        "top_k": 40,
+        "max_output_tokens": 8192,
+        "response_schema": content.Schema(
+            type = content.Type.OBJECT,
+            enum = [],
+            required = ["prompt", "themes", "reasoning"],
+            properties = {
+                "prompt": content.Schema(
+                    type = content.Type.STRING,
+                ),
+                "themes": content.Schema(
+                    type = content.Type.ARRAY,
+                    items = content.Schema(
+                    type = content.Type.STRING,
+                    ),
+                ),
+                "reasoning": content.Schema(
+                    type = content.Type.STRING,
+                ),
+            },
+        ),
+        "response_mime_type": "application/json",
+    }
+
+    model = genai.GenerativeModel(
+        model_name="gemini-2.0-flash",
+        generation_config=generation_config,
+    )
+
+    chat_session = model.start_chat(
+        history=[
+            {
+                "role": "user",
+                "parts": [
+                    prompt,
+                ],
+            },
+        ],
+    )
+
+    response = chat_session.send_message(prompt)
+
+    return json.loads(response.text)
+
+if __name__ == "__main__":
+    chat_history = """
+    Hello, how are you?
+
+    I am good, thank you.
+    """
+
+    print(get_image_response_from_llm("gemini", get_initial_chat_image_prompt(chat_history, "")))
