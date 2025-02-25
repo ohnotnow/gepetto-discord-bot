@@ -7,7 +7,9 @@ async def generate_image(prompt, model="black-forest-labs/flux-schnell", aspect_
     model_options = [
          "black-forest-labs/flux-schnell",
          "bytedance/sdxl-lightning-4step:5599ed30703defd1d160a25a63321b4dec97101d98b4674bcc56e41f62f35637",
-         "nvidia/sana:c6b5d2b7459910fec94432e9e1203c3cdce92d6db20f714f1355747990b52fa6"
+         "nvidia/sana:c6b5d2b7459910fec94432e9e1203c3cdce92d6db20f714f1355747990b52fa6",
+         "luma/photon-flash",
+         "google/imagen-3-fast",
     ]
     # pick a random model from the list
     model = random.choice(model_options)
@@ -33,7 +35,20 @@ async def generate_image(prompt, model="black-forest-labs/flux-schnell", aspect_
             "negative_prompt": "worst quality, low quality",
             "num_inference_steps": 4,
             "disable_safety_checker": True,
-    }
+        }
+    elif model.startswith("luma/"):
+        input = {
+            "prompt": prompt,
+            "aspect_ratio": aspect_ratio,
+            "image_reference_weight": 0.85,
+            "style_reference_weight": 0.85
+        }
+    elif model.startswith("google/"):
+        input={
+            "prompt": prompt,
+            "aspect_ratio": aspect_ratio,
+            "safety_filter_level": "block_only_high"
+        }
     else:
         # default to sana model format input parameters
         input = {
