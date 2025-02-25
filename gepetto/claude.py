@@ -9,6 +9,7 @@ class Model(Enum):
     CLAUDE_3_HAIKU = ('claude-3-haiku-20240229', 0.25, 1.25)
     CLAUDE_3_SONNET = ('claude-3-sonnet-20240229', 3.00, 15.00)
     CLAUDE_35_SONNET = ('claude-3-5-sonnet-20241022', 3.00, 15.00)
+    CLAUDE_37_SONNET = ('claude-3-7-sonnet-20250219', 3.00, 15.00)
     CLAUDE_35_HAIKU = ('claude-3-5-haiku-20241022', 1.00, 5.00)
     # CLAUDE_35_SONNET = ('claude-3-5-sonnet-20240620', 3.00, 15.00)
     CLAUDE_3_OPUS = ('claude-3-opus-20240307', 15.00, 75.00)
@@ -44,7 +45,7 @@ def anthropic_tool_call_to_openai(anthropic_tool_call):
 class ClaudeModel():
     name = "Minxie"
     uses_logs = False
-    model = 'claude-3-5-haiku-20241022'
+    model = 'claude-3-7-sonnet-20250219'
 
 
     def get_token_price(self, token_count, direction="output", model_engine=None):
