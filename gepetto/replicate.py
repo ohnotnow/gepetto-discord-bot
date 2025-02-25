@@ -14,6 +14,7 @@ async def generate_image(prompt, model="black-forest-labs/flux-schnell", aspect_
     # pick a random model from the list
     model = random.choice(model_options)
     print(f"Using model: {model}")
+    cost = 0.003
     if model.startswith("black-forest-labs/"):
         input = {
             "prompt": prompt,
@@ -43,12 +44,14 @@ async def generate_image(prompt, model="black-forest-labs/flux-schnell", aspect_
             "image_reference_weight": 0.85,
             "style_reference_weight": 0.85
         }
+        cost = 0.02
     elif model.startswith("google/"):
         input={
             "prompt": prompt,
             "aspect_ratio": aspect_ratio,
             "safety_filter_level": "block_only_high"
         }
+        cost = 0.02
     else:
         # default to sana model format input parameters
         input = {
@@ -73,4 +76,4 @@ async def generate_image(prompt, model="black-forest-labs/flux-schnell", aspect_
         image_url = output
     # strip any training :hash from the model name, eg nvidia/sana:c6b5d2b7459910fec94432e9e1203c3cdce92d6db20f714f1355747990b52fa6
     model_name = model.split(":")[0]
-    return image_url, model_name
+    return image_url, model_name, cost
