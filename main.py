@@ -183,7 +183,7 @@ async def create_image(discord_message: discord.Message, prompt: str, model: str
     image_url, model_name, cost = await replicate.generate_image(prompt, model=model)
     logger.info("Fetching image")
     image = requests.get(image_url)
-    discord_file = File(io.BytesIO(image.content), filename=f'channel_summary.png')
+    discord_file = File(io.BytesIO(image.content), filename=f'channel_summary_{datetime.now().strftime("%Y_%m_%d")}.png')
     logger.info("Sending image to discord")
     await discord_message.reply(f'{discord_message.author.mention}\n_[Estimated cost: US${cost}] | Model: {model_name}_', file=discord_file)
 
