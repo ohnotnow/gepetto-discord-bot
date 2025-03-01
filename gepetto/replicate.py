@@ -10,6 +10,7 @@ async def generate_image(prompt, model="black-forest-labs/flux-schnell", aspect_
          "nvidia/sana:c6b5d2b7459910fec94432e9e1203c3cdce92d6db20f714f1355747990b52fa6",
          "luma/photon-flash",
          "google/imagen-3-fast",
+         "ideogram-ai/ideogram-v2a",
     ]
     # pick a random model from the list
     model = random.choice(model_options)
@@ -25,8 +26,18 @@ async def generate_image(prompt, model="black-forest-labs/flux-schnell", aspect_
             "prompt_upsampling": enhance_prompt,
             "disable_safety_checker": True,
         }
+        cost = 0.003
+    elif model.startswith("ideogram-ai/"):
+        input={
+            "prompt": prompt,
+            "resolution": "None",
+            "style_type": "None",
+            "aspect_ratio": aspect_ratio,
+            "magic_prompt_option": "Auto"
+        }
+        cost = 0.04
     elif model.startswith("bytedance/"):
-            input={
+        input={
             "width": 1024,
             "height": 1024,
             "prompt": prompt,
@@ -37,6 +48,7 @@ async def generate_image(prompt, model="black-forest-labs/flux-schnell", aspect_
             "num_inference_steps": 4,
             "disable_safety_checker": True,
         }
+        cost = 0.003
     elif model.startswith("luma/"):
         input = {
             "prompt": prompt,
@@ -63,7 +75,7 @@ async def generate_image(prompt, model="black-forest-labs/flux-schnell", aspect_
             "pag_guidance_scale": 2,
             "num_inference_steps": 18
         }
-
+        cost = 0.003
     print(f"Generating image with model: {model}")
     output = await replicate.async_run(
         model,
