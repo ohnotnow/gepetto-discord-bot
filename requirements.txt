@@ -9,3 +9,4 @@ groq
 anthropic
 google-generativeai
 replicate==0.32.1
+litellm
