@@ -1,6 +1,6 @@
 from enum import Enum
 import json
-from litellm import completion
+from litellm import completion, acompletion
 from gepetto.response import ChatResponse, FunctionResponse
 from typing import List, Dict, Any, Optional, Tuple
 
@@ -39,11 +39,11 @@ class BaseModel:
         if json_mode:
             params["response_format"] = {"type": "json_object"}
 
-        if tools:
+        if tools and not model.startswith("gemini"):
             params["tools"] = tools
             params["tool_choice"] = "auto"
 
-        response = completion(**params)
+        response = await acompletion(**params)
 
         cost = response._hidden_params["response_cost"]
         tokens = response.usage.total_tokens
@@ -61,7 +61,8 @@ class BaseModel:
     ) -> FunctionResponse:
         """Generic function call implementation using LiteLLM"""
         model = self.get_model_string(model)
-        response = completion(
+        print(f"Made a function call using {model}")
+        response = await acompletion(
             model=model,
             messages=messages,
             tools=tools,
