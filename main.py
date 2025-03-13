@@ -176,16 +176,12 @@ async def on_ready():
     logger.info("Avatar has been changed!")
 
 async def create_image(discord_message: discord.Message, prompt: str, model: str = "black-forest-labs/flux-schnell") -> None:
-    if '--better' in prompt.lower():
-        prompt = prompt.replace("--better", "")
-        model = "black-forest-labs/flux-1.1-pro"
-        logger.info("Using better image model")
     logger.info(f"Creating image with model: {model} and prompt: {prompt}")
-    # response = await chatbot.chat([{ 'role': 'user', 'content': f"Please take this request and give me a detailed prompt for a Stable Diffusion image model so that it gives me a dramatic and intriguing image. <query>{prompt}</query>"}], temperature=1.0)
     image_url, model_name, cost = await replicate.generate_image(prompt, model=model)
+    prompt_as_filename = f"{re.sub(r'[^a-zA-Z0-9]', '_', prompt)[:50]}_{datetime.now().strftime('%Y_%m_%d')}.png"
     logger.info("Fetching image")
     image = requests.get(image_url)
-    discord_file = File(io.BytesIO(image.content), filename=f'channel_summary_{datetime.now().strftime("%Y_%m_%d")}.png')
+    discord_file = File(io.BytesIO(image.content), filename=prompt_as_filename)
     logger.info("Sending image to discord")
     await discord_message.reply(f'{discord_message.author.mention}\n_[Estimated cost: US${cost}] | Model: {model_name}_', file=discord_file)
 
