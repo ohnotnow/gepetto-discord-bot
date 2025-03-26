@@ -45,7 +45,10 @@ class BaseModel:
 
         response = await acompletion(**params)
 
-        cost = round(response._hidden_params["response_cost"], 5)
+        try:
+            cost = round(response._hidden_params["response_cost"], 5)
+        except:
+            cost = 0
         tokens = response.usage.total_tokens
         message = str(response.choices[0].message.content)
         tool_calls = response.choices[0].message.tool_calls
