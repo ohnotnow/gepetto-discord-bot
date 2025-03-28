@@ -7,6 +7,6 @@ from .base_model import BaseModel
 
 class GeminiModel(BaseModel):
     name = "RecipeThis"
-    uses_logs = False
+    uses_logs = True
     default_model = "gemini-2.5-pro-exp-03-25"
     provider = "gemini"
