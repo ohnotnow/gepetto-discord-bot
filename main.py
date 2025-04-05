@@ -11,7 +11,7 @@ import pytz
 from enum import Enum
 import requests
 
-from gepetto import mistral, dalle, summary, weather, random_facts, birthdays, gpt, stats, groq, claude, ollama, guard, replicate, tools, images, gemini, sentry
+from gepetto import mistral, dalle, summary, weather, random_facts, birthdays, gpt, stats, groq, claude, ollama, guard, replicate, tools, images, gemini, sentry, openrouter
 from gepetto import response as gepetto_response
 import discord
 from discord import File
@@ -73,6 +73,8 @@ def get_chatbot():
         chatbot = ollama.OllamaModel()
     elif os.getenv("BOT_PROVIDER") == 'gemini':
         chatbot = gemini.GeminiModel()
+    elif os.getenv("BOT_PROVIDER") == 'openrouter':
+        chatbot = openrouter.OpenrouterModel()
     else:
         chatbot = gpt.GPTModel()
     return chatbot
@@ -244,6 +246,8 @@ async def extract_recipe_from_webpage(discord_message: discord.Message, prompt: 
     ingredients in order and the method in order.  Please don't include any preamble or commentary.
     """
     await summarise_webpage_content(discord_message, recipe_prompt, url)
+
+async def search_web(discord_message: discord.Message, prompt: str) -> None:
 
 @bot.event
 async def on_message(message):
