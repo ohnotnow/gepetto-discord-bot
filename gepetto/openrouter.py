@@ -12,6 +12,11 @@ class OpenrouterModel():
     default_model = "quasar-alpha"
     provider = "openrouter"
 
+    def get_model_string(self, model: Optional[str] = None) -> str:
+        """Convert model name to LiteLLM format"""
+        use_model = model or self.default_model
+        return f"{self.provider}/{use_model}"
+
     async def chat(
         self,
         messages: List[Dict[str, str]],
