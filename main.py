@@ -247,8 +247,6 @@ async def extract_recipe_from_webpage(discord_message: discord.Message, prompt: 
     """
     await summarise_webpage_content(discord_message, recipe_prompt, url)
 
-async def search_web(discord_message: discord.Message, prompt: str) -> None:
-
 @bot.event
 async def on_message(message):
     message_blocked, abusive_reply = guard.should_block(message, bot, server_id)
