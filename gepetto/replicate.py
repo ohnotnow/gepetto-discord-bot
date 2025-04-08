@@ -11,6 +11,8 @@ async def generate_image(prompt, model="black-forest-labs/flux-schnell", aspect_
          "luma/photon-flash",
          "google/imagen-3-fast",
          "ideogram-ai/ideogram-v2a",
+         "minimax/image-01",
+         "google/imagen-3",
     ]
     # pick a random model from the list
     model = random.choice(model_options)
@@ -63,7 +65,13 @@ async def generate_image(prompt, model="black-forest-labs/flux-schnell", aspect_
             "aspect_ratio": aspect_ratio,
             "safety_filter_level": "block_only_high"
         }
-        cost = 0.02
+        cost = 0.03
+    elif model.startswith("minimax/"):
+        input = {
+            "prompt": prompt,
+            "aspect_ratio": aspect_ratio
+        }
+        cost = 0.03
     else:
         # default to sana model format input parameters
         input = {
