@@ -15,4 +15,5 @@ RUN python -m venv venv && . venv/bin/activate && pip install --upgrade pip && p
 COPY . .
 
 # Run the main.py script
+ENV PATH="/app/venv/bin:$PATH"
 CMD ["python", "main.py"]
