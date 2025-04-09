@@ -9,7 +9,7 @@ WORKDIR /app
 # Copy the requirements file into the container
 COPY requirements.txt .
 
-RUN python -m venv venv && source venv/bin/activate && pip install --upgrade pip && pip install wheel && pip install --no-cache-dir -r requirements.txt
+RUN python -m venv venv && . venv/bin/activate && pip install --upgrade pip && pip install wheel && pip install --no-cache-dir -r requirements.txt
 
 # Copy the rest of the application code into the container
 COPY . .
