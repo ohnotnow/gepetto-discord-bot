@@ -9,5 +9,5 @@ from typing import List, Dict, Any, Optional
 class OpenrouterModel(BaseModel):
     name = "RecipeThis"
     uses_logs = True
-    default_model = "openrouter/quasar-alpha"
+    default_model = "openrouter/optimus-alpha"
     provider = "openrouter"
