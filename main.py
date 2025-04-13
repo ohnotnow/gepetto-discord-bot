@@ -528,10 +528,11 @@ async def make_chat_image():
     image = requests.get(image_url)
     today_string = datetime.now().strftime("%Y-%m-%d")
     discord_file = File(io.BytesIO(image.content), filename=f'channel_summary_{today_string}.png')
-    message = f'{response.message}\n{chatbot.name}\'s chosen themes: _{", ".join(llm_chat_themes)}_\n[Model: {model_name}]'
+    message = f'{response.message}\n{chatbot.name}\'s chosen themes: _{", ".join(llm_chat_themes)}_\n_Model: {model_name}]  / Estimated cost: US${cost:.3f}_'
+
     if len(message) > 1900:
         message = message[:1900]
-    await channel.send(f"{message}\n_[Estimated cost: US${cost:.3f}]", file=discord_file)
+    await channel.send(f"{message}\n", file=discord_file)
     with open('previous_image_themes.txt', 'a') as file:
         file.write(f"\n{previous_image_themes}")
 
