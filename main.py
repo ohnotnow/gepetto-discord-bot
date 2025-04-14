@@ -40,7 +40,7 @@ abusive_responses = ["Wanker", "Asshole", "Prick", "Twat", "Asshat", "Knob", "Di
 # Fetch environment variables
 server_id = os.getenv("DISCORD_SERVER_ID", "not_set")
 # model_engine = os.getenv("OPENAI_MODEL_ENGINE", gpt.Model.GPT_4_OMNI.value[0])
-model_engine = "gpt-4o-mini"
+model_engine = "gpt-4.1-mini"
 
 # openai.api_key = os.getenv("OPENAI_API_KEY")
 location = os.getenv('BOT_LOCATION', 'dunno')
