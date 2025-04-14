@@ -9,5 +9,5 @@ from typing import List, Dict, Any, Optional
 class OpenrouterModel(BaseModel):
     name = "RecipeThis"
     uses_logs = True
-    default_model = "openrouter/optimus-alpha"
+    default_model = "google/gemini-2.5-pro-preview-03-25"
     provider = "openrouter"
