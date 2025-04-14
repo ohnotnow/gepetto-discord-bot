@@ -9,5 +9,5 @@ from typing import List, Dict, Any, Optional
 class OpenrouterModel(BaseModel):
     name = "RecipeThis"
     uses_logs = True
-    default_model = "google/gemini-2.5-pro-preview-03-25"
+    default_model = "deepseek/deepseek-chat-v3-0324"
     provider = "openrouter"
