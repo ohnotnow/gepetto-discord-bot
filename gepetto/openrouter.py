@@ -9,5 +9,3 @@ from typing import List, Dict, Any, Optional
 class OpenrouterModel(BaseModel):
     name = "RecipeThis"
     uses_logs = True
-    default_model = os.getenv("BOT_MODEL", "deepseek/deepseek-chat-v3-0324")
-    provider = "openrouter"

@@ -3,12 +3,12 @@ import json
 from litellm import completion, acompletion
 from gepetto.response import ChatResponse, FunctionResponse
 from typing import List, Dict, Any, Optional, Tuple
-
+import os
 class BaseModel:
     name: str = "Base"
     uses_logs: bool = True
-    default_model: str = "gpt-4"
-    provider: str = "openai"
+    default_model: str = os.getenv("BOT_MODEL", "gpt-4o-mini")
+    provider: str = os.getenv("BOT_PROVIDER", "openai")
 
     def __init__(self, model: Optional[str] = None):
         self.model = model or self.default_model
