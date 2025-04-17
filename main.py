@@ -67,7 +67,7 @@ def get_chatbot():
         chatbot = mistral.MistralModel()
     elif os.getenv("BOT_PROVIDER") == 'groq':
         chatbot = groq.GroqModel()
-    elif os.getenv("BOT_PROVIDER") == 'claude':
+    elif os.getenv("BOT_PROVIDER") == 'anthropic':
         chatbot = claude.ClaudeModel()
     elif os.getenv("BOT_PROVIDER") == 'ollama':
         chatbot = ollama.OllamaModel()
