@@ -29,6 +29,7 @@ class BaseModel:
     ) -> ChatResponse:
         """Generic chat implementation using LiteLLM"""
         model = self.get_model_string(model)
+        print(f"Using model: {model}")
         params = {
             "model": model,
             "messages": messages,
@@ -43,7 +44,11 @@ class BaseModel:
             params["tools"] = tools
             params["tool_choice"] = "auto"
 
-        response = await acompletion(**params)
+        try:
+            response = await acompletion(**params)
+        except Exception as e:
+            print(f"Error: {e}")
+            raise e
 
         try:
             cost = round(response._hidden_params["response_cost"], 5)

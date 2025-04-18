@@ -4,3 +4,5 @@ autogen.*
 .env.*
 venv*
 q.py
+qq.py
+
