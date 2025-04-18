@@ -29,7 +29,7 @@ class BaseModel:
         tools: List[Dict[str, Any]] = []
     ) -> ChatResponse:
         """Generic chat implementation using LiteLLM"""
-        litellm._turn_on_debug()
+        # litellm._turn_on_debug()
         model = self.get_model_string(model)
         print(f"Using model: {model}")
         params = {
