@@ -39,6 +39,7 @@ class BaseModel:
             "messages": messages,
             "temperature": temperature,
             "top_p": top_p,
+            "reasoning_effort": "low",
         }
 
         if json_mode:
