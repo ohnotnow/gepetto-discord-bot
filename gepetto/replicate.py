@@ -5,11 +5,12 @@ import random
 
 async def generate_image(prompt, model="black-forest-labs/flux-schnell", aspect_ratio="1:1", output_format="webp", output_quality=90, enhance_prompt=True):
     model_options = [
-         "black-forest-labs/flux-schnell",
-         "bytedance/sdxl-lightning-4step:5599ed30703defd1d160a25a63321b4dec97101d98b4674bcc56e41f62f35637",
-         "nvidia/sana:c6b5d2b7459910fec94432e9e1203c3cdce92d6db20f714f1355747990b52fa6",
-         "luma/photon-flash",
-         "google/imagen-3-fast",
+         "black-forest-labs/flux-1.1-pro",
+        #  "bytedance/sdxl-lightning-4step:5599ed30703defd1d160a25a63321b4dec97101d98b4674bcc56e41f62f35637",
+        #  "nvidia/sana:c6b5d2b7459910fec94432e9e1203c3cdce92d6db20f714f1355747990b52fa6",
+        #  "luma/photon-flash",
+        #  "google/imagen-3-fast",
+         "recraft-ai/recraft-v3",
          "ideogram-ai/ideogram-v2a",
          "minimax/image-01",
          "google/imagen-3",
@@ -28,7 +29,15 @@ async def generate_image(prompt, model="black-forest-labs/flux-schnell", aspect_
             "prompt_upsampling": enhance_prompt,
             "disable_safety_checker": True,
         }
-        cost = 0.003
+        cost = 0.04
+    if model.startswith("recraft-ai/"):
+        input={
+            "size": "1365x1024",
+            "style": "any",
+            "prompt": prompt,
+            "aspect_ratio": aspect_ratio
+        }
+        cost = 0.04
     elif model.startswith("ideogram-ai/"):
         input={
             "prompt": prompt,
