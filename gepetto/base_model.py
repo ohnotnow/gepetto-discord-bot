@@ -1,6 +1,7 @@
 from enum import Enum
 import json
 from litellm import completion, acompletion
+import litellm
 from gepetto.response import ChatResponse, FunctionResponse
 from typing import List, Dict, Any, Optional, Tuple
 import os
@@ -28,6 +29,7 @@ class BaseModel:
         tools: List[Dict[str, Any]] = []
     ) -> ChatResponse:
         """Generic chat implementation using LiteLLM"""
+        litellm._turn_on_debug()
         model = self.get_model_string(model)
         print(f"Using model: {model}")
         params = {
@@ -44,11 +46,7 @@ class BaseModel:
             params["tools"] = tools
             params["tool_choice"] = "auto"
 
-        try:
-            response = await acompletion(**params)
-        except Exception as e:
-            print(f"Error: {e}")
-            raise e
+        response = await acompletion(**params)
 
         try:
             cost = round(response._hidden_params["response_cost"], 5)
