@@ -42,7 +42,7 @@ class BaseModel:
         if json_mode:
             params["response_format"] = {"type": "json_object"}
 
-        if tools and not model.startswith("gemini"):
+        if tools and not "gemini" in model:
             params["tools"] = tools
             params["tool_choice"] = "auto"
 
