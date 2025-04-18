@@ -30,6 +30,8 @@ class BaseModel:
     ) -> ChatResponse:
         """Generic chat implementation using LiteLLM"""
         # litellm._turn_on_debug()
+
+        litellm.drop_params = True
         model = self.get_model_string(model)
         print(f"Using model: {model}")
         params = {
