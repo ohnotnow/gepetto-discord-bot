@@ -7,5 +7,4 @@ from .base_model import BaseModel
 from openai import OpenAI
 from typing import List, Dict, Any, Optional
 class OpenrouterModel(BaseModel):
-    name = "RecipeThis"
     uses_logs = True

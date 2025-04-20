@@ -6,13 +6,13 @@ from gepetto.response import ChatResponse, FunctionResponse
 from typing import List, Dict, Any, Optional, Tuple
 import os
 class BaseModel:
-    name: str = "Base"
     uses_logs: bool = True
     default_model: str = os.getenv("BOT_MODEL", "gpt-4o-mini")
     provider: str = os.getenv("BOT_PROVIDER", "openai")
 
     def __init__(self, model: Optional[str] = None):
         self.model = model or self.default_model
+        self.name = os.getenv("BOT_NAME", "Base")
 
     def get_model_string(self, model: Optional[str] = None) -> str:
         """Convert model name to LiteLLM format"""
@@ -39,7 +39,25 @@ class BaseModel:
             "messages": messages,
             "temperature": temperature,
             "reasoning_effort": "low",
-            "thinking": {"type": "disabled"}
+            "thinking": {"type": "disabled"},
+            "safety_settings": [
+                {
+                    "category": "HARM_CATEGORY_HARASSMENT",
+                    "threshold": "BLOCK_NONE",
+                },
+                {
+                    "category": "HARM_CATEGORY_HATE_SPEECH",
+                    "threshold": "BLOCK_NONE",
+                },
+                {
+                    "category": "HARM_CATEGORY_SEXUALLY_EXPLICIT",
+                    "threshold": "BLOCK_NONE",
+                },
+                {
+                    "category": "HARM_CATEGORY_DANGEROUS_CONTENT",
+                    "threshold": "BLOCK_NONE",
+                },
+            ]
         }
 
         if json_mode:
