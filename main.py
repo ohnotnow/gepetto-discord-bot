@@ -357,7 +357,7 @@ async def say_happy_birthday():
 @tasks.loop(minutes=60)
 async def random_chat():
     logger.info("In random_chat")
-    if not isinstance(chatbot, openrouter.OpenRouterModel):
+    if not isinstance(chatbot, openrouter.OpenrouterModel):
         logger.info(f"Not joining in with chat because we are using {type(chatbot)}")
         return
     if random.random() > 0.3:
