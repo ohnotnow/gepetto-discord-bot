@@ -171,6 +171,7 @@ async def on_ready():
     say_happy_birthday.start()
     make_chat_image.start()
     horror_chat.start()
+    random_chat.start()
     logger.info(f"Using model type : {type(chatbot)}")
     return
     with open(AVATAR_PATH, 'rb') as avatar:
@@ -356,8 +357,8 @@ async def say_happy_birthday():
 @tasks.loop(minutes=60)
 async def random_chat():
     logger.info("In random_chat")
-    if not isinstance(chatbot, gpt.GPTModel):
-        logger.info("Not joining in with chat because we are using non-gpt")
+    if not isinstance(chatbot, openrouter.OpenRouterModel):
+        logger.info(f"Not joining in with chat because we are using {type(chatbot)}")
         return
     if random.random() > 0.3:
         logger.info("Not joining in with chat because random number is too high")
@@ -365,7 +366,7 @@ async def random_chat():
     now = datetime.now().time()
     start = datetime.strptime('23:00:00', '%H:%M:%S').time()
     end = datetime.strptime('07:00:00', '%H:%M:%S').time()
-    if (now >= start or now <= end):
+    if (now >= start and now <= end):
         logger.info("Not joining in with chat because it is night time")
         return
     channel = bot.get_channel(int(os.getenv('DISCORD_BOT_CHANNEL_ID', 'Invalid').strip()))
@@ -373,13 +374,6 @@ async def random_chat():
     if len(context) < 5:
         logger.info("Not joining in with chat because it is too quiet")
         return
-    system_prompt = f'You are a helpful AI Discord bot called "{chatbot.name}" who reads the chat history of a Discord server and adds funny, acerbic, sarcastic replies based on a single topic mentioned.  Your reply should be natural and fit in with the flow of the conversation as if you were a human user chatting to your friends on Discord.  You should ONLY respond with the chat reply, no other text.  You can quote the text you are using as context by using markdown `> original text here` formatting for context but do not @mention the user.'
-    context.append(
-        {
-            'role': 'system',
-            'content': system_prompt
-        }
-    )
     response = await chatbot.chat(context, temperature=1.0)
     await channel.send(f"{response.message[:1900]}\n{response.usage}")
 
