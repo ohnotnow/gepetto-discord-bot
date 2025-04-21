@@ -40,7 +40,17 @@ class BaseModel:
             "temperature": temperature,
             "reasoning_effort": "low",
             "thinking": {"type": "disabled"},
-            "safety_settings": [
+        }
+
+        if json_mode:
+            params["response_format"] = {"type": "json_object"}
+
+        if tools and not "gemini" in model:
+            params["tools"] = tools
+            params["tool_choice"] = "auto"
+
+        if "gemini" in model:
+            params["safety_settings"] = [
                 {
                     "category": "HARM_CATEGORY_HARASSMENT",
                     "threshold": "BLOCK_NONE",
@@ -58,14 +68,7 @@ class BaseModel:
                     "threshold": "BLOCK_NONE",
                 },
             ]
-        }
 
-        if json_mode:
-            params["response_format"] = {"type": "json_object"}
-
-        if tools and not "gemini" in model:
-            params["tools"] = tools
-            params["tool_choice"] = "auto"
 
         response = await acompletion(**params)
 
