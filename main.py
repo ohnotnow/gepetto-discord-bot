@@ -371,6 +371,10 @@ async def random_chat():
         return
     channel = bot.get_channel(int(os.getenv('DISCORD_BOT_CHANNEL_ID', 'Invalid').strip()))
     context = await get_history_as_openai_messages(channel, include_bot_messages=False, since_hours=0.5)
+    context.append({
+        'role': 'system',
+        'content': os.getenv('DISCORD_BOT_DEFAULT_PROMPT')
+    })
     if len(context) < 5:
         logger.info("Not joining in with chat because it is too quiet")
         return
