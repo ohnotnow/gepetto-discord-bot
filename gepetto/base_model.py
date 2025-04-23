@@ -84,7 +84,7 @@ class BaseModel:
         return ChatResponse(message, tokens, cost, model, tool_calls=tool_calls)
 
     def model_supports_tools(self, model: str) -> bool:
-        models_without_tools = ["gemini", "cognative"]
+        models_without_tools = ["gemini", "cognitive"]
         return not any(m in model for m in models_without_tools)
 
     async def function_call(
