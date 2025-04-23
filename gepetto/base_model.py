@@ -45,7 +45,8 @@ class BaseModel:
         if json_mode:
             params["response_format"] = {"type": "json_object"}
 
-        if tools and not "gemini" in model:
+        models_without_tools = ["gemini", "cognative"]
+        if tools and model not in models_without_tools:
             params["tools"] = tools
             params["tool_choice"] = "auto"
 
