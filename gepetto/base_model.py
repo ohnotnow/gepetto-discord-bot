@@ -45,8 +45,7 @@ class BaseModel:
         if json_mode:
             params["response_format"] = {"type": "json_object"}
 
-        models_without_tools = ["gemini", "cognative"]
-        if tools and model not in models_without_tools:
+        if tools and self.model_supports_tools(model):
             params["tools"] = tools
             params["tool_choice"] = "auto"
 
@@ -82,6 +81,10 @@ class BaseModel:
         tool_calls = response.choices[0].message.tool_calls
 
         return ChatResponse(message, tokens, cost, model, tool_calls=tool_calls)
+
+    def model_supports_tools(self, model: str) -> bool:
+        models_without_tools = ["gemini", "cognative"]
+        return not any(model.contains(m) for m in models_without_tools)
 
     async def function_call(
         self,
