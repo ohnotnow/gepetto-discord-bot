@@ -84,7 +84,7 @@ class BaseModel:
 
     def model_supports_tools(self, model: str) -> bool:
         models_without_tools = ["gemini", "cognative"]
-        return not any(model.contains(m) for m in models_without_tools)
+        return not any(m in model for m in models_without_tools)
 
     async def function_call(
         self,
