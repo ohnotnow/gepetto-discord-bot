@@ -187,8 +187,10 @@ async def create_image(discord_message: discord.Message, prompt: str, model: str
     )
     image_base64 = result.data[0].b64_json
     image_bytes = base64.b64decode(image_base64)
+    cost = 0.05
+    model_name = "gpt-image-1"
     image = File(io.BytesIO(image_bytes), filename=f"{re.sub(r'[^a-zA-Z0-9]', '_', prompt)[:50]}_{datetime.now().strftime('%Y_%m_%d')}.png")
-    await discord_message.reply(f'{discord_message.author.mention}\n_[Estimated cost: US${cost}] | Model: {model_name}_', file=discord_file)
+    await discord_message.reply(f'{discord_message.author.mention}\n_[Estimated cost: US${cost}] | Model: {model_name}_', file=image)
     return
     prompt_as_filename = f"{re.sub(r'[^a-zA-Z0-9]', '_', prompt)[:50]}_{datetime.now().strftime('%Y_%m_%d')}.png"
     logger.info("Fetching image")
