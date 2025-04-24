@@ -16,7 +16,7 @@ from gepetto import response as gepetto_response
 import discord
 from discord import File
 from discord.ext import commands, tasks
-import openai
+from openai import OpenAI
 import feedparser
 
 
@@ -180,7 +180,16 @@ async def on_ready():
 
 async def create_image(discord_message: discord.Message, prompt: str, model: str = "black-forest-labs/flux-schnell") -> None:
     logger.info(f"Creating image with model: {model} and prompt: {prompt}")
-    image_url, model_name, cost = await replicate.generate_image(prompt, model=model)
+    client = OpenAI()
+    result = client.images.generate(
+        model="gpt-image-1",
+        prompt=prompt
+    )
+    image_base64 = result.data[0].b64_json
+    image_bytes = base64.b64decode(image_base64)
+    image = File(io.BytesIO(image_bytes), filename=f"{re.sub(r'[^a-zA-Z0-9]', '_', prompt)[:50]}_{datetime.now().strftime('%Y_%m_%d')}.png")
+    await discord_message.reply(f'{discord_message.author.mention}\n_[Estimated cost: US${cost}] | Model: {model_name}_', file=discord_file)
+    return
     prompt_as_filename = f"{re.sub(r'[^a-zA-Z0-9]', '_', prompt)[:50]}_{datetime.now().strftime('%Y_%m_%d')}.png"
     logger.info("Fetching image")
     image = requests.get(image_url)
