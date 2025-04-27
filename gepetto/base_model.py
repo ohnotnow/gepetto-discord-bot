@@ -80,8 +80,9 @@ class BaseModel:
         tokens = response.usage.total_tokens
         message = str(response.choices[0].message.content)
         tool_calls = response.choices[0].message.tool_calls
-
-        return ChatResponse(message, tokens, cost, model, tool_calls=tool_calls)
+        # check for existence of response.choices[0].message.reasoning_content
+        reasoning_content = getattr(response.choices[0].message, "reasoning_content", None)
+        return ChatResponse(message, tokens, cost, model, tool_calls=tool_calls, reasoning_content=reasoning_content)
 
     def model_supports_tools(self, model: str) -> bool:
         models_without_tools = ["gemini", "cognitive"]

@@ -25,6 +25,7 @@ previous_image_description = "Here is my image based on recent chat in my Discor
 previous_image_reasoning = "Dunno"
 previous_image_prompt = "Dunno"
 previous_image_themes = ""
+previous_reasoning_content = ""
 previous_themes = []
 horror_history = []
 
@@ -311,8 +312,13 @@ async def on_message(message):
             if '--reasoning' in question.lower():
                 await message.reply(f'{message.author.mention} **Reasoning:** {previous_image_reasoning}\n**Themes:** {previous_image_themes}\n**Image Prompt:** {previous_image_prompt}', mention_author=True)
                 return
+            if '--thinking' in question.lower():
+                await message.reply(f'{message.author.mention} **Thinking:** {previous_reasoning_content}', mention_author=True)
+                return
             messages = build_messages(question, context, system_prompt=system_prompt)
             response = await chatbot.chat(messages, temperature=temperature, tools=tools.tool_list, **optional_args)
+            if response.reasoning_content:
+                previous_reasoning_content = response.reasoning_content
             if response.tool_calls:
                 tool_call = response.tool_calls[0]
                 arguments = json.loads(tool_call.function.arguments)
@@ -441,7 +447,7 @@ async def make_chat_image():
     global previous_image_reasoning
     global previous_image_themes
     global previous_image_prompt
-
+    global previous_reasoning_content
     try:
         with open('previous_image_themes.txt', 'r') as file:
             previous_image_themes = file.read()
