@@ -319,7 +319,7 @@ async def on_message(message):
             messages = build_messages(question, context, system_prompt=system_prompt)
             response = await chatbot.chat(messages, temperature=temperature, tools=tools.tool_list, **optional_args)
             if response.reasoning_content:
-                previous_reasoning_content = response.reasoning_content
+                previous_reasoning_content = response.reasoning_content[:1800]
             if response.tool_calls:
                 tool_call = response.tool_calls[0]
                 arguments = json.loads(tool_call.function.arguments)
