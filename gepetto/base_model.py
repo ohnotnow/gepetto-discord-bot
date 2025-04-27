@@ -39,7 +39,6 @@ class BaseModel:
             "messages": messages,
             "temperature": temperature,
             "reasoning_effort": "low",
-            "thinking": {"type": "disabled"},
         }
 
         if json_mode:
