@@ -9,10 +9,12 @@ class BaseModel:
     uses_logs: bool = True
     default_model: str = os.getenv("BOT_MODEL", "gpt-4o-mini")
     provider: str = os.getenv("BOT_PROVIDER", "openai")
+    omnilistens: bool = False
 
     def __init__(self, model: Optional[str] = None):
         self.model = model or self.default_model
         self.name = os.getenv("BOT_NAME", "Base")
+        self.omnilistens = os.getenv("BOT_OMNILISTENS", "false").lower() == "true"
 
     def get_model_string(self, model: Optional[str] = None) -> str:
         """Convert model name to LiteLLM format"""

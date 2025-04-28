@@ -32,12 +32,16 @@ class BotGuard:
         # ignore messages from other bots
         if message.author.bot:
             return True, False
-        # ignore messages without mentions
-        if len(message.mentions) == 0:
-            return True, False
-        # ignore messages where the bot is not mentioned
-        if bot.user not in message.mentions:
-            return True, False
+        if bot.omnilistens:
+            if bot.name.lower() in message.content.lower():
+                return True, False
+        else:
+            # ignore messages without mentions
+            if len(message.mentions) == 0:
+                return True, False
+            # ignore messages where the bot is not mentioned
+            if bot.user not in message.mentions:
+                return True, False
         # ignore messages without content
         if len(message.content.split(' ', 1)) == 1:
             return True, True
