@@ -14,6 +14,7 @@ class ChatResponse:
         self.tokens = tokens
         self.cost = cost
         self.usage = f"_[Tokens used: {self.tokens} | Estimated cost US${round(self.cost, 5)} | Model: {model}]_"
+        self.usage_short = f"_[Model: {model}]_"
         self.tool_calls = tool_calls
         self.reasoning_content = reasoning_content
 

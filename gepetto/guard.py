@@ -1,5 +1,6 @@
 from datetime import datetime, timedelta
 from collections import defaultdict
+import random
 
 class BotGuard:
     def __init__(self, max_mentions=10, mention_window=timedelta(hours=1)):
