@@ -7,7 +7,7 @@ class BotGuard:
         self.max_mentions = max_mentions
         self.mention_window = mention_window
 
-    def should_block(self, message, bot, server_id) -> tuple[bool, bool]:
+    def should_block(self, message, bot, server_id, chatbot = None) -> tuple[bool, bool]:
         """
         Check if a message should be blocked.
 
@@ -32,8 +32,8 @@ class BotGuard:
         # ignore messages from other bots
         if message.author.bot:
             return True, False
-        if bot.omnilistens:
-            if bot.name.lower() in message.content.lower():
+        if chatbot and chatbot.omnilistens:
+            if chatbot.name.lower() in message.content.lower():
                 return True, False
         else:
             # ignore messages without mentions

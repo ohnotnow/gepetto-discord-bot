@@ -252,7 +252,7 @@ async def extract_recipe_from_webpage(discord_message: discord.Message, prompt: 
 @bot.event
 async def on_message(message):
     global previous_reasoning_content
-    message_blocked, abusive_reply = guard.should_block(message, bot, server_id)
+    message_blocked, abusive_reply = guard.should_block(message, bot, server_id, chatbot)
     if message_blocked:
         if abusive_reply:
             logger.info("Blocked message from: " + message.author.name + " and abusing them")
