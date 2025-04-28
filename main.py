@@ -349,8 +349,8 @@ async def on_message(message):
                 response_text = re.sub(r"Gepetto' said: ", '', response_text, flags=re.MULTILINE)
                 response_text = re.sub(r"Minxie' said: ", '', response_text, flags=re.MULTILINE)
                 response_text = re.sub(r"^.*At \d{4}-\d{2}.+said?", "", response_text, flags=re.MULTILINE)
-                response = response_text.strip()[:1900] + "\n" + response.usage_short
                 logger.info(response.usage)
+                response = response_text.strip()[:1900] + "\n" + response.usage_short
             await message.reply(f'{message.author.mention} {response}')
     except Exception as e:
         logger.error(f'Error generating response: {e}')
