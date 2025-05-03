@@ -81,13 +81,13 @@ class BaseModel:
         tokens = response.usage.total_tokens
         message = str(response.choices[0].message.content)
         tool_calls = response.choices[0].message.tool_calls
-        # check for existence of response.choices[0].message.reasoning_content
+        # check if we have model 'reasoning'
         reasoning_content = getattr(response.choices[0].message, "reasoning_content", None)
         return ChatResponse(message, tokens, cost, model, tool_calls=tool_calls, reasoning_content=reasoning_content)
 
     def model_supports_tools(self, model: str) -> bool:
-        models_without_tools = ["gemini", "cognitive", "x-ai", "qwen", "microsoft"]
-        return not any(m in model for m in models_without_tools)
+        models_with_tools = ["openai", "anthropic"]
+        return any(m in model for m in models_with_tools)
 
     async def function_call(
         self,

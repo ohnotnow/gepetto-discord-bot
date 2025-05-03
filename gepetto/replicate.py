@@ -10,7 +10,7 @@ async def generate_image(prompt, model="black-forest-labs/flux-schnell", aspect_
         #  "nvidia/sana:c6b5d2b7459910fec94432e9e1203c3cdce92d6db20f714f1355747990b52fa6",
         #  "luma/photon-flash",
         #  "google/imagen-3-fast",
-         "recraft-ai/recraft-v3",
+        #  "recraft-ai/recraft-v3",
          "ideogram-ai/ideogram-v2a",
          "minimax/image-01",
          "google/imagen-3",
