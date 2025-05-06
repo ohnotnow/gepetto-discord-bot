@@ -5,6 +5,7 @@ import litellm
 from gepetto.response import ChatResponse, FunctionResponse
 from typing import List, Dict, Any, Optional, Tuple
 import os
+import time
 class BaseModel:
     uses_logs: bool = True
     default_model: str = os.getenv("BOT_MODEL", "gpt-4o-mini")
@@ -72,8 +73,10 @@ class BaseModel:
             ]
 
 
+        start_time = time.time()
         response = await acompletion(**params)
-
+        end_time = time.time()
+        duration = end_time - start_time
         try:
             cost = round(response._hidden_params["response_cost"], 5)
         except:
@@ -83,7 +86,7 @@ class BaseModel:
         tool_calls = response.choices[0].message.tool_calls
         # check if we have model 'reasoning'
         reasoning_content = getattr(response.choices[0].message, "reasoning_content", None)
-        return ChatResponse(message, tokens, cost, model, tool_calls=tool_calls, reasoning_content=reasoning_content)
+        return ChatResponse(message, tokens, cost, model, tool_calls=tool_calls, reasoning_content=reasoning_content, duration=duration)
 
     def model_supports_tools(self, model: str) -> bool:
         models_with_tools = ["openai", "anthropic"]

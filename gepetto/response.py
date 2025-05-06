@@ -8,13 +8,17 @@ class ChatResponse:
         tokens (int): The number of tokens used.
         cost (float): The estimated cost of the request in USD.
         model (str): The model used to generate the response.
+        duration (float): The duration of the request in seconds.
+        tokens_per_second (float): The number of tokens per second.
     """
-    def __init__(self, message, tokens, cost, model="Unknown", uses_logs=False, tool_calls=None, reasoning_content=None):
+    def __init__(self, message, tokens, cost, model="Unknown", uses_logs=False, tool_calls=None, reasoning_content=None, duration=None):
         self.message = message
         self.tokens = tokens
         self.cost = cost
-        self.usage = f"_[Tokens used: {self.tokens} | Estimated cost US${round(self.cost, 5)} | Model: {model}]_"
-        self.usage_short = f"_[Model: {model}]_"
+        self.duration = duration
+        self.tokens_per_second = round(tokens / duration, 2) if duration else "n/a"
+        self.usage = f"_[Tokens used: {self.tokens} | Estimated cost US${round(self.cost, 5)} | Model: {model}] | Tokens per second: {self.tokens_per_second} | Duration: {self.duration} seconds |_"
+        self.usage_short = f"_[Model: {model} | Tokens per second: {self.tokens_per_second}]_"
         self.tool_calls = tool_calls
         self.reasoning_content = reasoning_content
 
