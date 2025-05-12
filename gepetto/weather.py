@@ -41,11 +41,13 @@ def get_forecast(location_name = None, dates = []):
         dates = [datetime.date.today()]
     API_KEY = os.getenv('MET_OFFICE_API_KEY')
     # 1. Download the Sitelist
+    logger.info(f"Getting sitelist for {location_name}")
     sitelist_url = f'http://datapoint.metoffice.gov.uk/public/data/val/wxfcs/all/json/sitelist?key={API_KEY}'
     response = requests.get(sitelist_url)
     sitelist = response.json()
 
     # 2. Find the ID for the location
+    logger.info(f"Finding ID for {location_name}")
     location_id = None
     for location in sitelist['Locations']['Location']:
         if location['name'].lower() == location_name.lower():
@@ -54,11 +56,12 @@ def get_forecast(location_name = None, dates = []):
 
     if location_id is None:
         return f"Wut iz {location_name}? I dunno where that is.  Try again with a real place name, dummy."
-
+    logger.info(f"Location ID: {location_id}")
     # 3. Request the forecast
     M = metoffer.MetOffer(API_KEY)
     forecast = M.loc_forecast(location_id, metoffer.DAILY)
     plain_forcasts = get_forecast_for_dates(forecast, dates)
+    logger.info(f"Plain forecasts: {plain_forcasts}")
     forecasts = []
     for date, period in plain_forcasts:
         details = period['Rep'][0]  # Assuming you want the first representation of the day
@@ -66,7 +69,7 @@ def get_forecast(location_name = None, dates = []):
         human_readable_date = date.strftime("%A %d %B %Y")
         forecast_str = f"Forecast for {location_name.capitalize()} on {human_readable_date}: {metoffer.WEATHER_CODES[int(details['W'])]}, chance of rain {details['PPd']}%, temperature {details['Dm']}C (feels like {details['FDm']}C). Humidity {details['Hn']}%, wind {details['S']} knots - gusting upto {details['Gn']}.\n"
         forecasts.append(forecast_str)
-
+    logger.info(f"Forecasts: {forecasts}")
     readable_forecast = "\n".join(forecasts)
     return readable_forecast
 
