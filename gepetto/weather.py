@@ -24,45 +24,65 @@ def get_forecast_for_dates(forecast, target_dates):
     """
     Extracts forecast data for the specified dates from the API response.
     Returns a list of (date, period) tuples for all matching dates.
-    Current Met Office API returns the following structure:
-    {'SiteRep':
-        {'Wx':
-            {'Param': [
-                {'name': 'FDm', 'units': 'C', '$': 'Feels Like Day Maximum Temperature'},
-                {'name': 'FNm', 'units': 'C', '$': 'Feels Like Night Minimum Temperature'},
-                {'name': 'Dm', 'units': 'C', '$': 'Day Maximum Temperature'},
-                {'name': 'Nm', 'units': 'C', '$': 'Night Minimum Temperature'},
-                {'name': 'Gn', 'units': 'mph', '$': 'Wind Gust Noon'},
-                {'name': 'Gm', 'units': 'mph', '$': 'Wind Gust Midnight'},
-                {'name': 'Hn', 'units': '%', '$': 'Screen Relative Humidity Noon'},
-                {'name': 'Hm', 'units': '%', '$': 'Screen Relative Humidity Midnight'},
-                {'name': 'V', 'units': '', '$': 'Visibility'},
-                {'name': 'D', 'units': 'compass', '$': 'Wind Direction'},
-                {'name': 'S', 'units': 'mph', '$': 'Wind Speed'},
-                {'name': 'U', 'units': '', '$': 'Max UV Index'},
-                {'name': 'W', 'units': '', '$': 'Weather Type'},
-                {'name': 'PPd', 'units': '%', '$': 'Precipitation Probability Day'},
-                {'name': 'PPn', 'units': '%', '$': 'Precipitation Probability Night'}
-            ]},
-            'DV': {'dataDate': '2025-05-12T04:00:00Z', 'type': 'Forecast'}
-        }
-    }
     """
     matched_periods = []
-    logger.info("Looping over forecast periods")
-    for period in forecast['SiteRep']['Wx']['Param']:
-        period_date = datetime.datetime.strptime(period['DV']['dataDate'], "%Y-%m-%dT%H:%M:%SZ").date()
-        logger.info(f"Checking period date: {period_date}")
+    periods = forecast['SiteRep']['DV']['Location']['Period']
+
+    for period in periods:
+        period_date = datetime.datetime.strptime(period['value'], "%Y-%m-%dZ").date()
+
         if isinstance(target_dates, list):
-            logger.info(f"Target dates: {target_dates}")
             if period_date in target_dates:
                 matched_periods.append((period_date, period))
         elif period_date == target_dates:
-            logger.info(f"Period date matches target date: {period_date}")
             matched_periods.append((period_date, period))
-            break  # Break if only looking for one date and it's found
-    logger.info(f"Matched periods: {matched_periods}")
+            break  # stop if looking for a single date
+
     return matched_periods
+
+# def get_forecast_for_dates(forecast, target_dates):
+#     """
+#     Extracts forecast data for the specified dates from the API response.
+#     Returns a list of (date, period) tuples for all matching dates.
+#     Current Met Office API returns the following structure:
+#     {'SiteRep':
+#         {'Wx':
+#             {'Param': [
+#                 {'name': 'FDm', 'units': 'C', '$': 'Feels Like Day Maximum Temperature'},
+#                 {'name': 'FNm', 'units': 'C', '$': 'Feels Like Night Minimum Temperature'},
+#                 {'name': 'Dm', 'units': 'C', '$': 'Day Maximum Temperature'},
+#                 {'name': 'Nm', 'units': 'C', '$': 'Night Minimum Temperature'},
+#                 {'name': 'Gn', 'units': 'mph', '$': 'Wind Gust Noon'},
+#                 {'name': 'Gm', 'units': 'mph', '$': 'Wind Gust Midnight'},
+#                 {'name': 'Hn', 'units': '%', '$': 'Screen Relative Humidity Noon'},
+#                 {'name': 'Hm', 'units': '%', '$': 'Screen Relative Humidity Midnight'},
+#                 {'name': 'V', 'units': '', '$': 'Visibility'},
+#                 {'name': 'D', 'units': 'compass', '$': 'Wind Direction'},
+#                 {'name': 'S', 'units': 'mph', '$': 'Wind Speed'},
+#                 {'name': 'U', 'units': '', '$': 'Max UV Index'},
+#                 {'name': 'W', 'units': '', '$': 'Weather Type'},
+#                 {'name': 'PPd', 'units': '%', '$': 'Precipitation Probability Day'},
+#                 {'name': 'PPn', 'units': '%', '$': 'Precipitation Probability Night'}
+#             ]},
+#             'DV': {'dataDate': '2025-05-12T04:00:00Z', 'type': 'Forecast'}
+#         }
+#     }
+#     """
+#     matched_periods = []
+#     logger.info("Looping over forecast periods")
+#     for period in forecast['SiteRep']['Wx']['Param']:
+#         period_date = datetime.datetime.strptime(period['DV']['dataDate'], "%Y-%m-%dT%H:%M:%SZ").date()
+#         logger.info(f"Checking period date: {period_date}")
+#         if isinstance(target_dates, list):
+#             logger.info(f"Target dates: {target_dates}")
+#             if period_date in target_dates:
+#                 matched_periods.append((period_date, period))
+#         elif period_date == target_dates:
+#             logger.info(f"Period date matches target date: {period_date}")
+#             matched_periods.append((period_date, period))
+#             break  # Break if only looking for one date and it's found
+#     logger.info(f"Matched periods: {matched_periods}")
+#     return matched_periods
 
 def get_forecast(location_name = None, dates = []):
     if not location_name:
@@ -96,9 +116,25 @@ def get_forecast(location_name = None, dates = []):
     logger.info(f"Forecast: {forecast}")
     logger.info(f"Getting forecast for dates: {dates}")
     # plain_forcasts = get_forecast_for_dates(forecast, dates)
-    # logger.info(f"Plain forecasts: {plain_forcasts}")
+    plain_forcasts = get_forecast_for_dates(forecast, dates)
+    logger.info(f"Plain forecasts: {plain_forcasts}")
     forecasts = []
-    forecasts = json.dumps(forecast, indent=4)
+    # forecasts = json.dumps(forecast, indent=4)
+    plain_forecasts = get_forecast_for_dates(forecast, dates)
+    for date, period in plain_forecasts:
+        for rep in period['Rep']:
+            is_daytime = rep.get('$') == 'Day'  # may differ based on actual structure
+            if is_daytime:
+                weather_code = metoffer.WEATHER_CODES[int(rep['W'])]
+                human_readable_date = date.strftime("%A %d %B %Y")
+                forecast_str = (
+                    f"Forecast for {location_name.capitalize()} on {human_readable_date}: "
+                    f"{weather_code}, chance of rain {rep['PPd']}%, temperature {rep['Dm']}C "
+                    f"(feels like {rep['FDm']}C). Humidity {rep['Hn']}%, wind {rep['S']} knots "
+                    f"- gusting up to {rep['Gn']}."
+                )
+                forecasts.append(forecast_str)
+
     # for date, period in plain_forcasts:
     #     details = period['Rep'][0]  # Assuming you want the first representation of the day
     #     weather_code = metoffer.WEATHER_CODES[int(details['W'])]
@@ -106,9 +142,9 @@ def get_forecast(location_name = None, dates = []):
     #     forecast_str = f"Forecast for {location_name.capitalize()} on {human_readable_date}: {metoffer.WEATHER_CODES[int(details['W'])]}, chance of rain {details['PPd']}%, temperature {details['Dm']}C (feels like {details['FDm']}C). Humidity {details['Hn']}%, wind {details['S']} knots - gusting upto {details['Gn']}.\n"
     #     forecasts.append(forecast_str)
     logger.info(f"Forecasts: {forecasts}")
-    # readable_forecast = "\n".join(forecasts)
-    return forecasts
-    # return readable_forecast
+    readable_forecast = "\n".join(forecasts)
+    # return forecasts
+    return readable_forecast
 
 async def get_weather_location_from_prompt(prompt, chatbot):
     messages = [
