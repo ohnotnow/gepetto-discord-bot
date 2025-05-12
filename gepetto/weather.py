@@ -3,6 +3,9 @@ import os
 import datetime
 import random
 from gepetto import metoffer, gpt
+import logging
+
+logger = logging.getLogger('discord')
 
 def get_relative_date(keyword):
     today = datetime.date.today()
@@ -105,7 +108,9 @@ async def get_friendly_forecast(question, chatbot, locations):
         total_tokens += response.tokens
     else:
         for location in locations:
+            logger.info(f"Getting forecast for {location.strip()}")
             temp_forecast = get_forecast(location.strip(), dates)
+            logger.info(f"Temp forecast: {temp_forecast}")
             forecast += temp_forecast + "\n"
         date_and_time = datetime.datetime.now().strftime("%A %d %B %Y at %H:%M")
         personality = ""
@@ -122,6 +127,8 @@ async def get_friendly_forecast(question, chatbot, locations):
         if personality:
             personality = f" You should take on subtle hints of this personality for writing your forecast *but don't be too obvious* : {personality}."
         question = f"It is currently {date_and_time}. The user asked me ''{question.strip()}''. I have the following plain weather forecasts for you based on their question.  Could you make the a bit more natural - like a weather presenter would give at the end of a drive-time news segment on the radio or TV?  ONLY reply with the rewritten forecast.  NEVER add any extra context - the user only wants to see the friendly, drive-time style forecast.  If the wind speed is given in knots, convert it to MPH. Feel free to use weather-specific emoji.  {personality}  FORECAST : ''{forecast}''"
+        logger.info(f"Question: {question}")
         response  = await chatbot.chat([{"role": "user", "content": question}, {"role": "system", "content": f"You are a helpful assistant called '{chatbot.name}' who specialises in providing chatty and friendly weather forecasts for UK towns and cities.  ALWAYS use degrees Celcius and not Fahrenheit for temperatures. You MUST ONLY reply with the friendly forecast."}])
+        logger.info(f"Response: {response.message}")
         forecast = response.message + "\n" + response.usage
     return forecast
