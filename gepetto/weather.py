@@ -4,6 +4,8 @@ import datetime
 import random
 from gepetto import metoffer, gpt
 import logging
+import re
+import json
 
 logger = logging.getLogger('discord')
 
@@ -22,11 +24,34 @@ def get_forecast_for_dates(forecast, target_dates):
     """
     Extracts forecast data for the specified dates from the API response.
     Returns a list of (date, period) tuples for all matching dates.
+    Current Met Office API returns the following structure:
+    {'SiteRep':
+        {'Wx':
+            {'Param': [
+                {'name': 'FDm', 'units': 'C', '$': 'Feels Like Day Maximum Temperature'},
+                {'name': 'FNm', 'units': 'C', '$': 'Feels Like Night Minimum Temperature'},
+                {'name': 'Dm', 'units': 'C', '$': 'Day Maximum Temperature'},
+                {'name': 'Nm', 'units': 'C', '$': 'Night Minimum Temperature'},
+                {'name': 'Gn', 'units': 'mph', '$': 'Wind Gust Noon'},
+                {'name': 'Gm', 'units': 'mph', '$': 'Wind Gust Midnight'},
+                {'name': 'Hn', 'units': '%', '$': 'Screen Relative Humidity Noon'},
+                {'name': 'Hm', 'units': '%', '$': 'Screen Relative Humidity Midnight'},
+                {'name': 'V', 'units': '', '$': 'Visibility'},
+                {'name': 'D', 'units': 'compass', '$': 'Wind Direction'},
+                {'name': 'S', 'units': 'mph', '$': 'Wind Speed'},
+                {'name': 'U', 'units': '', '$': 'Max UV Index'},
+                {'name': 'W', 'units': '', '$': 'Weather Type'},
+                {'name': 'PPd', 'units': '%', '$': 'Precipitation Probability Day'},
+                {'name': 'PPn', 'units': '%', '$': 'Precipitation Probability Night'}
+            ]},
+            'DV': {'dataDate': '2025-05-12T04:00:00Z', 'type': 'Forecast'}
+        }
+    }
     """
     matched_periods = []
     logger.info("Looping over forecast periods")
-    for period in forecast['SiteRep']['DV']['Location']['Period']:
-        period_date = datetime.datetime.strptime(period['value'], "%Y-%m-%dZ").date()
+    for period in forecast['SiteRep']['Wx']['Param']:
+        period_date = datetime.datetime.strptime(period['DV']['dataDate'], "%Y-%m-%dT%H:%M:%SZ").date()
         logger.info(f"Checking period date: {period_date}")
         if isinstance(target_dates, list):
             logger.info(f"Target dates: {target_dates}")
@@ -44,6 +69,8 @@ def get_forecast(location_name = None, dates = []):
         return "Wut?  I need a location name.  Asshat."
     if not dates:
         dates = [datetime.date.today()]
+    # strip any non-alphanumeric characters from the location name
+    location_name = re.sub(r'[^a-zA-Z0-9]', '', location_name)
     API_KEY = os.getenv('MET_OFFICE_API_KEY')
     # 1. Download the Sitelist
     logger.info(f"Getting sitelist for {location_name}")
@@ -68,18 +95,20 @@ def get_forecast(location_name = None, dates = []):
     forecast = M.loc_forecast(location_id, metoffer.DAILY)
     logger.info(f"Forecast: {forecast}")
     logger.info(f"Getting forecast for dates: {dates}")
-    plain_forcasts = get_forecast_for_dates(forecast, dates)
-    logger.info(f"Plain forecasts: {plain_forcasts}")
+    # plain_forcasts = get_forecast_for_dates(forecast, dates)
+    # logger.info(f"Plain forecasts: {plain_forcasts}")
     forecasts = []
-    for date, period in plain_forcasts:
-        details = period['Rep'][0]  # Assuming you want the first representation of the day
-        weather_code = metoffer.WEATHER_CODES[int(details['W'])]
-        human_readable_date = date.strftime("%A %d %B %Y")
-        forecast_str = f"Forecast for {location_name.capitalize()} on {human_readable_date}: {metoffer.WEATHER_CODES[int(details['W'])]}, chance of rain {details['PPd']}%, temperature {details['Dm']}C (feels like {details['FDm']}C). Humidity {details['Hn']}%, wind {details['S']} knots - gusting upto {details['Gn']}.\n"
-        forecasts.append(forecast_str)
+    forecasts = json.dumps(forecast, indent=4)
+    # for date, period in plain_forcasts:
+    #     details = period['Rep'][0]  # Assuming you want the first representation of the day
+    #     weather_code = metoffer.WEATHER_CODES[int(details['W'])]
+    #     human_readable_date = date.strftime("%A %d %B %Y")
+    #     forecast_str = f"Forecast for {location_name.capitalize()} on {human_readable_date}: {metoffer.WEATHER_CODES[int(details['W'])]}, chance of rain {details['PPd']}%, temperature {details['Dm']}C (feels like {details['FDm']}C). Humidity {details['Hn']}%, wind {details['S']} knots - gusting upto {details['Gn']}.\n"
+    #     forecasts.append(forecast_str)
     logger.info(f"Forecasts: {forecasts}")
-    readable_forecast = "\n".join(forecasts)
-    return readable_forecast
+    # readable_forecast = "\n".join(forecasts)
+    return forecasts
+    # return readable_forecast
 
 async def get_weather_location_from_prompt(prompt, chatbot):
     messages = [
@@ -141,5 +170,5 @@ async def get_friendly_forecast(question, chatbot, locations):
         logger.info(f"Question: {question}")
         response  = await chatbot.chat([{"role": "user", "content": question}, {"role": "system", "content": f"You are a helpful assistant called '{chatbot.name}' who specialises in providing chatty and friendly weather forecasts for UK towns and cities.  ALWAYS use degrees Celcius and not Fahrenheit for temperatures. You MUST ONLY reply with the friendly forecast."}])
         logger.info(f"Response: {response.message}")
-        forecast = response.message + "\n" + response.usage
+        forecast = response.message + "\n" + response.short_usage
     return forecast
