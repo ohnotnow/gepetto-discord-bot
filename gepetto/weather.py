@@ -170,5 +170,5 @@ async def get_friendly_forecast(question, chatbot, locations):
         logger.info(f"Question: {question}")
         response  = await chatbot.chat([{"role": "user", "content": question}, {"role": "system", "content": f"You are a helpful assistant called '{chatbot.name}' who specialises in providing chatty and friendly weather forecasts for UK towns and cities.  ALWAYS use degrees Celcius and not Fahrenheit for temperatures. You MUST ONLY reply with the friendly forecast."}])
         logger.info(f"Response: {response.message}")
-        forecast = response.message + "\n" + response.short_usage
+        forecast = response.message + "\n" + response.usage_short
     return forecast
