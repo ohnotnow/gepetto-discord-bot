@@ -24,14 +24,19 @@ def get_forecast_for_dates(forecast, target_dates):
     Returns a list of (date, period) tuples for all matching dates.
     """
     matched_periods = []
+    logger.info("Looping over forecast periods")
     for period in forecast['SiteRep']['DV']['Location']['Period']:
         period_date = datetime.datetime.strptime(period['value'], "%Y-%m-%dZ").date()
+        logger.info(f"Checking period date: {period_date}")
         if isinstance(target_dates, list):
+            logger.info(f"Target dates: {target_dates}")
             if period_date in target_dates:
                 matched_periods.append((period_date, period))
         elif period_date == target_dates:
+            logger.info(f"Period date matches target date: {period_date}")
             matched_periods.append((period_date, period))
             break  # Break if only looking for one date and it's found
+    logger.info(f"Matched periods: {matched_periods}")
     return matched_periods
 
 def get_forecast(location_name = None, dates = []):
