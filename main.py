@@ -190,6 +190,10 @@ async def create_image(discord_message: discord.Message, prompt: str, model: str
     await discord_message.reply(f'{discord_message.author.mention}\n_[Estimated cost: US${cost}] | Model: {model_name}_', file=discord_file)
 
 async def get_weather_forecast(discord_message: discord.Message, prompt: str, locations: list[str]) -> None:
+    logger.info(f"Getting weather forecast for {prompt} and locations {locations}")
+    # check if the locations is not a list, then convert it to a list
+    if not isinstance(locations, list):
+        locations = [locations]
     forecast = await weather.get_friendly_forecast(prompt, chatbot, locations)
     await discord_message.reply(f'{discord_message.author.mention} {forecast}', mention_author=True)
 
