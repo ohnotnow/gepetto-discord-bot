@@ -59,7 +59,10 @@ def get_forecast(location_name = None, dates = []):
     logger.info(f"Location ID: {location_id}")
     # 3. Request the forecast
     M = metoffer.MetOffer(API_KEY)
+    logger.info(f"Requesting forecast for {location_id}")
     forecast = M.loc_forecast(location_id, metoffer.DAILY)
+    logger.info(f"Forecast: {forecast}")
+    logger.info(f"Getting forecast for dates: {dates}")
     plain_forcasts = get_forecast_for_dates(forecast, dates)
     logger.info(f"Plain forecasts: {plain_forcasts}")
     forecasts = []
