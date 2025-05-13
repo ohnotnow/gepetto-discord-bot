@@ -443,7 +443,7 @@ async def horror_chat():
     if len(horror_history) > 40:
         # truncate the history to the most recent 40 entries
         horror_history = horror_history[-40:]
-    await channel.send(f"{response.message[:1900]}\n{response.usage}")
+    await channel.send(f"{response.message[:1900]}\n{response.usage_short}")
 
 
 @tasks.loop(time=time(hour=chat_image_hour, tzinfo=pytz.timezone('Europe/London')))
