@@ -476,7 +476,10 @@ async def make_chat_image():
 
 
     async with channel.typing():
-        history = await get_history_as_openai_messages(channel, limit=100, nsfw_filter=True, max_length=5000, include_timestamps=False, since_hours=8)
+        history = await get_history_as_openai_messages(channel, limit=1000, nsfw_filter=True, max_length=15000, include_timestamps=False, since_hours=8)
+        # if we have loads of messages, then truncate the history to the most recent 200 messages
+        if len(history) > 200:
+            history = history[-200:]
         if len(history) < 2:
             # get the date as, eg "Sunday, 24th November 2024"
             # check if today is a weekend or obvious holiday
