@@ -14,6 +14,7 @@ async def generate_image(prompt, model="black-forest-labs/flux-schnell", aspect_
          "ideogram-ai/ideogram-v2a",
          "minimax/image-01",
          "google/imagen-3",
+         "google/imagen-4",
     ]
     # pick a random model from the list
     model = random.choice(model_options)
