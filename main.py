@@ -352,12 +352,22 @@ async def on_message(message):
                 elif fname == 'user_information':
                     discord_user_id = arguments.get('discord_user_id', str(message.author.id))
                     user_info = await memory.user_information(discord_user_id)
-                    await message.reply(f'{message.author.mention}\n{user_info}', mention_author=True)
+                    messages.append({
+                        'role': 'user',
+                        'content': f'{user_info}'
+                    })
+                    response = await chatbot.chat(messages, temperature=temperature, tools=[], **optional_args)
+                    response_text = response.message.strip()[:1800] + "\n" + response.usage
+                    await message.reply(f'{message.author.mention} {response}')
+                    return
                 elif fname == 'store_user_information':
                     discord_user_id = arguments.get('discord_user_id', str(message.author.id))
                     information = arguments.get('information', '')
                     result = await memory.store_user_information(discord_user_id, information)
-                    await message.reply(f'{message.author.mention} {result}', mention_author=True)
+                    response = await chatbot.chat(messages, temperature=temperature, tools=[], **optional_args)
+                    response_text = response.message.strip()[:1800] + "\n" + response.usage
+                    await message.reply(f'{message.author.mention} {response}')
+                    return
                 else:
                     logger.info(f'Unknown tool call: {fname}')
                     await message.reply(f'{message.author.mention} I am a silly sausage and don\'t know how to do that.', mention_author=True)
