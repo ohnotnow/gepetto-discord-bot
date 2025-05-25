@@ -11,7 +11,7 @@ import pytz
 from enum import Enum
 import requests
 
-from gepetto import mistral, dalle, summary, weather, random_facts, birthdays, gpt, stats, groq, claude, ollama, guard, replicate, tools, images, gemini, sentry, openrouter
+from gepetto import mistral, dalle, summary, weather, random_facts, birthdays, gpt, stats, groq, claude, ollama, guard, replicate, tools, images, gemini, sentry, openrouter, memory
 from gepetto import response as gepetto_response
 import discord
 from discord import File
@@ -136,6 +136,7 @@ def build_messages(question, extended_messages, system_prompt=None):
         default_prompt = os.getenv('DISCORD_BOT_DEFAULT_PROMPT', f'You are a helpful AI assistant called "{chatbot.name}" who specialises in providing answers to questions.  You should ONLY respond with the answer, no other text.')
     else:
         default_prompt = system_prompt
+
     extended_messages.append(
         {
             'role': 'user',
@@ -320,7 +321,12 @@ async def on_message(message):
             if '--thinking' in question.lower():
                 await message.reply(f'{message.author.mention} **Thinking:** {previous_reasoning_content}', mention_author=True)
                 return
-            messages = build_messages(question, context, system_prompt=system_prompt)
+
+            # Add user context to the question so LLM knows Discord user info and can use memory tools
+            user_context = f"[User: {message.author.name} (ID: {message.author.id})] "
+            question_with_context = user_context + question
+
+            messages = build_messages(question_with_context, context, system_prompt=system_prompt)
             response = await chatbot.chat(messages, temperature=temperature, tools=tools.tool_list, **optional_args)
             if response.reasoning_content:
                 previous_reasoning_content = response.reasoning_content[:1800]
@@ -343,6 +349,15 @@ async def on_message(message):
                     await summarise_webpage_content(message, arguments.get('prompt', ''), arguments.get('url', ''))
                 elif fname == 'create_image':
                     await create_image(message, arguments.get('prompt', ''), model="nvidia/sana:88312dcb9eaa543d7f8721e092053e8bb901a45a5d3c63c84e0a5aa7c247df33")
+                elif fname == 'user_information':
+                    discord_user_id = arguments.get('discord_user_id', str(message.author.id))
+                    user_info = await memory.user_information(discord_user_id)
+                    await message.reply(f'{message.author.mention}\n{user_info}', mention_author=True)
+                elif fname == 'store_user_information':
+                    discord_user_id = arguments.get('discord_user_id', str(message.author.id))
+                    information = arguments.get('information', '')
+                    result = await memory.store_user_information(discord_user_id, information)
+                    await message.reply(f'{message.author.mention} {result}', mention_author=True)
                 else:
                     logger.info(f'Unknown tool call: {fname}')
                     await message.reply(f'{message.author.mention} I am a silly sausage and don\'t know how to do that.', mention_author=True)

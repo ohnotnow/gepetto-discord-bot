@@ -10,6 +10,9 @@ if [ "$#" -ne 1 ]; then
 fi
 BOT_NAME=$1
 
+# Create user_data directory if it doesn't exist
+mkdir -p user_data
+
 # Check if the container is already running
 if docker ps --format '{{.Names}}' | grep -q "^${BOT_NAME}$"; then
   echo "${BOT_NAME} Container is already running"
@@ -19,4 +22,4 @@ fi
 docker build -t ${BOT_NAME} .
 
 # put your various environment variables in a file named .env
-docker run --restart=no --env-file=.env.${BOT_NAME} -v $(pwd)/stats.json:/app/stats.json -v $(pwd)/previous_image_themes.txt:/app/previous_image_themes.txt ${BOT_NAME}
+docker run --restart=no --env-file=.env.${BOT_NAME} -v $(pwd)/stats.json:/app/stats.json -v $(pwd)/previous_image_themes.txt:/app/previous_image_themes.txt -v $(pwd)/user_data:/app/user_data ${BOT_NAME}

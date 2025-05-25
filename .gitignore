@@ -6,3 +6,5 @@ venv*
 q.py
 qq.py
 
+# User data storage
+user_data/
