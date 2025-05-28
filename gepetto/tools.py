@@ -15,9 +15,9 @@ tool_list = [
                     "type": "array",
                     "items": {
                         "type": "string",
-                        "description": "The UK town or city where the weather forecast is requested."
+                        "description": "A UK town or city where the weather forecast is requested. eg, 'London'"
                     },
-                    "description": "An array of UK towns or cities where the weather forecast is requested."
+                    "description": "An array of UK towns or cities where the weather forecast is requested. eg, ['London','Edinburgh','Manchester']"
                 }
             },
             "required": ["prompt", "locations"]

@@ -160,12 +160,16 @@ async def get_weather_location_from_prompt(prompt, chatbot):
                 "parameters": {
                     "type": "object",
                     "properties": {
-                        "location": {
-                            "type": "string",
-                            "description": "A csv list of one or more UK city or town, eg London,Edinburgh,Manchester",
+                        "locations": {
+                            "type": "array",
+                            "description": "A list of one or more UK city or town, eg ['London','Edinburgh','Manchester']",
+                            "items": {
+                                "type": "string",
+                                "description": "A UK city or town, eg London,Edinburgh,Manchester",
+                            },
                         },
                     },
-                    "required": ["location"],
+                    "required": ["locations"],
                 },
             }
         }
@@ -173,9 +177,9 @@ async def get_weather_location_from_prompt(prompt, chatbot):
     # Note: we always use the openai model for this as it's the only one that always has function calling enabled
     chatbot = gpt.GPTModel()
     response = await chatbot.function_call(messages, tools)
-    return response.parameters.get("location").split(","), response.tokens
+    return response.parameters.get("locations"), response.tokens
 
-async def get_friendly_forecast(question, chatbot, locations):
+async def get_friendly_forecast(question, chatbot, locations: list[str]):
     forecast = ""
     dates = get_relative_date(question)
     if locations is None:
