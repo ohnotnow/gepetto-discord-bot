@@ -505,6 +505,9 @@ async def make_chat_image():
         # if we have loads of messages, then truncate the history to the most recent 200 messages
         if len(history) > 200:
             history = history[-200:]
+        logger.info(f"History length: {len(history)}")
+        # log the most recent 3 messages
+        logger.info(f"Most recent 3 messages: {history[-3:]}")
         if len(history) < 2:
             # get the date as, eg "Sunday, 24th November 2024"
             # check if today is a weekend or obvious holiday
