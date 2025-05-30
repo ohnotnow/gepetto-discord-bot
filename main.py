@@ -108,8 +108,8 @@ async def get_history_as_openai_messages(channel, include_bot_messages=True, lim
         message_content = re.sub(r'\[tokens used.+Estimated cost.+]', '', message_content, flags=re.MULTILINE)
         message_content = remove_nsfw_words(message_content) if nsfw_filter else message_content
         message_length = len(message_content)
-        if total_length + message_length > max_length:
-            break
+        # if total_length + message_length > max_length:
+        #     break
         # token_length = get_token_count(message_content)
         # if total_tokens + token_length > 3500:
         #     break
@@ -501,7 +501,7 @@ async def make_chat_image():
 
 
     async with channel.typing():
-        history = await get_history_as_openai_messages(channel, limit=1000, nsfw_filter=True, max_length=15000, include_timestamps=False, since_hours=8)
+        history = await get_history_as_openai_messages(channel, limit=1000, nsfw_filter=True, max_length=15000, include_timestamps=False)
         # if we have loads of messages, then truncate the history to the most recent 200 messages
         if len(history) > 200:
             history = history[-200:]
