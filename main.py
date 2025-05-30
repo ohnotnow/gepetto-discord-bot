@@ -506,7 +506,7 @@ async def make_chat_image():
         if len(history) > 200:
             history = history[-200:]
         logger.info(f"History length: {len(history)}")
-        # log the most recent 3 messages
+        logger.info(f"Oldest 3 messages: {history[:3]}")
         logger.info(f"Most recent 3 messages: {history[-3:]}")
         if len(history) < 2:
             # get the date as, eg "Sunday, 24th November 2024"
