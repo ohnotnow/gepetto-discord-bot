@@ -6,6 +6,7 @@ import random
 async def generate_image(prompt, model="black-forest-labs/flux-schnell", aspect_ratio="1:1", output_format="webp", output_quality=90, enhance_prompt=True):
     model_options = [
          "black-forest-labs/flux-1.1-pro",
+         "black-forest-labs/flux-kontext-pro",
         #  "bytedance/sdxl-lightning-4step:5599ed30703defd1d160a25a63321b4dec97101d98b4674bcc56e41f62f35637",
         #  "nvidia/sana:c6b5d2b7459910fec94432e9e1203c3cdce92d6db20f714f1355747990b52fa6",
         #  "luma/photon-flash",
