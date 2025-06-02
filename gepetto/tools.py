@@ -11,16 +11,8 @@ tool_list = [
                     "type": "string",
                     "description": "The full user prompt containing their request for the weather forecast."
                 },
-                "locations": {
-                    "type": "array",
-                    "items": {
-                        "type": "string",
-                        "description": "A UK town or city where the weather forecast is requested. eg, 'London'"
-                    },
-                    "description": "An array of UK towns or cities where the weather forecast is requested. eg, ['London','Edinburgh','Manchester']"
-                }
             },
-            "required": ["prompt", "locations"]
+            "required": ["prompt"]
         }
     }
 },

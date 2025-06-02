@@ -317,14 +317,68 @@ async def get_weather_location_from_prompt(prompt, chatbot):
     response = await chatbot.function_call(messages, tools)
     return response.parameters.get("locations"), response.tokens
 
-async def get_friendly_forecast(question, chatbot, locations: list[str]):
+async def get_details_from_prompt(question, chatbot):
+    system_prompt = (
+        "You are a helpful assistant who is an expert at picking out UK town and city names from user prompts and extracting the date or date-range the user wants a UK weather forecast for. "
+        "Use today’s date ({today}) to turn words like 'today', 'tomorrow', 'next three days' into ISO-dates."
+    )
+    messages = [
+        {"role": "system", "content": system_prompt},
+        {"role": "user", "content": question}
+    ]
+    tools = [
+        {
+            "type": "function",
+            "function": {
+                "name": "get_metoffice_forecast",
+                "description": "Extract the place-names and the date or date-range the user wants a UK weather forecast for.",
+                "parameters": {
+                    "type": "object",
+                    "properties": {
+                        "locations": {
+                            "type": "array",
+                            "items": {"type": "string"},
+                            "description": "One or more UK place-names, e.g. ['Glasgow', 'Norwich']"
+                        },
+                        "start_date": {
+                            "type": "string",
+                            "description": "ISO-8601 calendar date the forecast should start on, e.g. '2025-06-02'"
+                        },
+                        "end_date": {
+                            "type": "string",
+                            "description": "ISO-8601 calendar date the forecast should end on (inclusive). If the user only gave one day use the same value as start_date."
+                        }
+                    },
+                    "required": ["locations", "start_date", "end_date"],
+                    "additionalProperties": False
+                },
+                "strict": True
+            }
+        }
+    ]
+    today = datetime.date.today().strftime("%Y-%m-%d")
+    messages[0]["content"] = messages[0]["content"].format(today=today)
+    response = await chatbot.chat(messages, tools=tools)
+    tool_call = response.tool_calls[0]
+    arguments = json.loads(tool_call.function.arguments)
+    return arguments.get("locations"), arguments.get("start_date", today), arguments.get("end_date", today)
+
+async def get_friendly_forecast(question, chatbot):
     forecast = ""
-    dates = get_relative_date(question)
+    locations, start_date, end_date = await get_details_from_prompt(question, chatbot)
     total_tokens = 0  # Initialize total_tokens
 
-    logger.info(f"Parsed dates from question '{question}': {dates}")
+    logger.info(f"Parsed dates from question '{question}': {start_date} to {end_date}")
+    logger.info(f"Parsed locations from question '{question}': {locations}")
 
-    if locations is None:
+    # build a list of dates from start_date to end_date
+    dates = []
+    current_date = datetime.datetime.strptime(start_date, "%Y-%m-%d")
+    while current_date <= datetime.datetime.strptime(end_date, "%Y-%m-%d"):
+        dates.append(current_date.date())
+        current_date += datetime.timedelta(days=1)
+
+    if not locations:
         response = await chatbot.chat([{"role": "user", "content": question}])
         forecast = response.message
         total_tokens += response.tokens

@@ -190,12 +190,9 @@ async def create_image(discord_message: discord.Message, prompt: str, model: str
     logger.info("Sending image to discord")
     await discord_message.reply(f'{discord_message.author.mention}\n_[Estimated cost: US${cost}] | Model: {model_name}_', file=discord_file)
 
-async def get_weather_forecast(discord_message: discord.Message, prompt: str, locations: list[str]) -> None:
-    logger.info(f"Getting weather forecast for {prompt} and locations {locations}")
-    # check if the locations is not a list, then convert it to a list
-    if not isinstance(locations, list):
-        locations = [locations]
-    forecast = await weather.get_friendly_forecast(prompt, chatbot, locations)
+async def get_weather_forecast(discord_message: discord.Message, prompt: str) -> None:
+    logger.info(f"Getting weather forecast for '{prompt}'")
+    forecast = await weather.get_friendly_forecast(prompt, chatbot)
     await discord_message.reply(f'{discord_message.author.mention} {forecast}', mention_author=True)
 
 async def summarise_sentry_issue(discord_message: discord.Message, url: str) -> None:
@@ -344,7 +341,7 @@ async def on_message(message):
                     else:
                         await extract_recipe_from_webpage(message, arguments.get('prompt', ''), arguments.get('url', ''))
                 elif fname == 'get_weather_forecast':
-                    await get_weather_forecast(message, arguments.get('prompt', ''), arguments.get('locations', []))
+                    await get_weather_forecast(message, arguments.get('prompt', ''))
                 elif fname == 'summarise_webpage_content':
                     await summarise_webpage_content(message, arguments.get('prompt', ''), arguments.get('url', ''))
                 elif fname == 'create_image':
