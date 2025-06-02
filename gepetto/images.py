@@ -104,17 +104,53 @@ def get_extra_guidelines() -> str:
             extra_guidelines += "\n- The image should be reflective of a blood-curdling, gory, horror film.\n"
     return extra_guidelines
 
-async def get_image_response_from_llm(provider: str, prompt: str) -> str:
+async def get_image_response_from_llm(prompt: str, chatbot) -> str:
     """
     Install an additional SDK for JSON schema support Google AI Python SDK
 
     $ pip install google.ai.generativelanguage
     """
 
-    if provider == "gemini":
-        return await get_image_response_from_gemini(prompt)
-    else:
-        raise ValueError(f"Provider {provider} not supported")
+    return await get_image_response(prompt, chatbot)
+
+async def get_image_response(prompt: str, chatbot) -> dict:
+    messages = [
+        {"role": "user", "content": prompt}
+    ]
+    tools = [
+        {
+            "type": "function",
+            "function": {
+                "name": "get_image_response",
+                "description": "Generate a Stable Diffusion image prompt, themes and reasoning based on the user's request.",
+                "parameters": {
+                    "type": "object",
+                    "properties": {
+                        "prompt": {
+                            "type": "string",
+                            "description": "The prompt you want to give to the Stable Diffusion image model"
+                        },
+                        "themes": {
+                            "type": "array",
+                            "items": {"type": "string"},
+                            "description": "The themes you want to use in the image"
+                        },
+                        "reasoning": {
+                            "type": "string",
+                            "description": "The reasoning you used to generate the prompt"
+                        }
+                    },
+                    "required": ["prompt", "themes", "reasoning"],
+                    "additionalProperties": False
+                },
+                "strict": True
+            }
+        }
+    ]
+    response = await chatbot.chat(messages, tools=tools)
+    tool_call = response.tool_calls[0]
+    arguments = json.loads(tool_call.function.arguments)
+    return arguments
 
 async def get_image_response_from_gemini(prompt: str) -> dict:
     genai.configure(api_key=os.environ["GEMINI_API_KEY"])

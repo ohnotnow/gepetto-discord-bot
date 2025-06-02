@@ -524,7 +524,7 @@ async def make_chat_image():
             chat_history += f"{message['content']}\n"
         logger.info(f"Asking for chat prompt")
         combined_chat = images.get_initial_chat_image_prompt(chat_history, previous_image_themes)
-        decoded_response = await images.get_image_response_from_llm("gemini", combined_chat)
+        decoded_response = await images.get_image_response_from_llm(combined_chat, chatbot)
         # prompt_bot = claude.ClaudeModel()
         # response = await prompt_bot.chat([{ 'role': 'user', 'content': combined_chat }], temperature=1.0, json_mode=True)
         # response = await chatbot.chat([{ 'role': 'user', 'content': combined_chat }], temperature=1.0, json_mode=True)
@@ -537,6 +537,7 @@ async def make_chat_image():
         #         "themes": [],
         #         "reasoning": ""
         #     }
+        logger.info(f"Decoded response: {decoded_response}")
         llm_chat_prompt = decoded_response["prompt"]
         llm_chat_themes = decoded_response["themes"]
         llm_chat_reasoning = decoded_response["reasoning"]
