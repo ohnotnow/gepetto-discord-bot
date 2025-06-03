@@ -32,7 +32,7 @@ async def generate_image(prompt, model="black-forest-labs/flux-schnell", aspect_
             "disable_safety_checker": True,
         }
         cost = 0.04
-    if model.startswith("recraft-ai/"):
+    elif model.startswith("recraft-ai/"):
         input={
             "size": "1365x1024",
             "style": "any",
