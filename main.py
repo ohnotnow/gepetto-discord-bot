@@ -505,6 +505,8 @@ async def make_chat_image():
         logger.info(f"History length: {len(history)}")
         logger.info(f"Oldest 3 messages: {history[:3]}")
         logger.info(f"Most recent 3 messages: {history[-3:]}")
+        # reverse the history due to discord.py's message ordering
+        history.reverse()
         if len(history) < 2:
             # get the date as, eg "Sunday, 24th November 2024"
             # check if today is a weekend or obvious holiday
