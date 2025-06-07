@@ -173,9 +173,15 @@ def get_forecast(location_name = None, dates = []):
     sitelist_url = f'http://datapoint.metoffice.gov.uk/public/data/val/wxfcs/all/json/sitelist?key={API_KEY}'
 
     try:
-        response = requests.get(sitelist_url)
-        response.raise_for_status()
-        sitelist = response.json()
+        if os.path.exists(f"sitelist_metoffice.json"):
+            with open(f"sitelist_metoffice.json", "r") as f:
+                sitelist = json.load(f)
+        else:
+            response = requests.get(sitelist_url)
+            response.raise_for_status()
+            sitelist = response.json()
+            with open(f"sitelist_metoffice.json", "w") as f:
+                json.dump(sitelist, f)
     except requests.RequestException as e:
         logger.error(f"Error fetching sitelist: {e}")
         return "Sorry, I can't get the weather data right now. Please try again later."
