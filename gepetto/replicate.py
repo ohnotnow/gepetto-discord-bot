@@ -30,6 +30,7 @@ async def generate_image(prompt, model="black-forest-labs/flux-schnell", aspect_
             "output_quality": output_quality,
             "prompt_upsampling": enhance_prompt,
             "disable_safety_checker": True,
+            "output_format": "jpg",
         }
         cost = 0.04
     elif model.startswith("recraft-ai/"):
