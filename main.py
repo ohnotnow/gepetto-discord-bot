@@ -604,6 +604,20 @@ async def make_chat_video():
     logger.info(f"Most recent 3 messages: {history[-3:]}")
     # reverse the history due to discord.py's message ordering
     history.reverse()
+    if len(history) < 2:
+        # get the date as, eg "Sunday, 24th November 2024"
+        # check if today is a weekend or obvious holiday
+        if datetime.now().weekday() >= 5 or datetime.now().strftime("%B %d") in ["December 25", "December 26", "December 27", "December 28", "January 1", "January 2"]:
+            logger.info("Not making chat video because today is a weekend or obvious holiday")
+            return
+        date_string = datetime.now().strftime("%A, %d% %B %Y")
+        response = await chatbot.chat([{
+            'role': 'user',
+            'content': f"Today is {date_string}.  Could you please write a pithy, acerbic, sarcastic comment about how quiet the chat is in this discord server today?  If the date looks like a weekend, or a UK holiday, then take that into account when writing your response.  The users are all software developers and love nice food, interesting books, obscure sci-fi, cute cats.  They enjoy a somewhat jaded, cynical tone.  Please reply with only the sentence as it will be sent directly to Discord as a message."
+        }])
+        await channel.send(f"{response.message}")
+        return
+
     chat_history = ""
     for message in history:
         chat_history += f"{message['content']}\n"
