@@ -173,6 +173,7 @@ async def on_ready():
     logger.info(f"Starting discord bot - date time in python is {datetime.now()}")
     say_happy_birthday.start()
     make_chat_image.start()
+    make_chat_video.start()
     horror_chat.start()
     random_chat.start()
     logger.info(f"Using model type : {type(chatbot)}")
