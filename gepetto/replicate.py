@@ -109,3 +109,21 @@ async def generate_image(prompt, model="black-forest-labs/flux-schnell", aspect_
     # strip any training :hash from the model name, eg nvidia/sana:c6b5d2b7459910fec94432e9e1203c3cdce92d6db20f714f1355747990b52fa6
     model_name = model.split(":")[0]
     return image_url, model_name, cost
+
+async def generate_video(prompt, model="pixverse/pixverse-v4.5"):
+    input = {
+        "prompt": prompt,
+        "quality": "540p"
+    }
+    output = await replicate.async_run(
+        model,
+        input=input
+    )
+    cost = 0.01
+    if isinstance(output, list):
+        video_url = output[0]
+    else:
+        video_url = output
+    # strip any training :hash from the model name, eg nvidia/sana:c6b5d2b7459910fec94432e9e1203c3cdce92d6db20f714f1355747990b52fa6
+    model_name = model.split(":")[0]
+    return video_url, model_name, cost

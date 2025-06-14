@@ -47,6 +47,7 @@ model_engine = "gpt-4.1-mini"
 location = os.getenv('BOT_LOCATION', 'dunno')
 chat_image_hour = int(os.getenv('CHAT_IMAGE_HOUR', 17))
 
+AUTO_INVESTIGATE_SENTRY_ISSUES = os.getenv("AUTO_INVESTIGATE_SENTRY_ISSUES", False)
 
 
 # Create instance of bot
@@ -254,6 +255,12 @@ async def extract_recipe_from_webpage(discord_message: discord.Message, prompt: 
 @bot.event
 async def on_message(message):
     global previous_reasoning_content
+#    if AUTO_INVESTIGATE_SENTRY_ISSUES and 'sentry.io/issues' in message.content:
+        # sentry alert url is of the form https://university-of-glasgo-1c05fc43a.sentry.io/issues/6672435553/?alert_rule_id=14799200&alert_type=issue&notification_uuid=2f09f6a7-77fe-4189-8556-749aa4b8e997&project=4506224344039424&referrer=discord
+        # we need to extract the entire sentry url from the message using regex
+#        sentry_url = re.search(r'https://.*sentry\.io/issues/.*', message.content).group(0)
+#        await summarise_sentry_issue(message, sentry_url)
+#        return
     message_blocked, abusive_reply = guard.should_block(message, bot, server_id, chatbot)
     if message_blocked:
         if abusive_reply:
@@ -303,6 +310,9 @@ async def on_message(message):
                 question = question + ". Please be very concise, curt and to the point.  The user in this case is a discord bot."
             if question.lower().startswith("!image"):
                 await make_chat_image()
+                return
+            if question.lower().startswith("!video"):
+                await make_chat_video()
                 return
             if '--o1' in question.lower():
                 question = question.lower().replace("--o1", "")
@@ -576,6 +586,52 @@ async def make_chat_image():
     await channel.send(f"{message}\n", file=discord_file)
     with open('previous_image_themes.txt', 'a') as file:
         file.write(f"\n{previous_image_themes}")
+
+
+@tasks.loop(time=time(hour=chat_image_hour, tzinfo=pytz.timezone('Europe/London')))
+async def make_chat_video():
+    if not os.getenv("CHAT_VIDEO_ENABLED", False):
+        logger.info("Not making chat video because CHAT_VIDEO_ENABLED is not set")
+        return
+    logger.info("In make_chat_video")
+    channel = bot.get_channel(int(os.getenv('DISCORD_BOT_CHANNEL_ID', 'Invalid').strip()))
+    history = await get_history_as_openai_messages(channel, limit=1000, nsfw_filter=True, max_length=15000, include_timestamps=False, since_hours=8)
+    # if we have loads of messages, then truncate the history to the most recent 200 messages
+    if len(history) > 200:
+        history = history[-200:]
+    logger.info(f"History length: {len(history)}")
+    logger.info(f"Oldest 3 messages: {history[:3]}")
+    logger.info(f"Most recent 3 messages: {history[-3:]}")
+    # reverse the history due to discord.py's message ordering
+    history.reverse()
+    chat_history = ""
+    for message in history:
+        chat_history += f"{message['content']}\n"
+    prompt = f"""
+    Please create a short description based on the following chat history.
+    The description will be used to generate a five second long video, which should delight and impress the user.
+    Please reply with only the description as it will be sent directly to a video generator.
+
+    <chat-history>
+    {chat_history}
+    </chat-history>
+    """
+    async with channel.typing():
+        response = await chatbot.chat([{
+            'role': 'user',
+            'content': prompt
+        }])
+        logger.info(f"Video prompt: {response.message}")
+        video_url, model_name, cost = await replicate.generate_video(response.message)
+        logger.info(f"Video URL: {video_url} - model: {model_name} - cost: {cost}")
+        if not video_url:
+            logger.info('We did not get a file from API')
+            return
+        today_string = datetime.now().strftime("%Y-%m-%d")
+        video = requests.get(video_url)
+        discord_file = File(io.BytesIO(video.content), filename=f'channel_summary_{today_string}.mp4')
+        message = f'{response.message}\n_Model: {model_name}]  / Estimated cost: US${cost:.3f}_'
+        await channel.send(f"{message}\n", file=discord_file)
 
 # Run the bot
 chatbot = get_chatbot()
