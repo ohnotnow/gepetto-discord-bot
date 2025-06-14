@@ -5,11 +5,18 @@ This bot uses OpenAI to generate responses to messages in a Discord server. It l
 It has a couple of extra options to do common things.  Eg:
 ```
 @Gepetto create an image of a rocket flying through space
-@Gepetto 👀 https://www.example.com/an/article
+@Gepetto can you summarised this webpage? https://www.example.com/an/article
 @Gepetto 👀 <https://www.youtube.com/watch?v=123f830q9>
 @Gepetto 👀 <https://www.example.com/an/article> can you give me the main insights on this as bullet points?
+@Gepetto weather forecast for London today?
 ```
 The youtube one depends on their being subtitles/transcripts attached to the video.  The summarise command is a little limited (currently hard-coded) in scope due to token limits on the text you can send to the cheaper OpenAI models.
+
+It has a few 'timed' features too :
+
+* Once a day read the channel history and use an image generator (via replicate) to create an image based on the chat.
+* Randomly through the night post very short 'horror stories' (usually just a single sentence)
+* Occassionally just interject some chat (disabled by default as it's quite annoying)
 
 ## Environment Variables
 
@@ -38,6 +45,7 @@ The script uses the following environment variables (* indicates required):
 | OPENAI_API_KEY | OpenAI API authentication | - | "your-openai-api-key" |
 | OPENROUTER_API_KEY | OpenRouter API authentication | - | "your-openrouter-api-key" |
 | ANTHROPIC_API_KEY | Anthropic API authentication | - | "your-anthropic-api-key" |
+| REPLICATE_API_KEY | Replicate API authentication (for image generation) | - | "your-replicate-api-key" |
 | USER_LOCATIONS | Setting user locations for image generation | "the UK towns of Bath and Manchester" | "London, Manchester, Edinburgh" |
 | USER_DESCRIPTIONS | Setting user descriptions for image generation | "UK-based Caucasian adult male IT workers" | "professional software developers" |
 
@@ -45,7 +53,7 @@ The script uses the following environment variables (* indicates required):
 
 To run the bot:
 
-1. Install the required Python dependencies: `discord.py` and `openai`.  You can install these by running `pip install -r requirements.txt`.
+1. Install the required Python dependencies by running `pip install -r requirements.txt`.
 2. Set your environment variables. These can be set in your shell, or stored in a `.env` file at the root of your project.
 3. Run `python main.py` in the root of your project to start the bot.
 
