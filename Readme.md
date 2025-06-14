@@ -13,12 +13,33 @@ The youtube one depends on their being subtitles/transcripts attached to the vid
 
 ## Environment Variables
 
-The following environment variables are required:
+The script uses the following environment variables (* indicates required):
 
-- `DISCORD_BOT_TOKEN`: Your Discord bot token
-- `DISCORD_SERVER_ID`: The ID of your Discord server
-- `OPENAI_API_KEY`: Your OpenAI API key
-- `DEFAULT_MODEL_ENGINE`: The engine of the OpenAI model to use (default is 'gpt-3.5-turbo')
+| Environment Variable | Purpose | Default | Example |
+|---------------------|---------|---------|---------|
+| * DISCORD_SERVER_ID | Discord server identification | "not_set" | "123456789012345678" |
+| * DISCORD_BOT_TOKEN | Discord bot authentication | "not_set" | "your-discord-bot-token" |
+| * DISCORD_BOT_CHANNEL_ID | Setting the Discord channel ID for bot interactions | "Invalid" | "123456789012345678" |
+| DISCORD_BOT_DEFAULT_PROMPT | Setting the default system prompt for the bot | - | "You are a helpful AI assistant..." |
+| * BOT_PROVIDER | Selecting the AI model provider to use with litellm | - | "openai" |
+| * BOT_MODEL | Setting the default model for the bot | - | "o4-mini" |
+| BOT_LOCATION | Bot's location setting | "dunno" | "London" |
+| BOT_NAME | Setting the bot's name | "Base" | "Gepetto" |
+| CHAT_IMAGE_HOUR | Setting the hour for chat image generation | 17 | "17" (5 PM) |
+| FEATURE_RANDOM_CHAT | Enabling/disabling random chat feature | False | "true" |
+| FEATURE_HORROR_CHAT | Enabling/disabling horror chat feature | False | "true" |
+| CHAT_IMAGE_ENABLED | Enabling/disabling chat image generation | False | "true" |
+| SENTRY_AUTH_TOKEN | Sentry API authentication | - | "your-sentry-auth-token" |
+| BOT_OMNILISTENS | Enabling/disabling omnilistens feature | "false" | "true" |
+| MET_OFFICE_API_KEY | Weather API authentication | - | "your-met-office-api-key" |
+| DISCORD_BOT_BIRTHDAYS | Storing birthday information about users (user-id:day/month) | - | "123456789:25/12,987654321:01/01" |
+| ANYSCALE_API_KEY | Anyscale API authentication | - | "your-anyscale-api-key" |
+| ANYSCALE_BASE_URL | Anyscale API base URL | - | "https://api.any scale.com/v1/" |
+| OPENAI_API_KEY | OpenAI API authentication | - | "your-openai-api-key" |
+| OPENROUTER_API_KEY | OpenRouter API authentication | - | "your-openrouter-api-key" |
+| ANTHROPIC_API_KEY | Anthropic API authentication | - | "your-anthropic-api-key" |
+| USER_LOCATIONS | Setting user locations for image generation | "the UK towns of Bath and Manchester" | "London, Manchester, Edinburgh" |
+| USER_DESCRIPTIONS | Setting user descriptions for image generation | "UK-based Caucasian adult male IT workers" | "professional software developers" |
 
 ## Running the Script
 
