@@ -591,10 +591,10 @@ async def make_chat_image():
 
 @tasks.loop(time=time(hour=chat_image_hour, tzinfo=pytz.timezone('Europe/London')))
 async def make_chat_video():
+    logger.info("In make_chat_video")
     if not os.getenv("CHAT_VIDEO_ENABLED", False):
         logger.info("Not making chat video because CHAT_VIDEO_ENABLED is not set")
         return
-    logger.info("In make_chat_video")
     channel = bot.get_channel(int(os.getenv('DISCORD_BOT_CHANNEL_ID', 'Invalid').strip()))
     history = await get_history_as_openai_messages(channel, limit=1000, nsfw_filter=True, max_length=15000, include_timestamps=False, since_hours=8)
     # if we have loads of messages, then truncate the history to the most recent 200 messages
