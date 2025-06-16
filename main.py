@@ -597,7 +597,7 @@ async def make_chat_image():
         file.write(f"\n{previous_image_themes}")
 
 
-@tasks.loop(time=time(hour=chat_image_hour, tzinfo=pytz.timezone('Europe/London')))
+@tasks.loop(time=time(hour=chat_image_hour, minute=15, tzinfo=pytz.timezone('Europe/London')))
 async def make_chat_video():
     logger.info("In make_chat_video")
     if not os.getenv("CHAT_VIDEO_ENABLED", False):
