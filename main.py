@@ -28,6 +28,7 @@ previous_image_themes = ""
 previous_reasoning_content = ""
 previous_themes = []
 horror_history = []
+daily_image_count = 0
 
 # Setup logging
 logger = logging.getLogger('discord')  # Get the discord logger
@@ -176,6 +177,7 @@ async def on_ready():
     make_chat_video.start()
     horror_chat.start()
     random_chat.start()
+    reset_daily_image_count.start()
     logger.info(f"Using model type : {type(chatbot)}")
     return
     with open(AVATAR_PATH, 'rb') as avatar:
@@ -184,6 +186,12 @@ async def on_ready():
 
 async def create_image(discord_message: discord.Message, prompt: str, model: str = "black-forest-labs/flux-schnell") -> None:
     logger.info(f"Creating image with model: {model} and prompt: {prompt}")
+    global daily_image_count
+    daily_image_count += 1
+    if daily_image_count > 10:
+        logger.info("Not creating image because daily image count is too high")
+        await discord_message.reply(f'Due to budget cuts, I can only generate 10 images per day.', mention_author=True)
+        return
     image_url, model_name, cost = await replicate.generate_image(prompt, model=model)
     prompt_as_filename = f"{re.sub(r'[^a-zA-Z0-9]', '_', prompt)[:50]}_{datetime.now().strftime('%Y_%m_%d')}.png"
     logger.info("Fetching image")
@@ -647,6 +655,12 @@ async def make_chat_video():
         discord_file = File(io.BytesIO(video.content), filename=f'channel_summary_{today_string}.mp4')
         message = f'{response.message}\n_Model: {model_name}]  / Estimated cost: US${cost:.3f}_'
         await channel.send(f"{message}\n", file=discord_file)
+
+@tasks.loop(time=time(hour=3, tzinfo=pytz.timezone('Europe/London')))
+async def reset_daily_image_count():
+    logger.info("In reset_daily_image_count")
+    global daily_image_count
+    daily_image_count = 0
 
 # Run the bot
 chatbot = get_chatbot()
