@@ -546,18 +546,6 @@ async def make_chat_image():
         logger.info(f"Asking for chat prompt")
         combined_chat = images.get_initial_chat_image_prompt(chat_history, previous_image_themes)
         decoded_response = await images.get_image_response_from_llm(combined_chat, chatbot)
-        # prompt_bot = claude.ClaudeModel()
-        # response = await prompt_bot.chat([{ 'role': 'user', 'content': combined_chat }], temperature=1.0, json_mode=True)
-        # response = await chatbot.chat([{ 'role': 'user', 'content': combined_chat }], temperature=1.0, json_mode=True)
-        # try:
-        #     decoded_response = json.loads(response.message)
-        # except json.JSONDecodeError:
-        #     logger.error(f'Error decoding JSON: {response.message}')
-        #     decoded_response = {
-        #         "prompt": response.message,
-        #         "themes": [],
-        #         "reasoning": ""
-        #     }
         logger.info(f"Decoded response: {decoded_response}")
         llm_chat_prompt = decoded_response["prompt"]
         llm_chat_themes = decoded_response["themes"]
@@ -575,20 +563,10 @@ async def make_chat_image():
             logger.info('We did not get a file from API')
             await channel.send(f"Sorry, I tried to make an image but I failed (probably because of naughty words - tsk).")
             return
-        try:
-            response = await chatbot.chat([{
-                'role': 'user',
-                'content': f"Could you rephrase the following sentence to make it sound more like a jaded, cynical human who works as a programmer wrote it? You can reword and restructure it any way you like - just keep it succinct and keep the sentiment and tone. <sentence>{previous_image_description}</sentence>.  Please reply with only the reworded sentence as it will be sent directly to Discord as a message."
-            }])
-        except Exception as e:
-            logger.info(f'Error generating chat image response: {e}')
-            response = gepetto_response.ChatResponse(message='Behold!', tokens=0, cost=0.0, model=chatbot.name)
-    previous_image_description = response.message
-    previous_image_themes
     image = requests.get(image_url)
     today_string = datetime.now().strftime("%Y-%m-%d")
     discord_file = File(io.BytesIO(image.content), filename=f'channel_summary_{today_string}.png')
-    message = f'{response.message}\n{chatbot.name}\'s chosen themes: _{", ".join(llm_chat_themes)}_\n_Model: {model_name}]  / Estimated cost: US${cost:.3f}_'
+    message = f'{chatbot.name}\'s chosen themes: _{", ".join(llm_chat_themes)}_\n_Model: {model_name}]  / Estimated cost: US${cost:.3f}_'
 
     if len(message) > 1900:
         message = message[:1900]
