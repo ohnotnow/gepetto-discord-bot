@@ -172,12 +172,12 @@ def remove_emoji(text):
 @bot.event
 async def on_ready():
     logger.info(f"Starting discord bot - date time in python is {datetime.now()}")
-    say_happy_birthday.start()
-    make_chat_image.start()
-    make_chat_video.start()
-    horror_chat.start()
-    random_chat.start()
-    reset_daily_image_count.start()
+    await say_happy_birthday.start()
+    await make_chat_image.start()
+    await make_chat_video.start()
+    await horror_chat.start()
+    await random_chat.start()
+    await reset_daily_image_count.start()
     logger.info(f"Using model type : {type(chatbot)}")
     return
     with open(AVATAR_PATH, 'rb') as avatar:
@@ -582,7 +582,7 @@ async def make_chat_video():
         logger.info("Not making chat video because CHAT_VIDEO_ENABLED is not set")
         return
     channel = bot.get_channel(int(os.getenv('DISCORD_BOT_CHANNEL_ID', 'Invalid').strip()))
-    history = await get_history_as_openai_messages(channel, limit=1000, nsfw_filter=True, max_length=15000, include_timestamps=False, since_hours=8)
+    history = await get_history_as_openai_messages(channel, limit=1000, include_bot_messages=False, nsfw_filter=True, max_length=15000, include_timestamps=False, since_hours=8)
     # if we have loads of messages, then truncate the history to the most recent 200 messages
     if len(history) > 200:
         history = history[-200:]
