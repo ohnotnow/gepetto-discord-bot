@@ -172,12 +172,12 @@ def remove_emoji(text):
 @bot.event
 async def on_ready():
     logger.info(f"Starting discord bot - date time in python is {datetime.now()}")
-    await say_happy_birthday.start()
-    await make_chat_image.start()
-    await make_chat_video.start()
-    await horror_chat.start()
-    await random_chat.start()
-    await reset_daily_image_count.start()
+    say_happy_birthday.start()
+    make_chat_image.start()
+    make_chat_video.start()
+    horror_chat.start()
+    # random_chat.start()
+    reset_daily_image_count.start()
     logger.info(f"Using model type : {type(chatbot)}")
     return
     with open(AVATAR_PATH, 'rb') as avatar:
