@@ -616,6 +616,9 @@ async def make_chat_video():
     <chat-history>
     {chat_history}
     </chat-history>
+
+    Remember to tell the video generator which style to use (eg, anime, realistic, film noir, etc).  You can also suggest
+    camera angles, lighting, etc.  You are the director of the video, so you can suggest anything you like.
     """
     async with channel.typing():
         response = await chatbot.chat([{
