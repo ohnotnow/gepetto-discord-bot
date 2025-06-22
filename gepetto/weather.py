@@ -258,7 +258,7 @@ def get_forecast(location_name = None, dates = []):
         M = metoffer.MetOffer(API_KEY)
         logger.info(f"Requesting forecast for {location_id}")
         forecast = M.loc_forecast(location_id, metoffer.DAILY)
-
+        return forecast
         # Debug the structure
         logger.info(f"Forecast structure check:")
         logger.info(f"- SiteRep keys: {forecast.get('SiteRep', {}).keys()}")
@@ -466,8 +466,8 @@ async def get_friendly_forecast(question, chatbot):
         if personality:
             personality = f" You should take on subtle hints of this personality for writing your forecast *but don't be too obvious* : {personality}."
 
-        question_text = f"It is currently {date_and_time}. The user asked me ''{question.strip()}''. I have the following plain weather forecasts for you based on their question.  Could you make the a bit more natural - like a weather presenter would give at the end of a drive-time news segment on the radio or TV?  ONLY reply with the rewritten forecast.  NEVER add any extra context - the user only wants to see the friendly, drive-time style forecast.  If the wind speed is given in knots, convert it to MPH. Feel free to use weather-specific emoji.  {personality}  FORECAST : ''{forecast}''"
-
+#        question_text = f"It is currently {date_and_time}. The user asked me ''{question.strip()}''. I have the following plain weather forecasts for you based on their question.  Could you make the a bit more natural - like a weather presenter would give at the end of a drive-time news segment on the radio or TV?  ONLY reply with the rewritten forecast.  NEVER add any extra context - the user only wants to see the friendly, drive-time style forecast.  If the wind speed is given in knots, convert it to MPH. Feel free to use weather-specific emoji.  {personality}  FORECAST : ''{forecast}''"
+        question_text = f"It is currently {date_and_time}. The user asked me ''{question.strip()}''. I have the following UK Met Office DataPoint API response for you based on their question.  Could you make the a bit more natural - like a weather presenter would give at the end of a drive-time news segment on the radio or TV?  ONLY reply with the rewritten forecast.  NEVER add any extra context - the user only wants to see the friendly, drive-time style forecast.  If the wind speed is given in knots, convert it to MPH. Feel free to use weather-specific emoji.  {personality}  FORECAST : ''{forecast}''"
         logger.info(f"Question: {question_text}")
         response = await chatbot.chat([
             {"role": "user", "content": question_text},
