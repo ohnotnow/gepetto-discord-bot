@@ -1,49 +1,12 @@
-#!/usr/bin/env python
-"""
-metoffer
+# Updated metoffer lib to run using urllib3, tested on python 3.9
+# Updated by rodneyrodneybristol
 
-Wrapper for MetOffice DataPoint API
-<http://www.metoffice.gov.uk/datapoint>.
-
-The UK's Met Office collects a great deal of meteorological
-information which it makes available through its website.
-It also offers forecast information.  These data are available
-through their API to anyone who has signed up to receive a
-'key'.   metoffer offers the ability to retrieve and browse
-this data in a handy Python format.
-
-                        *    *    *
-
-Copyright 2012-2014, 2018 Stephen B Murray #  TODO
-
-This program is free software: you can redistribute it and/or modify
-it under the terms of the GNU General Public License as published by
-the Free Software Foundation, either version 3 of the License, or
-(at your option) any later version.
-
-This program is distributed in the hope that it will be useful,
-but WITHOUT ANY WARRANTY; without even the implied warranty of
-MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-GNU General Public License for more details.
-
-You should have received a copy of the GNU General Public License
-along with this program.  If not, see <http://www.gnu.org/licenses/>
-
-"""
-
-
-__version__ = "2.0"  # TODO
-__author__ = "Stephen B Murray <sbm199@gmail.com>"
 
 
 import datetime
 import json
+import urllib3
 import operator
-try:
-    import urllib.request as url_lib
-except ImportError:
-    import urllib2 as url_lib  # TODO Python 2.x? Seriously? Still?
-
 
 HOST = "http://datapoint.metoffice.gov.uk/public/data"
 USER_AGENT = "Mozilla/5.0"  # because default "Python-urllib/[ver]" gets HTTP response 403 where it never used to.
@@ -70,22 +33,18 @@ MOUNTAIN_AREA = "mountainarea"
 # For stand-alone image only:
 SURFACE_PRESSURE = "surfacepressure"
 
-
 DATA_TYPE = "json"      # Easier to work with than the XML alternative
-
 
 # Requests
 SITELIST = "sitelist"
 CAPABILITIES = "capabilities"
 LATEST = "latest"       # For textual data only
 
-
 # Time steps
 DAILY = "daily"
 THREE_HOURLY = "3hourly"
 HOURLY = "hourly"
-
-
+TEMPS = {}
 # Some Met Office constants to aid interpretation of data
 WEATHER_CODES = {
     "NA": "Not available",
@@ -154,7 +113,6 @@ REGIONS = {
     "wl": ("516", "Wales")
     }
 
-
 def guidance_UV(index):
     """Return Met Office guidance regarding UV exposure based on UV index"""
     if 0 < index < 3:
@@ -183,10 +141,12 @@ class MetOffer:
         rest_url = "/".join([HOST, data_category, resource_category, field, DATA_TYPE, request])
         query_string = "?" + "&".join(["res=" + step, "time=" + isotime if isotime is not None else "", "key=" + self.key])
         url = rest_url + query_string
-        urlrequestobj = url_lib.Request(url, data=None, headers={"User-Agent": USER_AGENT})
-        page = url_lib.urlopen(urlrequestobj)  # Edited to solve 403 issue ver 2.1
-        pg = page.read()
-        return pg
+        print()
+        #urlrequestobj = urllib3.Request(url, data=None, headers={"User-Agent": USER_AGENT})
+        with urllib3.PoolManager() as http:  # Added to solve 403 issue
+            r = http.request('GET', url, headers={"User-Agent": USER_AGENT})
+            pg = r.data  # Added to solve 403 issue
+            return pg
 
     def loc_forecast(self, request, step, isotime=None):
         """
@@ -363,6 +323,7 @@ def extract_data_key(returned_data):
     return {i["name"]: {"text": i["$"], "units": i["units"]} for i in returned_data["SiteRep"]["Wx"]["Param"]}
 
 
+
 class Weather():
     """A hold-all for returned weather data, including associated metadata, parsed from the returned dict
     of MetOffer location-specific data."""
@@ -409,8 +370,13 @@ class Weather():
         self.data_date = returned_data["SiteRep"]["DV"]["dataDate"]
         data_key = extract_data_key(returned_data)
         self.data = []
+        #print(self.data)
         for weather in _weather_dict_gen(returned_data, data_key):
             self.data.append(weather)
+        TEMPS = self.data
+
+    def to_json(self):
+        return json.dumps(self.data, indent=4, sort_keys=True, default=str)
 
 
 class TextForecast():

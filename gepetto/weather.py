@@ -257,8 +257,9 @@ def get_forecast(location_name = None, dates = []):
     try:
         M = metoffer.MetOffer(API_KEY)
         logger.info(f"Requesting forecast for {location_id}")
-        forecast = M.loc_forecast(location_id, metoffer.DAILY)
-        return forecast
+        forecast = M.loc_forecast(location_id, metoffer.THREE_HOURLY)
+        forecast = metoffer.Weather(forecast)
+        return forecast.to_json()
         # Debug the structure
         logger.info(f"Forecast structure check:")
         logger.info(f"- SiteRep keys: {forecast.get('SiteRep', {}).keys()}")
