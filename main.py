@@ -353,6 +353,7 @@ async def on_message(message):
                     'content': rewrite_prompt
                 }])
                 question_with_context = response.message
+                logger.info(f"Rewritten question: {question_with_context}")
             messages = build_messages(question_with_context, context, system_prompt=system_prompt)
             response = await chatbot.chat(messages, temperature=temperature, tools=tools.tool_list, **optional_args)
             if response.reasoning_content:
