@@ -323,6 +323,11 @@ async def on_message(message):
             if question.lower().startswith("!video"):
                 await make_chat_video()
                 return
+            if '--rewrite' in question.lower():
+                question = question.lower().replace("--rewrite", "")
+                rewrite_mode = True
+            else:
+                rewrite_mode = False
             if '--o1' in question.lower():
                 question = question.lower().replace("--o1", "")
                 override_model = gpt.Model.GPT_O1_MINI.value[0]
@@ -341,7 +346,13 @@ async def on_message(message):
             # Add user context to the question so LLM knows Discord user info and can use memory tools
             user_context = f"[User: {message.author.name} (ID: {message.author.id})] "
             question_with_context = user_context + question
-
+            if rewrite_mode:
+                rewrite_prompt = f"The user has asked the following question.  Your task is to rewrite the question to be much clearer when it is given to another LLM to answer.  The purpose of the rewrite is to get the best possible answer to the original question.  Please respond with only the rewritten question, no other chat or commentary as your response will be passed directly to another LLM.  <original-question>\n{question_with_context}\n</original-question>"
+                response = await chatbot.chat([{
+                    'role': 'user',
+                    'content': rewrite_prompt
+                }])
+                question_with_context = response.message
             messages = build_messages(question_with_context, context, system_prompt=system_prompt)
             response = await chatbot.chat(messages, temperature=temperature, tools=tools.tool_list, **optional_args)
             if response.reasoning_content:
