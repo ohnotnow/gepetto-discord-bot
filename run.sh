@@ -19,6 +19,9 @@ if docker ps --format '{{.Names}}' | grep -q "^${BOT_NAME}$"; then
   exit 1
 fi
 
+git commit -a -m 'local changes'
+git pull origin master --rebase 
+
 docker build -t ${BOT_NAME} .
 
 # put your various environment variables in a file named .env
