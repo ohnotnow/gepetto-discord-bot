@@ -19,8 +19,8 @@ if docker ps --format '{{.Names}}' | grep -q "^${BOT_NAME}$"; then
   exit 1
 fi
 
-git commit -a -m 'local changes'
-git pull origin master --rebase 
+git commit -a -m 'local changes' || echo "No local changes to commit"
+git pull origin master --rebase || echo "No remote changes to pull"
 
 docker build -t ${BOT_NAME} .
 
