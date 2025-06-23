@@ -27,14 +27,17 @@ def get_sentry_issue(issue_url: str) -> dict:
 
 def parse_sentry_response(api_response: dict, issue_url: str) -> SentryIssue:
     # Extract fields
+    logger.info(f"Parsing Sentry response: {api_response}")
     title = api_response.get("title", "No title")
     metadata = api_response.get("metadata", {})
     error_type = metadata.get("type", "Unknown")
     error_value = metadata.get("value", "No value provided")
 
+    logger.info("Getting tags")
     # Tags
     tags = {tag["key"]: tag["value"] for tag in api_response.get("tags", [])}
 
+    logger.info("Getting user info")
     # User info
     user = api_response.get("user", {})
     user_info = {
@@ -43,6 +46,7 @@ def parse_sentry_response(api_response: dict, issue_url: str) -> SentryIssue:
         "ip_address": user.get("ip_address", "Unknown")
     }
 
+    logger.info("Getting date created")
     # Date created
     date_created = api_response.get("dateCreated", "Unknown date")
 
@@ -50,11 +54,13 @@ def parse_sentry_response(api_response: dict, issue_url: str) -> SentryIssue:
     stacktrace = []
     entries = api_response.get("entries", [])
     for entry in entries:
+        logger.info(f"Processing entry: {entry}")
         if entry.get("type") == "exception":
             values = entry["data"].get("values", [])
             for value in values:
                 frames = value.get("stacktrace", {}).get("frames", [])
                 for frame in frames[-3:]:  # Get the last 3 frames (most relevant)
+                    logger.info(f"Processing frame: {frame}")
                     stacktrace.append({
                         "filename": frame.get("filename", "Unknown"),
                         "function": frame.get("function", "Unknown"),
@@ -64,6 +70,7 @@ def parse_sentry_response(api_response: dict, issue_url: str) -> SentryIssue:
     # Breadcrumbs
     breadcrumbs = []
     for entry in entries:
+        logger.info(f"Processing2 entry: {entry}")
         if entry.get("type") == "breadcrumbs":
             breadcrumbs = [
                 {
@@ -73,9 +80,10 @@ def parse_sentry_response(api_response: dict, issue_url: str) -> SentryIssue:
                 }
                 for crumb in entry.get("data", {}).get("values", [])
             ]
-
+    logger.info(f"Breadcrumbs: {breadcrumbs}")
     # Issue URL
     url = issue_url
+    logger.info(f"URL: {url}")
 
     return SentryIssue(
         title=title,
