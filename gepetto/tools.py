@@ -75,6 +75,23 @@ tool_list = [
             }
         }
     },
+{
+    "type": "function",
+    "function": {
+        "name": "get_sentry_issue_summary",
+        "description": "Gets a summary of a Sentry issue based on the provided URL.",
+        "parameters": {
+            "type": "object",
+            "properties": {
+                "url": {
+                    "type": "string",
+                    "description": "The user-provided URL of the sentry issue."
+                }
+            },
+            "required": ["url"]
+            }
+        }
+    },
     {
     "type": "function",
     "function": {

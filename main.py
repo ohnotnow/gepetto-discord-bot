@@ -373,6 +373,8 @@ async def on_message(message):
                         await extract_recipe_from_webpage(message, arguments.get('prompt', ''), arguments.get('url', ''))
                 elif fname == 'get_weather_forecast':
                     await get_weather_forecast(message, arguments.get('prompt', ''))
+                elif fname == 'get_sentry_issue_summary':
+                    await summarise_sentry_issue(message, arguments.get('url', ''))
                 elif fname == 'summarise_webpage_content':
                     await summarise_webpage_content(message, arguments.get('prompt', ''), arguments.get('url', ''))
                 elif fname == 'create_image':
