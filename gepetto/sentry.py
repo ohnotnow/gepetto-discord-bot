@@ -59,7 +59,10 @@ def parse_sentry_response(api_response: dict, issue_url: str) -> SentryIssue:
             values = entry["data"].get("values", [])
             for value in values:
                 logger.info(f"Processing value: {value}")
-                frames = value.get("stacktrace", {}).get("frames", [])
+                frames = value.get("stacktrace", {})
+                if not frames:
+                    continue
+                frames = frames.get("frames", [])
                 logger.info(f"Processing frames: {frames}")
                 for frame in frames[-3:]:  # Get the last 3 frames (most relevant)
                     logger.info(f"Processing frame: {frame}")
