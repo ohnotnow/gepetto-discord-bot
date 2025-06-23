@@ -1,6 +1,9 @@
 import requests
 import os
 import asyncio
+import logging
+
+logger = logging.getLogger('discord')
 
 class SentryIssue:
     def __init__(self, title, error_type, error_value, tags, user, date_created, stacktrace, breadcrumbs, url):
@@ -160,11 +163,17 @@ def generate_llm_prompt(data: dict) -> str:
     return prompt
 
 def get_sentry_issue_and_parse(issue_url: str) -> tuple[str, str]:
+    logger.info(f"Getting Sentry issue and parsing for {issue_url}")
     api_response = get_sentry_issue(issue_url)
+    logger.info("Parsing Sentry issue")
     issue = parse_sentry_response(api_response, issue_url)
+    logger.info("Preparing data for LLM")
     data_for_llm = prepare_data_for_llm(issue)
+    logger.info("Generating LLM prompt")
     prompt = generate_llm_prompt(data_for_llm)
+    logger.info("Formatting Discord message")
     discord_message = format_discord_message(issue)
+    logger.info("Returning results")
     return discord_message, prompt
 
 async def process_sentry_issue(url: str) -> tuple[str, str]:
