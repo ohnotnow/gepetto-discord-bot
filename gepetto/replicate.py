@@ -2,6 +2,7 @@ import json
 import requests
 import replicate
 import random
+import os
 
 async def generate_image(prompt, model="black-forest-labs/flux-schnell", aspect_ratio="1:1", output_format="webp", output_quality=90, enhance_prompt=True):
     model_options = [
@@ -17,6 +18,8 @@ async def generate_image(prompt, model="black-forest-labs/flux-schnell", aspect_
         #  "google/imagen-3",
          "google/imagen-4",
     ]
+    if os.getenv("OPENAI_API_KEY", None) is not None:
+        model_options.append("openai/gpt-image-1")
     # pick a random model from the list
     model = random.choice(model_options)
     print(f"Using model: {model}")
@@ -33,6 +36,13 @@ async def generate_image(prompt, model="black-forest-labs/flux-schnell", aspect_
             "output_format": "jpg",
         }
         cost = 0.04
+    elif model.startswith("openai/"):
+        input = {
+            "prompt": prompt,
+            "openai_api_key": os.getenv("OPENAI_API_KEY"),
+            "moderation": "low",
+        }
+        cost = 0.001
     elif model.startswith("recraft-ai/"):
         input={
             "size": "1365x1024",
