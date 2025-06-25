@@ -110,10 +110,11 @@ async def generate_image(prompt, model="black-forest-labs/flux-schnell", aspect_
     model_name = model.split(":")[0]
     return image_url, model_name, cost
 
-async def generate_video(prompt, model="pixverse/pixverse-v4.5"):
+async def generate_video(prompt, model="bytedance/seedance-1-lite"):
     input = {
         "prompt": prompt,
-        "quality": "540p"
+        "resolution": "480p",
+        "duration": 5,
     }
     output = await replicate.async_run(
         model,
