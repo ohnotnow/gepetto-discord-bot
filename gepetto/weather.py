@@ -570,12 +570,12 @@ async def find_lat_long_from_location(location: str) -> tuple[float, float] | No
 
 async def get_forecast_openweathermap(lat: float, long: float, dates: list[datetime.date]) -> dict:
     """
-    https://api.openweathermap.org/data/3.0/onecall?lat={lat}&lon={lon}&exclude={part}&appid={API key}
+    https://api.openweathermap.org/data/2.5/forecast?lat=44.34&lon=10.99&appid={API key}
     """
     api_key = os.getenv("OPENWEATHERMAP_API_KEY")
     if api_key is None:
         raise ValueError("OPENWEATHERMAP_API_KEY is not set")
-    url = f"https://api.openweathermap.org/data/3.0/onecall?latitude={lat}&longitude={long}&exclude=minutely&appid={api_key}"
+    url = f"https://api.openweathermap.org/data/2.5/forecast?lat={lat}&lon={long}&appid={api_key}"
     response = requests.get(url)
     logger.info(f"Response: {response}")
     return response.json()
