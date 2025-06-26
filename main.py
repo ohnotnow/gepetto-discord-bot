@@ -202,7 +202,7 @@ async def create_image(discord_message: discord.Message, prompt: str, model: str
 
 async def get_weather_forecast(discord_message: discord.Message, prompt: str) -> None:
     logger.info(f"Getting weather forecast for '{prompt}'")
-    forecast = await weather.get_friendly_forecast(prompt, chatbot)
+    forecast = await weather.get_friendly_forecast_openweathermap(prompt, chatbot)
     await discord_message.reply(f'{discord_message.author.mention} {forecast}', mention_author=True)
 
 async def summarise_sentry_issue(discord_message: discord.Message, url: str) -> None:
