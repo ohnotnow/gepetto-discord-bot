@@ -18,8 +18,8 @@ async def generate_image(prompt, model="black-forest-labs/flux-schnell", aspect_
         #  "google/imagen-3",
          "google/imagen-4",
     ]
-    if os.getenv("OPENAI_API_KEY", None) is not None:
-        model_options.append("openai/gpt-image-1")
+    # if os.getenv("OPENAI_API_KEY", None) is not None:
+    #     model_options.append("openai/gpt-image-1")
     # pick a random model from the list
     model = random.choice(model_options)
     print(f"Using model: {model}")
