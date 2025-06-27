@@ -33,7 +33,7 @@ misethnicise them.
 4. The prompt should be highly detailed and imaginative, as suits a Stable Diffusion image model.
 5. If todays date ({today_string}) seems significant to people in the UK, please use it in your prompt.
 6. Don't always take your style from the chat history.  You can be creative and imaginative! The users love being surprised by alternative takes on the themes.  A needlework image of chat about technology, a film noir about debugging code, a futurist painting about their pet cat.  Be creative!
-
+7. NEVER use cyberpunk as your theme/style.  The users hate it.
 {location_guidance}
 
 {previous_image_themes}
