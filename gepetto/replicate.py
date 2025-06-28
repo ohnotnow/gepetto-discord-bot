@@ -8,6 +8,7 @@ async def generate_image(prompt, model="black-forest-labs/flux-schnell", aspect_
     model_options = [
          "black-forest-labs/flux-1.1-pro",
          "black-forest-labs/flux-kontext-pro",
+         "black-forest-labs/flux-kontext-dev",
         #  "bytedance/sdxl-lightning-4step:5599ed30703defd1d160a25a63321b4dec97101d98b4674bcc56e41f62f35637",
         #  "nvidia/sana:c6b5d2b7459910fec94432e9e1203c3cdce92d6db20f714f1355747990b52fa6",
         #  "luma/photon-flash",
@@ -17,6 +18,7 @@ async def generate_image(prompt, model="black-forest-labs/flux-schnell", aspect_
          "minimax/image-01",
         #  "google/imagen-3",
          "google/imagen-4",
+         "bytedance/seedream-3",
     ]
     # if os.getenv("OPENAI_API_KEY", None) is not None:
     #     model_options.append("openai/gpt-image-1")
@@ -66,11 +68,6 @@ async def generate_image(prompt, model="black-forest-labs/flux-schnell", aspect_
             "height": 1024,
             "prompt": prompt,
             "scheduler": "K_EULER",
-            "num_outputs": 1,
-            "guidance_scale": 0,
-            "negative_prompt": "worst quality, low quality",
-            "num_inference_steps": 4,
-            "disable_safety_checker": True,
         }
         cost = 0.003
     elif model.startswith("luma/"):
