@@ -18,7 +18,7 @@ async def generate_image(prompt, model="black-forest-labs/flux-schnell", aspect_
          "minimax/image-01",
         #  "google/imagen-3",
          "google/imagen-4",
-         "bytedance/seedream-3",
+        #  "bytedance/seedream-3",
     ]
     # if os.getenv("OPENAI_API_KEY", None) is not None:
     #     model_options.append("openai/gpt-image-1")
