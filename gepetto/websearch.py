@@ -13,4 +13,4 @@ async def websearch(query: str, search_context_size: str = "medium"):
             "search_context_size": "medium"  # Options: "low", "medium", "high"
         }
     )
-    return response.choices[0].message.content
+    return response.choices[0].message.content[:1800]
