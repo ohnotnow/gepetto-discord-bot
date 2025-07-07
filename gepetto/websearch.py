@@ -6,7 +6,7 @@ async def websearch(query: str, search_context_size: str = "medium"):
         messages=[
             {
                 "role": "user",
-                "content": f"Please give *very* succinct web search results for the following query.  Your response will be sent to a discord server so you only have about 1800 characters in total.  The query is: {query}",
+                "content": f"Please give *very* succinct web search results for the following query.  Your response will be sent to a discord server so you only have about 1800 characters in total.  Use discord format around the links to the sources so they do not generate a preview, eg '<https://www.google.com>' - the angle-brackets are important.  The query is: {query}",
             }
         ],
         web_search_options={
