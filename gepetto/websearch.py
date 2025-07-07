@@ -1,7 +1,7 @@
 from litellm import acompletion
 
 async def websearch(query: str, search_context_size: str = "medium"):
-    response = acompletion(
+    response = await acompletion(
         model="openai/gpt-4o-mini-search-preview",
         messages=[
             {
