@@ -2,6 +2,23 @@ tool_list = [
     {
         "type": "function",
         "function": {
+            "name": "web_search",
+            "description": "Searches the web for information based on the user prompt. The prompt should contain the user's full request, and the function will extract relevant details from it.",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "prompt": {
+                        "type": "string",
+                        "description": "The full user prompt containing their request for the web search."
+                    }
+                },
+                "required": ["prompt"]
+            }
+        }
+    },
+    {
+        "type": "function",
+        "function": {
             "name": "get_weather_forecast",
             "description": "Gets a weather forecast based on the user prompt. The prompt should contain the user's full request, and the function will extract relevant details from it.",
             "parameters": {

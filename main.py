@@ -13,6 +13,7 @@ import requests
 
 from gepetto import mistral, dalle, summary, weather, random_facts, birthdays, gpt, stats, groq, claude, ollama, guard, replicate, tools, images, gemini, sentry, openrouter, memory
 from gepetto import response as gepetto_response
+from gepetto import websearch as gepetto_websearch
 import discord
 from discord import File
 from discord.ext import commands, tasks
@@ -183,6 +184,11 @@ async def on_ready():
     with open(AVATAR_PATH, 'rb') as avatar:
         await bot.user.edit(avatar=avatar.read())
     logger.info("Avatar has been changed!")
+
+async def websearch(discord_message: discord.Message, prompt: str) -> None:
+    response = await gepetto_websearch.websearch(prompt)
+    await discord_message.reply(f'{discord_message.author.mention} {response}', mention_author=True)
+
 
 async def create_image(discord_message: discord.Message, prompt: str, model: str = "black-forest-labs/flux-schnell") -> None:
     logger.info(f"Creating image with model: {model} and prompt: {prompt}")
@@ -397,6 +403,9 @@ async def on_message(message):
                     response = await chatbot.chat(messages, temperature=temperature, tools=[], **optional_args)
                     response_text = response.message.strip()[:1800] + "\n" + response.usage
                     await message.reply(f'{message.author.mention} {response}')
+                    return
+                elif fname == 'web_search':
+                    await websearch(message, arguments.get('prompt', ''))
                     return
                 else:
                     logger.info(f'Unknown tool call: {fname}')
