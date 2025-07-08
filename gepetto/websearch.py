@@ -45,4 +45,16 @@ async def websearch(query: str, search_context_size: str = "medium"):
     )
 
     response_text = response.choices[0].message.content
-    return fix_discord_links(response_text)[:1800]
+
+    summary_response = await acompletion(
+        model="openai/gpt-4o-mini",
+        messages=[
+            {
+                "role": "user",
+                "content": f"Please give a concise summary of the following web search results.  Your response will be sent to a discord server so you only have about 1800 characters in total.  The web search results are: {response_text}",
+            }
+        ]
+    )
+
+    summary_text = summary_response.choices[0].message.content
+    return fix_discord_links(summary_text)[:1800]
