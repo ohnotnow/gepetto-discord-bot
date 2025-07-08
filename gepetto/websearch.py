@@ -12,6 +12,7 @@ def fix_discord_links(text: str) -> str:
         r'<\1>',
         text
     )
+    text = text.replace("?utm_source=openai", "")
     return text
 
 async def websearch(query: str, search_context_size: str = "medium"):
