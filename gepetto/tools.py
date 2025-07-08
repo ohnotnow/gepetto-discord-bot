@@ -3,7 +3,7 @@ tool_list = [
         "type": "function",
         "function": {
             "name": "web_search",
-            "description": "Searches the web for information based on the user prompt. The prompt should contain the user's full request, and the function will extract relevant details from it.",
+            "description": "Searches the web for information based on the user prompt. Use this tool when asked to, or if the user seems to be asking for information that is not available in the context of the conversation and is asking about recent events/news/facts.",
             "parameters": {
                 "type": "object",
                 "properties": {
