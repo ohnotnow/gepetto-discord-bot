@@ -40,7 +40,7 @@ async def websearch(query: str, search_context_size: str = "medium"):
             }
         ],
         web_search_options={
-            "search_context_size": "medium"  # Options: "low", "medium", "high"
+            "search_context_size": "low"  # Options: "low", "medium", "high"
         }
     )
 
