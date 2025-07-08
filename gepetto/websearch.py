@@ -1,4 +1,18 @@
 from litellm import acompletion
+import re
+
+def fix_discord_links(text: str) -> str:
+    # 1. Replace markdown links [text](url) with <url>
+    text = re.sub(r'\[.*?\]\((https?://[^\s)]+)\)', r'<\1>', text)
+
+    # 2. Replace bare URLs with <url>, but not if they're already inside <>
+    # This regex finds http(s) links NOT immediately preceded by < and NOT followed by >
+    text = re.sub(
+        r'(?<!<)(https?://[^\s>]+)(?!>)',
+        r'<\1>',
+        text
+    )
+    return text
 
 async def websearch(query: str, search_context_size: str = "medium"):
     search_prompt = f"""
@@ -29,4 +43,6 @@ async def websearch(query: str, search_context_size: str = "medium"):
             "search_context_size": "medium"  # Options: "low", "medium", "high"
         }
     )
-    return response.choices[0].message.content[:1800]
+
+    response_text = response.choices[0].message.content
+    return fix_discord_links(response_text)[:1800]
