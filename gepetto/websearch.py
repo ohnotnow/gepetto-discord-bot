@@ -52,7 +52,7 @@ async def websearch(query: str, search_context_size: str = "medium"):
         messages=[
             {
                 "role": "user",
-                "content": f"Please give a concise summary of the following web search results.  Your response will be sent to a discord server so you only have about 1800 characters in total.  **YOU MUST KEEP THE LINKS TO THE SOURCES IN YOUR SUMMARY - THIS IS CRITICAL!!** The web search results are: {response_text}",
+                "content": f"Please give a concise summary of the following web search results.  Your response will be sent to a discord server so you only have about 1800 characters in total.  **YOU MUST KEEP THE LINKS TO THE SOURCES IN YOUR SUMMARY - THIS IS CRITICAL!!**. If there are more than five sources, you should give a summary of the most important ones with their sources, then just summarise all the rest without their sources.  The web search results are: {response_text}",
             }
         ]
     )
