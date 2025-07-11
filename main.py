@@ -174,12 +174,16 @@ def remove_emoji(text):
 async def on_ready():
     logger.info(f"Starting discord bot - date time in python is {datetime.now()}")
     if os.getenv("DISCORD_BOT_BIRTHDAYS", None):
+        logger.info("Starting say_happy_birthday task")
         say_happy_birthday.start()
     if os.getenv("CHAT_IMAGE_ENABLED", False):
+        logger.info("Starting make_chat_image task")
         make_chat_image.start()
     if os.getenv("CHAT_VIDEO_ENABLED", False):
+        logger.info("Starting make_chat_video task")
         make_chat_video.start()
     if os.getenv("FEATURE_HORROR_CHAT", False):
+        logger.info("Starting horror_chat task")
         horror_chat.start()
     logger.info(f"Using model type : {type(chatbot)}")
     return
