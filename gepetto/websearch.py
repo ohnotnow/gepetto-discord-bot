@@ -31,6 +31,9 @@ async def websearch(query: str, search_context_size: str = "medium"):
         Remember - the angle brackets around the links are important!
         **Do not use markdown formatting for the links and do not use plain text!**
         Otherwise discord will generate a preview for every link and fill the users screen with annoying previews!
+
+        Your response should be a concise summary of the search results followed by the list of links to the sources.  If there
+        are duplicate sources you should only include them once.
     """
     response = await acompletion(
         model="openai/gpt-4o-mini-search-preview",
