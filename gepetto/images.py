@@ -15,7 +15,7 @@ def get_initial_chat_image_prompt(chat_history: str, previous_image_themes: str)
         You are tasked with creating a visually remarkable Stable Diffusion prompt for a Discord server of software developers.
 
         STEP 1 - DELIBERATELY AVOID THE OBVIOUS:
-        First, identify the main conversation topics (likely tech/work related) and SET THEM ASIDE. Do not use these as your image focus.
+        First, identify the main conversation topics (likely tech/work related) and keep them at the back of your mind.  These are the obvious topics - we want to be surprising and creating!
 
         STEP 2 - HUNT FOR THE PERIPHERAL:
         Scan for brief, casual mentions of:
@@ -25,14 +25,17 @@ def get_initial_chat_image_prompt(chat_history: str, previous_image_themes: str)
         - Emotional micro-moments (small frustrations, tiny celebrations)
         - Background activities or interruptions
         - Sensory experiences or textures mentioned
+        - If you are using the main themes - be subtle, be creative, work them into some other details you have identified.
+        - DO NOT invent any details, only use the ones that are mentioned in the chat history.
 
         STEP 3 - ARTISTIC STYLE SELECTION:
-        Choose your visual approach based on today's date modulo technique:
+        Choose your visual approach from the broad world of art:
         - Classical fine art tradition (oil painting, watercolor, etc.)
         - Photography genres (portrait, landscape, street photography, macro)
         - Illustration styles (vintage poster, children's book, technical drawing)
         - Abstract or experimental approaches
         - Historical art movements (impressionist, art nouveau, minimalist)
+        - Cinematography (film noir, horror, etc.)
 
         STEP 4 - AMPLIFY THE SUBTLE:
         Take your chosen peripheral detail and make it the HERO of a visually stunning composition. Think about:
