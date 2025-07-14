@@ -55,6 +55,10 @@ def get_initial_chat_image_prompt(chat_history: str, previous_image_themes: str)
 
         {previous_image_themes}
 
+        <chat_history>
+        {chat_history}
+        </chat_history>
+
         Respond with JSON:
         {{
             "prompt": "Your detailed Stable Diffusion prompt here",
