@@ -261,15 +261,19 @@ async def summarise_webpage_content(discord_message: discord.Message, prompt: st
         },
     ]
     response = await chatbot.chat(messages, temperature=1.0)
-    page_summary = response.message[:1800] + "\n" + response.usage
+    # chunk the response.message into 1800 character chunks
+    chunks = [response.message[i:i+1800] for i in range(0, len(response.message), 1800)]
+    for chunk in chunks:
+        await discord_message.reply(f"{chunk}")
     if was_truncated:
-        page_summary = "[Note: The summary is based on a truncated version of the original text as it was too long.]\n\n" + page_summary
-    await discord_message.reply(f"{page_summary}", mention_author=True)
+        await discord_message.reply(f"[Note: The summary is based on a truncated version of the original text as it was too long.]", mention_author=True)
+
 
 async def extract_recipe_from_webpage(discord_message: discord.Message, prompt: str, url: str) -> None:
     recipe_prompt = """
     Can you give me the ingredients (with UK quantities and weights) and the method for a recipe. Please list the
-    ingredients in order and the method in order.  Please don't include any preamble or commentary.
+    ingredients in order and the method in order.  If there are any ingredients which are unlikely to be found in a normal UK
+    supermarket, then please list the original but suggest a UK alternative. Please don't include any preamble or commentary.
     """
     await summarise_webpage_content(discord_message, recipe_prompt, url)
 
