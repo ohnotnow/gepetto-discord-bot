@@ -177,10 +177,10 @@ async def on_ready():
         logger.info("Starting say_happy_birthday task")
         say_happy_birthday.start()
     if os.getenv("CHAT_IMAGE_ENABLED", False):
-        logger.info("Starting make_chat_image task")
+        logger.info(f"Starting make_chat_image task with hour {chat_image_hour}")
         make_chat_image.start()
     if os.getenv("CHAT_VIDEO_ENABLED", False):
-        logger.info("Starting make_chat_video task")
+        logger.info(f"Starting make_chat_video task")
         make_chat_video.start()
     if os.getenv("FEATURE_HORROR_CHAT", False):
         logger.info("Starting horror_chat task")
