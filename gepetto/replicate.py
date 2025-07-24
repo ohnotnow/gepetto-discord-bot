@@ -16,9 +16,10 @@ async def generate_image(prompt, model="black-forest-labs/flux-schnell", aspect_
         #  "recraft-ai/recraft-v3",
         #  "ideogram-ai/ideogram-v2a",
          "minimax/image-01",
+        #  "prunaai/wan-image",
         #  "google/imagen-3",
          "google/imagen-4",
-        #  "bytedance/seedream-3",
+         "bytedance/seedream-3",
     ]
     if os.getenv("ENABLE_GPT_IMAGE", None) is not None:
         model_options.append("openai/gpt-image-1")
@@ -38,6 +39,12 @@ async def generate_image(prompt, model="black-forest-labs/flux-schnell", aspect_
             "output_format": "jpg",
         }
         cost = 0.04
+    elif model.startswith("prunaai/"):
+        input = {
+            "prompt": prompt,
+            "seed": -1,
+        }
+        cost = 0.02
     elif model.startswith("openai/"):
         input = {
             "prompt": prompt,
@@ -62,12 +69,14 @@ async def generate_image(prompt, model="black-forest-labs/flux-schnell", aspect_
             "magic_prompt_option": "Auto"
         }
         cost = 0.04
-    elif model.startswith("bytedance/"):
+    elif model.startswith("bytedance/seedream-3"):
         input={
-            "width": 1024,
-            "height": 1024,
+            "size": "regular",
+            "width": 2048,
+            "height": 2048,
             "prompt": prompt,
-            "scheduler": "K_EULER",
+            "aspect_ratio": "16:9",
+            "guidance_scale": 2.5
         }
         cost = 0.003
     elif model.startswith("luma/"):
