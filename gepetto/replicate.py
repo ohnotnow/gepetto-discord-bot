@@ -8,6 +8,7 @@ async def generate_image(prompt, model="black-forest-labs/flux-schnell", aspect_
     model_options = [
          "black-forest-labs/flux-1.1-pro",
          "black-forest-labs/flux-kontext-pro",
+         "bria/image-3.2",
         #  "black-forest-labs/flux-kontext-dev", # seems to only work as an image->image model
         #  "bytedance/sdxl-lightning-4step:5599ed30703defd1d160a25a63321b4dec97101d98b4674bcc56e41f62f35637",
         #  "nvidia/sana:c6b5d2b7459910fec94432e9e1203c3cdce92d6db20f714f1355747990b52fa6",
@@ -37,6 +38,11 @@ async def generate_image(prompt, model="black-forest-labs/flux-schnell", aspect_
             "prompt_upsampling": enhance_prompt,
             "disable_safety_checker": True,
             "output_format": "jpg",
+        }
+        cost = 0.04
+    elif model.startswith("bria/"):
+        input = {
+            "prompt": prompt,
         }
         cost = 0.04
     elif model.startswith("prunaai/"):
