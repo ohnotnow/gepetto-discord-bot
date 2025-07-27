@@ -580,9 +580,9 @@ async def make_chat_image():
         combined_chat = images.get_initial_chat_image_prompt(chat_history, previous_image_themes)
         decoded_response = await images.get_image_response_from_llm(combined_chat, chatbot)
         logger.info(f"Decoded response: {decoded_response}")
-        llm_chat_prompt = decoded_response["prompt"]
-        llm_chat_themes = decoded_response["themes"]
-        llm_chat_reasoning = decoded_response["reasoning"]
+        llm_chat_prompt = decoded_response.get("prompt", "")
+        llm_chat_themes = decoded_response.get("themes", [])
+        llm_chat_reasoning = decoded_response.get("reasoning", "")
         previous_image_prompt = llm_chat_prompt
         previous_image_themes = llm_chat_themes
         previous_image_reasoning = llm_chat_reasoning
