@@ -583,6 +583,9 @@ async def make_chat_image():
         llm_chat_prompt = decoded_response.get("prompt", "")
         llm_chat_themes = decoded_response.get("themes", [])
         llm_chat_reasoning = decoded_response.get("reasoning", "")
+        if not llm_chat_prompt:
+            logger.info("No prompt in LLM JSON response, using the whole response")
+            llm_chat_prompt = str(decoded_response)
         previous_image_prompt = llm_chat_prompt
         previous_image_themes = llm_chat_themes
         previous_image_reasoning = llm_chat_reasoning
