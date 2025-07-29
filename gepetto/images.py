@@ -149,9 +149,12 @@ async def get_image_response(prompt: str, chatbot) -> dict:
         }
     ]
     response = await chatbot.chat(messages, tools=tools)
-    tool_call = response.tool_calls[0]
-    arguments = json.loads(tool_call.function.arguments)
-    return arguments
+    if not "tool_calls" in response:
+        return {"prompt": str(response), "themes": [], "reasoning": ""}
+    else:
+        tool_call = response.tool_calls[0]
+        arguments = json.loads(tool_call.function.arguments)
+        return arguments
 
 async def get_image_response_from_gemini(prompt: str) -> dict:
     genai.configure(api_key=os.environ["GEMINI_API_KEY"])
