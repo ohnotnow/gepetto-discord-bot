@@ -51,6 +51,7 @@ def get_initial_chat_image_prompt(chat_history: str, previous_image_themes: str)
         - The prompt should be detailed enough for Stable Diffusion
         - If today's date ({today_string}) has UK significance, weave it in naturally
         - Surprise them with creative interpretations they wouldn't expect
+        - If the chat history contains references to people having a truly bad time (not in jest) - please make the image cheerfull - do NOT make the user sad by reflecting their pain back to them (eg, relationship breakdown, pet or parental illness, etc).
 
         {location_guidance}
 
