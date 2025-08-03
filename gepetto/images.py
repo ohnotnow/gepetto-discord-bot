@@ -67,6 +67,8 @@ def get_initial_chat_image_prompt(chat_history: str, previous_image_themes: str)
             "themes": ["the subtle details you focused on"],
             "reasoning": "Brief explanation of your creative choice"
         }}
+
+        It is **CRITICAL** that the JSON response follows the correct format.  It will be passed to an API directly, so it must be valid or the API call will break but the user will still be charged.
         """
     return combined_chat
 
