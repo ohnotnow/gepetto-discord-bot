@@ -9,7 +9,10 @@ async def search(query: str) -> str:
         "messages": [
             {"role": "system", "content": "Please respond very concisely.  Your response will be sent to a discord server so you only have about 1800 characters in total."},
             {"role": "user", "content": query}
-        ]
+        ],
+        "web_search_options": {
+            "search_context_size": "low",
+        }
     }
 
     headers = {
@@ -19,7 +22,7 @@ async def search(query: str) -> str:
 
     response = requests.post(url, json=payload, headers=headers)
     decoded_response = response.json()
-    formatted_response = f"{decoded_response['choices'][0]['message']['content']}\n\nSources:"
+    formatted_response = f"{decoded_response['choices'][0]['message']['content']}\n\n**Sources:**\n"
 
     for source in decoded_response['search_results']:
         formatted_response += f"- <{source['url']}>\n"
