@@ -14,6 +14,7 @@ import requests
 from gepetto import mistral, dalle, summary, weather, random_facts, birthdays, gpt, stats, groq, claude, ollama, guard, replicate, tools, images, gemini, sentry, openrouter, memory
 from gepetto import response as gepetto_response
 from gepetto import websearch as gepetto_websearch
+from gepetto import perplexity
 import discord
 from discord import File
 from discord.ext import commands, tasks
@@ -192,7 +193,8 @@ async def on_ready():
     logger.info("Avatar has been changed!")
 
 async def websearch(discord_message: discord.Message, prompt: str) -> None:
-    response = await gepetto_websearch.websearch(prompt)
+    response = await perplexity.search(prompt)
+    # response = await gepetto_websearch.websearch(prompt)
     await discord_message.reply(f'{discord_message.author.mention} {response}', mention_author=True)
 
 
