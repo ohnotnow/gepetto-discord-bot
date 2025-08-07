@@ -8,9 +8,20 @@ from trafilatura.settings import DEFAULT_CONFIG
 from copy import deepcopy
 
 request_headers = {
-    "User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36",
-    "X-Browser-Channel": "stable",
-    "X-Browser-Copyright": "Copyright 2024 Google LLC. All rights reserved."
+    "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
+    "Accept-Encoding": "gzip, deflate, br, zstd",
+    "Accept-Language": "en-GB,en;q=0.5",
+    "Connection": "keep-alive",
+    "DNT": "1",
+    "Priority": "u=0, i",
+    "Referer": "https://duckduckgo.com/",
+    "Sec-Fetch-Dest": "document",
+    "Sec-Fetch-Mode": "navigate",
+    "Sec-Fetch-Site": "cross-site",
+    "Sec-Fetch-User": "?1",
+    "TE": "trailers",
+    "Upgrade-Insecure-Requests": "1",
+    "User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10.15; rv:141.0) Gecko/20100101 Firefox/141.0"
 }
 
 def get_text_from_pdf(url: str) -> str:
@@ -73,7 +84,9 @@ async def get_text(url: str) -> str:
             page_text = get_text_from_pdf(url_string)
         else:
             my_config = deepcopy(DEFAULT_CONFIG)
-            my_config['DEFAULT']['user_agent'] = request_headers['User-Agent']
+            # insert all of the custom request_headers into the config
+            for key, value in request_headers.items():
+                my_config['DEFAULT'][key] = value
             downloaded = fetch_url(url_string, config=my_config)
             if downloaded is None:
                 return f"Sorry, I couldn't download content from the URL {url_string}."
