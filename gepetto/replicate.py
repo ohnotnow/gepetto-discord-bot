@@ -20,6 +20,7 @@ async def generate_image(prompt, model="black-forest-labs/flux-schnell", aspect_
         #  "prunaai/wan-image",
         #  "google/imagen-3",
          "google/imagen-4",
+         "qwen/qwen-image",
          "bytedance/seedream-3",
     ]
     if os.getenv("ENABLE_GPT_IMAGE", None) is not None:
@@ -40,6 +41,11 @@ async def generate_image(prompt, model="black-forest-labs/flux-schnell", aspect_
             "output_format": "jpg",
         }
         cost = 0.04
+    elif model.startswith("qwen/"):
+        input = {
+            "prompt": prompt,
+        }
+        cost = 0.025
     elif model.startswith("bria/"):
         input = {
             "prompt": prompt,
