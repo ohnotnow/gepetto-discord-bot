@@ -42,8 +42,9 @@ class BaseModel:
             "messages": messages,
             "temperature": temperature,
             "reasoning_effort": "low",
-            "verbosity": "low",
         }
+        if self.model.startswith("openai/"):
+            params["verbosity"] = "low"
 
         if json_mode:
             params["response_format"] = {"type": "json_object"}
