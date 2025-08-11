@@ -61,14 +61,10 @@ def get_initial_chat_image_prompt(chat_history: str, previous_image_themes: str)
         {chat_history}
         </chat_history>
 
-        Respond with JSON:
-        {{
-            "prompt": "Your detailed Stable Diffusion prompt here",
-            "themes": ["the subtle details you focused on"],
-            "reasoning": "Brief explanation of your creative choice"
-        }}
-
-        It is **CRITICAL** that the JSON response follows the correct format.  It will be passed to an API directly, so it must be valid or the API call will break but the user will still be charged.
+        You **MUST** call the tool "generate_image" with the following parameters:
+        - prompt: The prompt you want to give to the Stable Diffusion image model
+        - themes: The themes you want to use in the image
+        - reasoning: The reasoning you used to generate the prompt
         """
     return combined_chat
 
@@ -125,8 +121,8 @@ async def get_image_response(prompt: str, chatbot) -> dict:
         {
             "type": "function",
             "function": {
-                "name": "get_image_response",
-                "description": "Generate a Stable Diffusion image prompt, themes and reasoning based on the user's request.",
+                "name": "generate_image",
+                "description": "Generate an image via a Stable Diffusion model, including the prompt, themes and reasoning based on the user's request.",
                 "parameters": {
                     "type": "object",
                     "properties": {
