@@ -26,7 +26,7 @@ class BaseModel:
         self,
         messages: List[Dict[str, str]],
         temperature: float = 1.0,
-        model: Optional[str] = None,
+        model: Optional[str] = "",
         top_p: float = 0.6,
         json_mode: bool = False,
         tools: List[Dict[str, Any]] = []
