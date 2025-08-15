@@ -4,7 +4,7 @@ import replicate
 import random
 import os
 
-async def generate_image(prompt, model="black-forest-labs/flux-schnell", aspect_ratio="1:1", output_format="webp", output_quality=90, enhance_prompt=True):
+async def generate_image(prompt, aspect_ratio="1:1", output_format="webp", output_quality=90, enhance_prompt=True):
     model_options = [
          "black-forest-labs/flux-1.1-pro",
          "black-forest-labs/flux-kontext-pro",

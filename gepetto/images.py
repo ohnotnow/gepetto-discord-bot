@@ -150,7 +150,11 @@ async def get_image_response(prompt: str, chatbot) -> dict:
             }
         }
     ]
-    response = await chatbot.chat(messages, tools=tools)
+    image_prompt_model = os.getenv("IMAGE_PROMPT_MODEL", None)
+    if image_prompt_model:
+        response = await chatbot.chat(messages, tools=tools, model=image_prompt_model)
+    else:
+        response = await chatbot.chat(messages, tools=tools)
     try:
         tool_call = response.tool_calls[0]
         arguments = json.loads(tool_call.function.arguments)

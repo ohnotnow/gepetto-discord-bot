@@ -35,7 +35,9 @@ class BaseModel:
         # litellm._turn_on_debug()
 
         litellm.drop_params = True
-        model = self.get_model_string(model)
+        # this allows us to use a specific litellm format model name on the fly (eg, 'openai/gpt-4o-mini'), otherwise we use the default model
+        if "/" not in model:
+            model = self.get_model_string(model)
         print(f"Using model: {model}")
         params = {
             "model": model,

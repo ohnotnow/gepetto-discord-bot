@@ -543,14 +543,7 @@ async def make_chat_image():
     if not os.getenv("CHAT_IMAGE_ENABLED", False):
         logger.info("Not making chat image because CHAT_IMAGE_ENABLED is not set")
         return
-    #image_model = os.getenv("IMAGE_MODEL", "black-forest-labs/flux-schnell")
-    image_model = "black-forest-labs/flux-schnell"
-    image_model = "bytedance/sdxl-lightning-4step:5599ed30703defd1d160a25a63321b4dec97101d98b4674bcc56e41f62f35637"
-    # logger.info('Generating chat image using model: ' + type(chatbot).__name__)
     channel = bot.get_channel(int(os.getenv('DISCORD_BOT_CHANNEL_ID', 'Invalid').strip()))
-    logger.info(f"Generating chat image with model: {image_model}")
-
-
     async with channel.typing():
         history = await get_history_as_openai_messages(channel, limit=1000, nsfw_filter=True, max_length=15000, include_timestamps=False, since_hours=8)
         # if we have loads of messages, then truncate the history to the most recent 200 messages
@@ -595,7 +588,7 @@ async def make_chat_image():
         full_prompt = llm_chat_prompt + f"\n{extra_guidelines}"
 
         logger.info(f"Calling replicate to generate image")
-        image_url, model_name, cost = await replicate.generate_image(full_prompt, enhance_prompt=False, model=image_model)
+        image_url, model_name, cost = await replicate.generate_image(full_prompt, enhance_prompt=False)
         logger.info(f"Image URL: {image_url} - model: {model_name} - cost: {cost}")
         if not image_url:
             logger.info('We did not get a file from API')
