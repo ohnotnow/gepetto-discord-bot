@@ -10,7 +10,7 @@ from datetime import datetime, timedelta, timezone, time
 import pytz
 from enum import Enum
 import requests
-
+import traceback
 from gepetto import mistral, dalle, summary, weather, random_facts, birthdays, gpt, stats, groq, claude, ollama, guard, replicate, tools, images, gemini, sentry, openrouter, memory
 from gepetto import response as gepetto_response
 from gepetto import websearch as gepetto_websearch
@@ -433,7 +433,7 @@ async def on_message(message):
                 response = response_text.strip()[:1900] + "\n" + response.usage_short
             await message.reply(f'{message.author.mention} {response}')
     except Exception as e:
-        logger.error(f'Error generating response: {e}')
+        logger.error(f'Error generating response: {traceback.format_exc()}')
         await message.reply(f'{message.author.mention} I tried, but my attempt was as doomed as Liz Truss.  Please try again later.', mention_author=True)
 
 
