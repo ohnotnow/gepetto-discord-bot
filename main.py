@@ -355,7 +355,7 @@ async def on_message(message):
             if override_model is not None:
                 optional_args['model'] = override_model
             if '--reasoning' in question.lower():
-                await message.reply(f'{message.author.mention} **Reasoning:** {previous_image_reasoning}\n**Themes:** {previous_image_themes}\n**Image Prompt:** {previous_image_prompt}', mention_author=True)
+                await message.reply(f'{message.author.mention} **Reasoning:** {previous_image_reasoning}\n**Themes:** {previous_image_themes}\n**Image Prompt:** {previous_image_prompt}'[:1800], mention_author=True)
                 return
             if '--thinking' in question.lower():
                 await message.reply(f'{message.author.mention} **Thinking:** {previous_reasoning_content}', mention_author=True)
