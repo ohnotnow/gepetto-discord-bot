@@ -138,21 +138,25 @@ async def generate_image(prompt, aspect_ratio="1:1", output_format="webp", outpu
     model_name = model.split(":")[0]
     return image_url, model_name, cost
 
-async def generate_video(prompt, model="bytedance/seedance-1-lite"):
+async def generate_video(prompt, model="wan-video/wan-2.2-t2v-fast"):
     input = {
         "prompt": prompt,
+        "go_fast": True,
+        "num_frames": 81,
         "resolution": "480p",
-        "duration": 5,
+        "aspect_ratio": "16:9",
+        "sample_shift": 12,
+        "optimize_prompt": False,
+        "frames_per_second": 16,
+        "lora_scale_transformer": 1,
+        "lora_scale_transformer_2": 1
     }
     output = await replicate.async_run(
         model,
         input=input
     )
-    cost = 0.01
-    if isinstance(output, list):
-        video_url = output[0]
-    else:
-        video_url = output
+    cost = 0.05
+    video_url = output.url()
     # strip any training :hash from the model name, eg nvidia/sana:c6b5d2b7459910fec94432e9e1203c3cdce92d6db20f714f1355747990b52fa6
     model_name = model.split(":")[0]
     return video_url, model_name, cost
