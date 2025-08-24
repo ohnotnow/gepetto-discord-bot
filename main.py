@@ -1,4 +1,5 @@
 import base64
+import asyncio
 import io
 import logging
 import os
@@ -430,8 +431,16 @@ async def on_message(message):
                 response_text = re.sub(r"Minxie' said: ", '', response_text, flags=re.MULTILINE)
                 response_text = re.sub(r"^.*At \d{4}-\d{2}.+said?", "", response_text, flags=re.MULTILINE)
                 logger.info(response.usage)
-                response = response_text.strip()[:1900] + "\n" + response.usage_short
-            await message.reply(f'{message.author.mention} {response}')
+                response = response_text.strip() + "\n" + response.usage_short
+            # make this split the response into 1900 character chunks
+            chunks = [response[i:i+1800] for i in range(0, len(response), 1900)]
+            # only include the message author for the first chunk
+            for i, chunk in enumerate(chunks):
+                if i == 0:
+                    await message.reply(f'{message.author.mention} {chunk}')
+                else:
+                    await message.reply(f'{chunk}')
+                await asyncio.sleep(0.1)
     except Exception as e:
         logger.error(f'Error generating response: {traceback.format_exc()}')
         await message.reply(f'{message.author.mention} I tried, but my attempt was as doomed as Liz Truss.  Please try again later.', mention_author=True)
