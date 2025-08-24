@@ -8,6 +8,7 @@ async def generate_image(prompt, aspect_ratio="1:1", output_format="webp", outpu
     model_options = [
          "black-forest-labs/flux-1.1-pro",
          "black-forest-labs/flux-kontext-pro",
+         "black-forest-labs/flux-krea-dev",
          "bria/image-3.2",
         #  "black-forest-labs/flux-kontext-dev", # seems to only work as an image->image model
         #  "bytedance/sdxl-lightning-4step:5599ed30703defd1d160a25a63321b4dec97101d98b4674bcc56e41f62f35637",
@@ -16,6 +17,7 @@ async def generate_image(prompt, aspect_ratio="1:1", output_format="webp", outpu
         #  "google/imagen-3-fast",
         #  "recraft-ai/recraft-v3",
         #  "ideogram-ai/ideogram-v2a",
+         "ideogram-ai/ideogram-v3-balanced",
          "minimax/image-01",
         #  "prunaai/wan-image",
         #  "google/imagen-3",
@@ -80,7 +82,7 @@ async def generate_image(prompt, aspect_ratio="1:1", output_format="webp", outpu
             "aspect_ratio": aspect_ratio,
             "magic_prompt_option": "Auto"
         }
-        cost = 0.04
+        cost = 0.06
     elif model.startswith("bytedance/seedream-3"):
         input={
             "size": "regular",
