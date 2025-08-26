@@ -158,7 +158,11 @@ async def generate_video(prompt, model="wan-video/wan-2.2-t2v-fast"):
         input=input
     )
     cost = 0.05
-    video_url = output.url()
+    if isinstance(output, list):
+        video_url = output[0]
+    else:
+        video_url = output
+
     # strip any training :hash from the model name, eg nvidia/sana:c6b5d2b7459910fec94432e9e1203c3cdce92d6db20f714f1355747990b52fa6
     model_name = model.split(":")[0]
     return video_url, model_name, cost
