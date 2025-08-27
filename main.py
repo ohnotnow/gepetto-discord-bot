@@ -16,6 +16,7 @@ from gepetto import mistral, dalle, summary, weather, random_facts, birthdays, g
 from gepetto import response as gepetto_response
 from gepetto import websearch as gepetto_websearch
 from gepetto import perplexity
+from gepetto.response import split_for_discord
 import discord
 from discord import File
 from discord.ext import commands, tasks
@@ -197,7 +198,9 @@ async def websearch(discord_message: discord.Message, prompt: str) -> None:
     response = await perplexity.search(prompt)
     # response = await gepetto_websearch.websearch(prompt)
     response = "🌍" + response
-    await discord_message.reply(f'{discord_message.author.mention} {response}', mention_author=True)
+    chunks = split_for_discord(response)
+    for chunk in chunks:
+        await discord_message.reply(f'{discord_message.author.mention} {chunk}', mention_author=True)
 
 
 async def create_image(discord_message: discord.Message, prompt: str, model: str = "black-forest-labs/flux-schnell") -> None:
@@ -433,8 +436,7 @@ async def on_message(message):
                 response_text = re.sub(r"^.*At \d{4}-\d{2}.+said?", "", response_text, flags=re.MULTILINE)
                 logger.info(response.usage)
                 response = response_text.strip() + "\n" + response.usage_short
-            # make this split the response into 1900 character chunks
-            chunks = [response[i:i+1800] for i in range(0, len(response), 1900)]
+            chunks = split_for_discord(response)
             # only include the message author for the first chunk
             for i, chunk in enumerate(chunks):
                 if i == 0:
