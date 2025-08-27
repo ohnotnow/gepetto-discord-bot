@@ -196,6 +196,7 @@ async def on_ready():
 async def websearch(discord_message: discord.Message, prompt: str) -> None:
     response = await perplexity.search(prompt)
     # response = await gepetto_websearch.websearch(prompt)
+    response = "🌍" + response
     await discord_message.reply(f'{discord_message.author.mention} {response}', mention_author=True)
 
 
