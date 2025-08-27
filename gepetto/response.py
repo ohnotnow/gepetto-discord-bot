@@ -45,71 +45,90 @@ class FunctionResponse:
 import re
 from typing import List
 
-SENTENCE_SPLIT = re.compile(r'(?<=[.!?]["\')\]]?)\s+')
+# Forward-looking sentence boundary: punctuation + optional closing quote/bracket + whitespace
+SENTENCE_BOUNDARY = re.compile(r'([.!?][\"\')\]]?)\s+')
 
 def split_for_discord(
     text: str,
     limit: int = 1800,
     preserve_code_fences: bool = True,
 ) -> List[str]:
+    """
+    Split `text` into chunks <= `limit` characters, preferring to split on:
+    1) double newlines, 2) single newlines, 3) sentence boundaries, 4) spaces,
+    with a hard split as last resort.
+
+    If `preserve_code_fences` is True, it tries not to leave an unmatched ``` in a chunk.
+    When that happens, it closes the fence at the end of the chunk and reopens it
+    at the start of the next chunk.
+    """
     if not text:
         return [""]
 
+    # If we'll sometimes add closing/reopening ``` around boundaries, keep headroom.
     effective_limit = limit - 6 if preserve_code_fences else limit
 
-    chunks = []
+    chunks: List[str] = []
     remaining = text
 
     while remaining:
         if len(remaining) <= effective_limit:
             candidate = remaining
-            cut = len(candidate)
+            remaining = ""
         else:
             window = remaining[:effective_limit + 1]
 
+            # Priority 1: paragraph break
             cut = window.rfind("\n\n")
+
+            # Priority 2: single newline
             if cut == -1:
                 cut = window.rfind("\n")
+
+            # Priority 3: sentence boundary (punct + optional closer + spaces)
             if cut == -1:
-                m = list(SENTENCE_SPLIT.finditer(window))
-                cut = m[-1].start() if m else -1
+                last_m = None
+                for m in SENTENCE_BOUNDARY.finditer(window):
+                    last_m = m
+                if last_m:
+                    # Cut right after the punctuation/closer and the following spaces
+                    cut = last_m.end()
+
+            # Priority 4: space
             if cut == -1:
                 cut = window.rfind(" ")
-            if cut == -1:
-                cut = effective_limit  # hard split
+
+            # Fallback: hard split
+            if cut == -1 or cut == 0:
+                cut = effective_limit
 
             candidate = remaining[:cut].rstrip()
             remaining = remaining[cut:].lstrip()
 
-        if len(remaining) <= effective_limit and candidate is not remaining:
-            remaining = remaining
-
-        if preserve_code_fences:
+        if preserve_code_fences and candidate:
+            # Count ``` occurrences to detect open fence
             fence_count = candidate.count("```")
             if fence_count % 2 == 1:
+                # Try to pull a closing ``` from the start of the remainder if it fits
                 extra_room = effective_limit - len(candidate)
-                if extra_room > 0:
+                if extra_room > 0 and remaining:
                     idx = remaining.find("```")
                     if 0 <= idx <= extra_room:
                         candidate += remaining[:idx + 3]
                         remaining = remaining[idx + 3:].lstrip()
                     else:
                         candidate += "\n```"
-                        remaining = "```" + (remaining if remaining else "")
+                        remaining = "```" + remaining
 
         chunks.append(candidate)
 
-        if not remaining:
-            break
-
-        if len(chunks) > 10000:
-            break
-
-    final = []
+    # Ensure nothing slipped past the hard limit (very rare)
+    final: List[str] = []
     for c in chunks:
         if len(c) <= limit:
             final.append(c)
         else:
             for i in range(0, len(c), limit):
                 final.append(c[i:i+limit])
+
     return final
