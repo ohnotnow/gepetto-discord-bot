@@ -22,6 +22,7 @@ async def generate_image(prompt, aspect_ratio="1:1", output_format="webp", outpu
         #  "prunaai/wan-image",
         #  "google/imagen-3",
          "google/imagen-4",
+         "google/gemini-2.5-flash-image",
          "qwen/qwen-image",
          "bytedance/seedream-3",
     ]
@@ -101,6 +102,11 @@ async def generate_image(prompt, aspect_ratio="1:1", output_format="webp", outpu
             "style_reference_weight": 0.85
         }
         cost = 0.02
+    elif model.startswith("google/gemini"):
+        input={
+            "prompt": prompt,
+        }
+        cost = 0.039
     elif model.startswith("google/"):
         input={
             "prompt": prompt,
