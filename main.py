@@ -652,16 +652,17 @@ async def make_chat_video():
     for message in history:
         chat_history += f"{message['content']}\n"
     prompt = f"""
-    Please create a short description based on the following chat history.
-    The description will be used to generate a five second long video, which should delight and impress the user.
-    Please reply with only the description as it will be sent directly to a video generator.
+    Please create a brief description based on the following chat history.
+    The description will be used to generate a five second long video using a video generation model, which should delight and impress the user.
+    The description should capture the essence of the chat history, but should be very clear and simple - the video generation model is quite simple so can't generate videos that are too complex.
+    Please reply with only the description as it will be sent directly to the video generator.
 
     <chat-history>
     {chat_history}
     </chat-history>
 
     Remember to tell the video generator which style to use (eg, anime, realistic, film noir, etc).  You can also suggest
-    camera angles, lighting, etc.  You are the director of the video, so you can suggest anything you like.
+    camera angles, lighting, etc.  But keep it clear and simple.
     """
     async with channel.typing():
         response = await chatbot.chat([{
