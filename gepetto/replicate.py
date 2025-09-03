@@ -7,9 +7,15 @@ import os
 async def generate_image(prompt, aspect_ratio="1:1", output_format="webp", output_quality=90, enhance_prompt=True):
     model_options = [
          "black-forest-labs/flux-1.1-pro",
-         "black-forest-labs/flux-kontext-pro",
          "black-forest-labs/flux-krea-dev",
          "bria/image-3.2",
+         "google/imagen-4",
+         "google/gemini-2.5-flash-image",
+         "qwen/qwen-image",
+        #  "bytedance/seedream-3",
+        #  "ideogram-ai/ideogram-v3-balanced",
+        #  "minimax/image-01",
+        #  "black-forest-labs/flux-kontext-pro",
         #  "black-forest-labs/flux-kontext-dev", # seems to only work as an image->image model
         #  "bytedance/sdxl-lightning-4step:5599ed30703defd1d160a25a63321b4dec97101d98b4674bcc56e41f62f35637",
         #  "nvidia/sana:c6b5d2b7459910fec94432e9e1203c3cdce92d6db20f714f1355747990b52fa6",
@@ -17,14 +23,6 @@ async def generate_image(prompt, aspect_ratio="1:1", output_format="webp", outpu
         #  "google/imagen-3-fast",
         #  "recraft-ai/recraft-v3",
         #  "ideogram-ai/ideogram-v2a",
-         "ideogram-ai/ideogram-v3-balanced",
-         "minimax/image-01",
-        #  "prunaai/wan-image",
-        #  "google/imagen-3",
-         "google/imagen-4",
-         "google/gemini-2.5-flash-image",
-         "qwen/qwen-image",
-         "bytedance/seedream-3",
     ]
     if os.getenv("ENABLE_GPT_IMAGE", None) is not None:
         model_options.append("openai/gpt-image-1")
