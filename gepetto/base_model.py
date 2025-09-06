@@ -47,6 +47,7 @@ class BaseModel:
         }
         if self.model.startswith("openai/"):
             params["verbosity"] = "low"
+            logger.info(f"OpenAI model with params: {json.dumps(params)}")
 
         if json_mode:
             params["response_format"] = {"type": "json_object"}
