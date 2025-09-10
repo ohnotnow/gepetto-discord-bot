@@ -12,6 +12,7 @@ async def generate_image(prompt, aspect_ratio="1:1", output_format="webp", outpu
          "google/imagen-4",
          "google/gemini-2.5-flash-image",
          "qwen/qwen-image",
+         "bytedance/seedream-4",
         #  "bytedance/seedream-3",
         #  "ideogram-ai/ideogram-v3-balanced",
         #  "minimax/image-01",
@@ -90,6 +91,18 @@ async def generate_image(prompt, aspect_ratio="1:1", output_format="webp", outpu
             "prompt": prompt,
             "aspect_ratio": "16:9",
             "guidance_scale": 2.5
+        }
+        cost = 0.003
+    elif model.startswith("bytedance/seedream-4"):
+        input={
+            "size": "2K",
+            "width": 2048,
+            "height": 2048,
+            "prompt": prompt,
+            "max_images": 1,
+            "image_input": [],
+            "aspect_ratio": "4:3",
+            "sequential_image_generation": "disabled"
         }
         cost = 0.003
     elif model.startswith("luma/"):
