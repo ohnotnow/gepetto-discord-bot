@@ -28,6 +28,7 @@ def get_initial_chat_image_prompt(chat_history: str, previous_image_themes: str)
         - If you are using the main themes - be subtle, be creative, work them into some other details you have identified.
         - DO NOT invent any details, only use the ones that are mentioned in the chat history.
         - Weave the main themes in the context of the peripheral details - the peripheral details are the central focus of the image.
+        - If the chat history is very low, then take additional inpiration from a famous event which happened on todays date in history.
 
         STEP 3 - ARTISTIC STYLE SELECTION:
         Choose your visual approach from the broad world of art:
