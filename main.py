@@ -264,7 +264,7 @@ async def summarise_webpage_content(discord_message: discord.Message, prompt: st
         },
         {
             'role': 'user',
-            'content': f'{prompt}? :: <text-to-summarise>\n\n{original_text}\n\n</text-to-summarise>'
+            'content': f'{prompt}? :: <text-to-summarise>\n\n{original_text}\n\n</text-to-summarise>.  **Important**  Keep your summary brief and to the point!'
         },
     ]
     response = await chatbot.chat(messages, temperature=1.0)
