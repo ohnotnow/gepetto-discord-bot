@@ -654,7 +654,7 @@ async def make_chat_video():
         chat_history += f"{message['content']}\n"
     prompt = f"""
     Please create a brief description based on the following chat history.
-    The description will be used to generate a five second long video using a video generation model, which should delight and impress the user.
+    The description will be used to generate a four second long video meme using a video generation model, which should delight and impress the user.
     The description should capture the essence of the chat history, but should be very clear and simple - the video generation model is quite simple so can't generate videos that are too complex.
     Please reply with only the description as it will be sent directly to the video generator.
 
