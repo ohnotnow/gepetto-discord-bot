@@ -16,6 +16,7 @@ from gepetto import mistral, dalle, summary, weather, random_facts, birthdays, g
 from gepetto import response as gepetto_response
 from gepetto import websearch as gepetto_websearch
 from gepetto import perplexity
+from gepetto import sora
 from gepetto.response import split_for_discord
 import discord
 from discord import File
@@ -670,7 +671,8 @@ async def make_chat_video():
             'content': prompt
         }])
         logger.info(f"Video prompt: {response.message}")
-        video_url, model_name, cost = await replicate.generate_video(response.message)
+        video_url, model_name, cost = await sora.generate_video(response.message)
+        # video_url, model_name, cost# = await replicate.generate_video(response.message)
         logger.info(f"Video URL: {video_url} - model: {model_name} - cost: {cost}")
         if not video_url:
             logger.info('We did not get a file from API')
