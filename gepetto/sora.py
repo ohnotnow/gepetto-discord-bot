@@ -8,6 +8,7 @@ from openai import OpenAI
 async def generate_video(prompt, model="openai/sora-2"):
     input = {
         "prompt": prompt,
+        "seconds": 8,
         "openai_api_key": os.getenv("OPENAI_API_KEY")
     }
     output = await replicate.async_run(
