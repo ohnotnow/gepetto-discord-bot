@@ -15,7 +15,7 @@ async def generate_video(prompt, model="openai/sora-2"):
         model,
         input=input
     )
-    cost = 0.40
+    cost = input.get("seconds", 8) * 0.10
 
     if isinstance(output, list):
         video_url = output[0]
