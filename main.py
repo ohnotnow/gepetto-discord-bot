@@ -654,7 +654,8 @@ async def make_chat_video():
         chat_history += f"{message['content']}\n"
     prompt = f"""
     Please create a brief description based on the following chat history.
-    The description will be used to generate a eight second long video meme using a video generation model, which should delight and impress the user.
+    The description will be used to generate a four second long video meme using a video generation model, which should delight, amuse and impress the user.
+    The users love clever word play, technology, sarcasm, and humour at UK politics.  And cats.
     The description should capture the essence of the chat history, but should be very clear and simple - the video generation model is quite simple so can't generate videos that are too complex.
     Please reply with only the description as it will be sent directly to the video generator.
 
@@ -663,7 +664,7 @@ async def make_chat_video():
     </chat-history>
 
     Remember to tell the video generator which style to use (eg, anime, realistic, film noir, etc).  You can also suggest
-    camera angles, lighting, etc.  But keep it clear and simple.  The video will be generated in a portrait aspect ratio - so take that into account.
+    camera angles, lighting, etc.  But keep it clear, simple but engaging.  The video will be generated in a portrait aspect ratio - so take that into account.
     """
     async with channel.typing():
         response = await chatbot.chat([{
