@@ -327,44 +327,44 @@ async def on_message(message):
         lq = question.lower().strip()
         async with message.channel.typing():
             #if "--no-logs" in question.lower() or isinstance(chatbot, mistral.MistralModel):
-            if "--no-logs" in question.lower():
+            if "--no-logs" in lq:
                 context = []
-                question = question.lower().replace("--no-logs", "")
+                question = question.replace("--no-logs", "")
             else:
                 if chatbot.uses_logs:
                     context = await get_history_as_openai_messages(message.channel)
                 else:
                     context = []
-            if '--serious' in question.lower():
-                question = question.lower().replace("--serious", "")
+            if '--serious' in lq:
+                question = question.replace("--serious", "")
                 system_prompt = "You should respond in a very serious, professional and formal manner.  The user is a professional and simply wants a clear answer to their question."
             else:
                 system_prompt = None
             if message.author.bot:
                 question = question + ". Please be very concise, curt and to the point.  The user in this case is a discord bot."
-            if question.lower().startswith("!image"):
+            if lq.startswith("!image"):
                 await make_chat_image()
                 return
-            if question.lower().startswith("!video"):
+            if lq.startswith("!video"):
                 await make_chat_video()
                 return
-            if '--rewrite' in question.lower():
-                question = question.lower().replace("--rewrite", "")
+            if '--rewrite' in lq:
+                question = question.replace("--rewrite", "")
                 rewrite_mode = True
             else:
                 rewrite_mode = False
-            if '--o1' in question.lower():
-                question = question.lower().replace("--o1", "")
+            if '--o1' in lq:
+                question = question.replace("--o1", "")
                 override_model = gpt.Model.GPT_O1_MINI.value[0]
             else:
                 override_model = None
             optional_args = {}
             if override_model is not None:
                 optional_args['model'] = override_model
-            if '--reasoning' in question.lower():
+            if '--reasoning' in lq:
                 await message.reply(f'{message.author.mention} **Reasoning:** {previous_image_reasoning}\n**Themes:** {previous_image_themes}\n**Image Prompt:** {previous_image_prompt}'[:1800], mention_author=True)
                 return
-            if '--thinking' in question.lower():
+            if '--thinking' in lq:
                 await message.reply(f'{message.author.mention} **Thinking:** {previous_reasoning_content}', mention_author=True)
                 return
 
@@ -389,7 +389,7 @@ async def on_message(message):
                 fname = tool_call.function.name
                 if fname == 'extract_recipe_from_webpage':
                     recipe_url = arguments.get('url', '')
-                    if ('example.com' in recipe_url) or ('http' not in question.lower()):
+                    if ('example.com' in recipe_url) or ('http' not in lq):
                         original_usage = response.usage
                         response = await chatbot.chat(messages, temperature=temperature, tools=[], **optional_args)
                         response = response.message.strip()[:1800] + "\n" + response.usage + "\n" + original_usage
