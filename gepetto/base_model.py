@@ -48,7 +48,7 @@ class BaseModel:
             "temperature": temperature,
             "reasoning_effort": "low",
         }
-        if self.model.startswith("openai/"):
+        if self.model.startswith("openai/") and not "oss" in self.model:
             params["verbosity"] = "low"
             logger.info(f"OpenAI model with params: {json.dumps(params)}")
 
