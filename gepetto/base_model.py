@@ -6,6 +6,9 @@ from gepetto.response import ChatResponse, FunctionResponse
 from typing import List, Dict, Any, Optional, Tuple
 import os
 import time
+import logging
+
+logger = logging.getLogger('discord')  # Get the discord logger
 class BaseModel:
     uses_logs: bool = True
     default_model: str = os.getenv("BOT_MODEL", "gpt-4o-mini")
