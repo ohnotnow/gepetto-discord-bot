@@ -69,7 +69,7 @@ async def get_text(url: str) -> str:
             return "Sorry, I couldn't get a transcript for that video."
         transcript_text = ""
         for snippet in transcript_list:
-            transcript_text += snippet['text'] + "\n"
+            transcript_text += snippet.text + "\n"
         page_text = transcript_text.strip()
         if "The copyright belongs to Google LLC" in page_text:
             page_text = "Could not get the transcript - possibly I am being geoblocked"
