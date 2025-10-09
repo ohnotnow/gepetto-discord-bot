@@ -165,6 +165,15 @@ async def generate_response(question, context="", extended_messages=[], temperat
     response = await chatbot.chat(extended_messages, temperature=temperature)
     return response
 
+async def reply_to_message(message, response):
+    chunks = split_for_discord(response)
+    for i, chunk in enumerate(chunks):
+        if i == 0:
+            await message.reply(f'{message.author.mention} {chunk}')
+        else:
+            await message.reply(f'{chunk}')
+        await asyncio.sleep(0.1)
+
 def remove_emoji(text):
     regrex_pattern = re.compile(pattern = "["
         u"\U0001F600-\U0001F64F"  # emoticons
@@ -199,10 +208,7 @@ async def websearch(discord_message: discord.Message, prompt: str) -> None:
     response = await perplexity.search(prompt)
     # response = await gepetto_websearch.websearch(prompt)
     response = "🌍" + response
-    chunks = split_for_discord(response)
-    for chunk in chunks:
-        await discord_message.reply(f'{discord_message.author.mention} {chunk}', mention_author=True)
-
+    await reply_to_message(discord_message, response)
 
 async def create_image(discord_message: discord.Message, prompt: str, model: str = "black-forest-labs/flux-schnell") -> None:
     logger.info(f"Creating image with model: {model} and prompt: {prompt}")
@@ -271,9 +277,7 @@ async def summarise_webpage_content(discord_message: discord.Message, prompt: st
     ]
     response = await chatbot.chat(messages, temperature=1.0)
     # chunk the response.message into 1800 character chunks
-    chunks = [response.message[i:i+1800] for i in range(0, len(response.message), 1800)]
-    for chunk in chunks:
-        await discord_message.reply(f"{chunk}")
+    await reply_to_message(discord_message, response.message)
     if was_truncated:
         await discord_message.reply(f"[Note: The summary is based on a truncated version of the original text as it was too long.]", mention_author=True)
 
@@ -438,14 +442,7 @@ async def on_message(message):
                 response_text = re.sub(r"^.*At \d{4}-\d{2}.+said?", "", response_text, flags=re.MULTILINE)
                 logger.info(response.usage)
                 response = response_text.strip() + "\n" + response.usage_short
-            chunks = split_for_discord(response)
-            # only include the message author for the first chunk
-            for i, chunk in enumerate(chunks):
-                if i == 0:
-                    await message.reply(f'{message.author.mention} {chunk}')
-                else:
-                    await message.reply(f'{chunk}')
-                await asyncio.sleep(0.1)
+            await reply_to_message(message, response)
     except Exception as e:
         logger.error(f'Error generating response: {traceback.format_exc()}')
         await message.reply(f'{message.author.mention} I tried, but my attempt was as doomed as Liz Truss.  Please try again later.', mention_author=True)
