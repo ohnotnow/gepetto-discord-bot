@@ -62,6 +62,7 @@ async def get_text(url: str) -> str:
             ytt_api = YouTubeTranscriptApi()
             transcript_list = ytt_api.fetch(video_id)
         except Exception as e:
+            print(f"Error getting transcript for {video_id}: {e}")
             return "Sorry, I couldn't get a transcript for that video."
         transcript_text = [x['text'] for x in transcript_list]
         page_text = ' '.join(transcript_text)

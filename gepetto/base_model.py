@@ -56,7 +56,6 @@ class BaseModel:
             params["response_format"] = {"type": "json_object"}
 
         if tools and self.model_supports_tools(model):
-            print(f"Using tools: {tools} with model: {model}")
             params["tools"] = tools
             params["tool_choice"] = "auto"
 
