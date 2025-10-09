@@ -246,6 +246,7 @@ async def summarise_webpage_content(discord_message: discord.Message, prompt: st
     if 'sentry.io' in url:
         await summarise_sentry_issue(discord_message, url)
         return
+    logger.info(f"Summarising webpage content for '{url}'")
     original_text = await summary.get_text(url)
     # split the original_text into words, then truncate to max of 12000 words
     words = original_text.split()

@@ -6,6 +6,8 @@ import PyPDF2
 from trafilatura import fetch_url, extract
 from trafilatura.settings import DEFAULT_CONFIG
 from copy import deepcopy
+import logging
+logger = logging.getLogger('discord')  # Get the discord logger
 
 request_headers = {
     "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
@@ -41,6 +43,7 @@ def get_text_from_pdf(url: str) -> str:
 
 
 def extract_video_id_and_trailing_text(input_string):
+    logger.info(f"Extracting video ID and trailing text for {input_string}")
     # Use a regular expression to match a YouTube URL and extract the video ID
     video_id_match = re.search(r"https://www\.youtube\.com/watch\?v=([^&\s\?]+)", input_string)
     video_id = video_id_match.group(1) if video_id_match else None
@@ -51,7 +54,7 @@ def extract_video_id_and_trailing_text(input_string):
         trailing_text = input_string.replace(url, '').strip()
     else:
         trailing_text = ''
-
+    logger.info(f"Video ID: {video_id} - Trailing text: {trailing_text}")
     return video_id, trailing_text
 
 async def get_text(url: str) -> str:
@@ -62,7 +65,7 @@ async def get_text(url: str) -> str:
             ytt_api = YouTubeTranscriptApi()
             transcript_list = ytt_api.fetch(video_id)
         except Exception as e:
-            print(f"Error getting transcript for {video_id}: {e}")
+            logger.info(f"Error getting transcript for {video_id}: {e}")
             return "Sorry, I couldn't get a transcript for that video."
         transcript_text = [x['text'] for x in transcript_list]
         page_text = ' '.join(transcript_text)
