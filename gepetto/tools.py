@@ -60,7 +60,7 @@ tool_list = [
             "properties": {
                 "url": {
                     "type": "string",
-                    "description": "The URL of the webpage to summarize."
+                    "description": "The **exact** URL of the webpage to summarize - do not change it or alter the case - pass exactly as provided by the user."
                 },
                 "prompt": {
                     "type": "string",
