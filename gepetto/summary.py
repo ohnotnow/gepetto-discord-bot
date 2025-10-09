@@ -59,7 +59,8 @@ async def get_text(url: str) -> str:
     if '//www.youtube.com/' in url:
         video_id, trailing_text = extract_video_id_and_trailing_text(url.strip("<>"))
         try:
-            transcript_list = YouTubeTranscriptApi.get_transcript(video_id)
+            ytt_api = YouTubeTranscriptApi()
+            transcript_list = ytt_api.fetch(video_id)
         except Exception as e:
             return "Sorry, I couldn't get a transcript for that video."
         transcript_text = [x['text'] for x in transcript_list]
