@@ -67,8 +67,10 @@ async def get_text(url: str) -> str:
         except Exception as e:
             logger.info(f"Error getting transcript for {video_id}: {e}")
             return "Sorry, I couldn't get a transcript for that video."
-        transcript_text = [x['text'] for x in transcript_list]
-        page_text = ' '.join(transcript_text)
+        transcript_text = ""
+        for snippet in transcript_list:
+            transcript_text += snippet['text'] + "\n"
+        page_text = transcript_text.strip()
         if "The copyright belongs to Google LLC" in page_text:
             page_text = "Could not get the transcript - possibly I am being geoblocked"
 
