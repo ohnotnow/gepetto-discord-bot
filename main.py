@@ -650,9 +650,10 @@ async def make_chat_video():
     chat_history = ""
     for message in history:
         chat_history += f"{message['content']}\n"
+    duration = 8
     prompt = f"""
     Please create a brief description based on the following chat history.
-    The description will be used to generate a four second long video meme using a video generation model, which should delight, amuse and impress the user.
+    The description will be used to generate a {duration} second long video meme using a video generation model, which should delight, amuse and impress the user.
     The users love clever word play, technology, sarcasm, and humour at UK politics.  And cats.
     The description should capture the essence of the chat history, but should be very clear and simple - the video generation model is quite simple so can't generate videos that are too complex.
     Please reply with only the description as it will be sent directly to the video generator.
@@ -670,7 +671,7 @@ async def make_chat_video():
             'content': prompt
         }])
         logger.info(f"Video prompt: {response.message}")
-        video_url, model_name, cost = await sora.generate_video(response.message)
+        video_url, model_name, cost = await sora.generate_video(response.message, seconds=duration)
         # video_url, model_name, cost# = await replicate.generate_video(response.message)
         logger.info(f"Video URL: {video_url} - model: {model_name} - cost: {cost}")
         if not video_url:
