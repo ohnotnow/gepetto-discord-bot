@@ -27,6 +27,7 @@ async def generate_image(prompt, aspect_ratio="1:1", output_format="webp", outpu
     ]
     if os.getenv("ENABLE_GPT_IMAGE", None) is not None:
         model_options.append("openai/gpt-image-1")
+        model_options.append("openai/gpt-image-1-mini")
     # pick a random model from the list
     model = random.choice(model_options)
     print(f"Using model: {model}")
@@ -65,7 +66,10 @@ async def generate_image(prompt, aspect_ratio="1:1", output_format="webp", outpu
             "openai_api_key": os.getenv("OPENAI_API_KEY"),
             "moderation": "low",
         }
-        cost = 0.001
+        if "mini" in model:
+            cost = 0.01
+        else:
+            cost = 0.04
     elif model.startswith("recraft-ai/"):
         input={
             "size": "1365x1024",
