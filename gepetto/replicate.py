@@ -5,45 +5,64 @@ import random
 import os
 
 async def generate_image(prompt, aspect_ratio="1:1", output_format="webp", output_quality=90, enhance_prompt=True):
-    model_options = [
-         "black-forest-labs/flux-1.1-pro",
-         "black-forest-labs/flux-krea-dev",
-         "bria/image-3.2",
-         "google/imagen-4",
-         "google/gemini-2.5-flash-image",
-         "qwen/qwen-image",
-         "bytedance/seedream-4",
-        #  "bytedance/seedream-3",
-        #  "ideogram-ai/ideogram-v3-balanced",
-        #  "minimax/image-01",
-        #  "black-forest-labs/flux-kontext-pro",
-        #  "black-forest-labs/flux-kontext-dev", # seems to only work as an image->image model
-        #  "bytedance/sdxl-lightning-4step:5599ed30703defd1d160a25a63321b4dec97101d98b4674bcc56e41f62f35637",
-        #  "nvidia/sana:c6b5d2b7459910fec94432e9e1203c3cdce92d6db20f714f1355747990b52fa6",
-        #  "luma/photon-flash",
-        #  "google/imagen-3-fast",
-        #  "recraft-ai/recraft-v3",
-        #  "ideogram-ai/ideogram-v2a",
-    ]
-    if os.getenv("ENABLE_GPT_IMAGE", None) is not None:
-        model_options.append("openai/gpt-image-1")
-        model_options.append("openai/gpt-image-1-mini")
-    # pick a random model from the list
-    model = random.choice(model_options)
-    print(f"Using model: {model}")
-    cost = 0.003
+    model = get_random_image_model()
+    input_params, cost = get_input_for_model(model, prompt, aspect_ratio)
+    print(f"Using image model: {model} with cost: {cost}")
+    output = await replicate.async_run(
+        model,
+        input=input_params,
+    )
+    if isinstance(output, list):
+        image_url = output[0]
+    else:
+        image_url = output
+    # strip any training :hash from the model name, eg nvidia/sana:c6b5d2b7459910fec94432e9e1203c3cdce92d6db20f714f1355747990b52fa6
+    model_name = model.split(":")[0]
+    return image_url, model_name, cost
+
+async def generate_video(prompt, model="wan-video/wan-2.2-t2v-fast"):
+    input = {
+        "prompt": prompt,
+        "go_fast": True,
+        "num_frames": 81,
+        "resolution": "480p",
+        "aspect_ratio": "16:9",
+        "sample_shift": 12,
+        "optimize_prompt": False,
+        "frames_per_second": 16,
+        "lora_scale_transformer": 1,
+        "lora_scale_transformer_2": 1
+    }
+    output = await replicate.async_run(
+        model,
+        input=input
+    )
+    cost = 0.05
+    if isinstance(output, list):
+        video_url = output[0]
+    else:
+        video_url = output
+
+    # strip any training :hash from the model name, eg nvidia/sana:c6b5d2b7459910fec94432e9e1203c3cdce92d6db20f714f1355747990b52fa6
+    model_name = model.split(":")[0]
+    return video_url, model_name, cost
+
+def get_input_for_model(model, prompt, aspect_ratio):
     if model.startswith("black-forest-labs/"):
         input = {
             "prompt": prompt,
             "num_outputs": 1,
             "aspect_ratio": aspect_ratio,
-            "output_format": output_format,
-            "output_quality": output_quality,
-            "prompt_upsampling": enhance_prompt,
             "disable_safety_checker": True,
             "output_format": "jpg",
         }
         cost = 0.04
+    elif model.startswith("tencent/"):
+        input = {
+            "prompt": prompt,
+            "disable_safety_checker": True,
+        }
+        cost = 0.08
     elif model.startswith("qwen/"):
         input = {
             "prompt": prompt,
@@ -147,43 +166,21 @@ async def generate_image(prompt, aspect_ratio="1:1", output_format="webp", outpu
             "num_inference_steps": 18
         }
         cost = 0.003
-    print(f"Generating image with model: {model}")
-    output = await replicate.async_run(
-        model,
-        input=input,
-        # use_file_output=False
-    )
-    if isinstance(output, list):
-        image_url = output[0]
-    else:
-        image_url = output
-    # strip any training :hash from the model name, eg nvidia/sana:c6b5d2b7459910fec94432e9e1203c3cdce92d6db20f714f1355747990b52fa6
-    model_name = model.split(":")[0]
-    return image_url, model_name, cost
+    return input, cost
 
-async def generate_video(prompt, model="wan-video/wan-2.2-t2v-fast"):
-    input = {
-        "prompt": prompt,
-        "go_fast": True,
-        "num_frames": 81,
-        "resolution": "480p",
-        "aspect_ratio": "16:9",
-        "sample_shift": 12,
-        "optimize_prompt": False,
-        "frames_per_second": 16,
-        "lora_scale_transformer": 1,
-        "lora_scale_transformer_2": 1
-    }
-    output = await replicate.async_run(
-        model,
-        input=input
-    )
-    cost = 0.05
-    if isinstance(output, list):
-        video_url = output[0]
-    else:
-        video_url = output
-
-    # strip any training :hash from the model name, eg nvidia/sana:c6b5d2b7459910fec94432e9e1203c3cdce92d6db20f714f1355747990b52fa6
-    model_name = model.split(":")[0]
-    return video_url, model_name, cost
+def get_random_image_model():
+    model_options = [
+         "black-forest-labs/flux-1.1-pro",
+         "black-forest-labs/flux-krea-dev",
+         "bria/image-3.2",
+         "google/imagen-4",
+         "google/gemini-2.5-flash-image",
+         "qwen/qwen-image",
+         "bytedance/seedream-4",
+         "tencent/hunyuan-image-3",
+    ]
+    if os.getenv("ENABLE_GPT_IMAGE", None) is not None:
+        model_options.append("openai/gpt-image-1")
+        model_options.append("openai/gpt-image-1-mini")
+    model = random.choice(model_options)
+    return model
