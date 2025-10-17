@@ -95,10 +95,7 @@ async def get_history_as_openai_messages(channel, include_bot_messages=True, lim
     messages = []
     total_length = 0
     total_tokens = 0
-    if since_hours:
-        after_time = datetime.utcnow() - timedelta(hours=since_hours)
-    else:
-        after_time = None
+    after_time = datetime.now() - timedelta(days=1)
     async for msg in channel.history(limit=limit, after=after_time):
         # bail out if the message was by a bot and we don't want bot messages included
         if (not include_bot_messages) and (msg.author.bot):
@@ -129,6 +126,10 @@ async def get_history_as_openai_messages(channel, include_bot_messages=True, lim
     messages = messages[1:]  # Exclude the mention message
     # We reverse the list to make it in chronological order
     # logger.info(f"Total tokens: {total_tokens}")
+    logger.info(f"Length of messages: {len(messages)}")
+    for message in messages:
+        logger.info(f"Message: {message['content']}")
+
     return messages[::-1]
 
 def build_messages(question, extended_messages, system_prompt=None):
