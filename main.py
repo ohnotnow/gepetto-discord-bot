@@ -95,7 +95,7 @@ async def get_history_as_openai_messages(channel, include_bot_messages=True, lim
     messages = []
     total_length = 0
     total_tokens = 0
-    after_time = datetime.now() - timedelta(days=1)
+    after_time = datetime.now() - timedelta(hours=8)
     async for msg in channel.history(limit=limit, after=after_time):
         # bail out if the message was by a bot and we don't want bot messages included
         if (not include_bot_messages) and (msg.author.bot):
