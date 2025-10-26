@@ -51,7 +51,7 @@ model_engine = "gpt-4.1-mini"
 
 # openai.api_key = os.getenv("OPENAI_API_KEY")
 location = os.getenv('BOT_LOCATION', 'dunno')
-chat_image_hour = int(os.getenv('CHAT_IMAGE_HOUR', 17))
+chat_image_hour = int(os.getenv('CHAT_IMAGE_HOUR', 18))
 
 AUTO_INVESTIGATE_SENTRY_ISSUES = os.getenv("AUTO_INVESTIGATE_SENTRY_ISSUES", False)
 
