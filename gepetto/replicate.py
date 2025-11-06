@@ -154,6 +154,11 @@ def get_input_for_model(model, prompt, aspect_ratio):
             "aspect_ratio": aspect_ratio
         }
         cost = 0.03
+    elif model.startswith("reve/"):
+        input = {
+            "prompt": prompt,
+        }
+        cost = 0.025
     else:
         # default to sana model format input parameters
         input = {
@@ -178,6 +183,7 @@ def get_random_image_model():
          "qwen/qwen-image",
          "bytedance/seedream-4",
          "tencent/hunyuan-image-3",
+         "reve/create",
     ]
     if os.getenv("ENABLE_GPT_IMAGE", None) is not None:
         model_options.append("openai/gpt-image-1")
