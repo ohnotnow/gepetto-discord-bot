@@ -141,13 +141,16 @@ def get_input_for_model(model, prompt, aspect_ratio):
             "prompt": prompt,
         }
         cost = 0.039
-    elif model.startswith("google/"):
+    elif model.startswith("google/nano-banana-pro"):
         input={
             "prompt": prompt,
-            "aspect_ratio": aspect_ratio,
+            "resolution": "2K",
+            "image_input": [],
+            "aspect_ratio": "4:3",
+            "output_format": "png",
             "safety_filter_level": "block_only_high"
         }
-        cost = 0.04
+        cost = 0.14
     elif model.startswith("minimax/"):
         input = {
             "prompt": prompt,
@@ -174,17 +177,23 @@ def get_input_for_model(model, prompt, aspect_ratio):
     return input, cost
 
 def get_random_image_model():
-    model_options = [
-         "black-forest-labs/flux-1.1-pro",
-         "black-forest-labs/flux-krea-dev",
-         "bria/image-3.2",
-         "google/imagen-4",
-         "google/gemini-2.5-flash-image",
-         "qwen/qwen-image",
-         "bytedance/seedream-4",
-         "tencent/hunyuan-image-3",
-         "reve/create",
-    ]
+    if os.getenv("ENABLE_NANO_BANANA_PRO", None) is not None:
+        model_options = [
+            "google/nano-banana-pro",
+        ]
+    else:
+        model_options = [
+            "black-forest-labs/flux-1.1-pro",
+            "black-forest-labs/flux-krea-dev",
+            "bria/image-3.2",
+            "google/imagen-4",
+            "google/gemini-2.5-flash-image",
+            "google/nano-banana-pro",
+            "qwen/qwen-image",
+            "bytedance/seedream-4",
+            "tencent/hunyuan-image-3",
+            "reve/create",
+        ]
     if os.getenv("ENABLE_GPT_IMAGE", None) is not None:
         model_options.append("openai/gpt-image-1")
         model_options.append("openai/gpt-image-1-mini")
