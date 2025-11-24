@@ -584,8 +584,11 @@ async def make_chat_image():
         for message in history:
             chat_history += f"{message['content']}\n"
         logger.info(f"Asking for chat prompt")
-        if os.getenv("NANOBANANA_ENABLED", False):
+        if os.getenv("ENABLE_NANO_BANANA_PRO", False):
             full_prompt = images.build_nanobanana_prompt(chat_history, previous_image_themes)
+            llm_chat_prompt = "N/A"
+            llm_chat_themes = []
+            llm_chat_reasoning = ""
         else:
             combined_chat = images.get_initial_chat_image_prompt(chat_history, previous_image_themes)
             decoded_response = await images.get_image_response_from_llm(combined_chat, chatbot)
