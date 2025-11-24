@@ -8,7 +8,6 @@ async def generate_image(prompt, aspect_ratio="1:1", output_format="webp", outpu
     model = get_random_image_model()
     input_params, cost = get_input_for_model(model, prompt, aspect_ratio)
     print(f"Using image model: {model} with cost: {cost}")
-    return None, model, cost
     output = await replicate.async_run(
         model,
         input=input_params,
