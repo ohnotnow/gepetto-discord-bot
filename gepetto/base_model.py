@@ -96,7 +96,7 @@ class BaseModel:
         return ChatResponse(message, tokens, cost, model, tool_calls=tool_calls, reasoning_content=reasoning_content, duration=duration)
 
     def model_supports_tools(self, model: str) -> bool:
-        models_with_tools = ["openai", "anthropic"]
+        models_with_tools = ["openai", "anthropic", "gemini", "google"]
         return any(m in model for m in models_with_tools)
 
     async def function_call(
