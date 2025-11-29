@@ -49,14 +49,16 @@ async def generate_video(prompt, model="wan-video/wan-2.2-t2v-fast"):
 
 def get_input_for_model(model, prompt, aspect_ratio):
     if model.startswith("black-forest-labs/"):
-        input = {
+        input={
             "prompt": prompt,
-            "num_outputs": 1,
-            "aspect_ratio": aspect_ratio,
-            "disable_safety_checker": True,
-            "output_format": "jpg",
+            "resolution": "1 MP",
+            "aspect_ratio": "1:1",
+            "input_images": [],
+            "output_format": "webp",
+            "output_quality": 80,
+            "safety_tolerance": 5
         }
-        cost = 0.04
+        cost = 0.01
     elif model.startswith("tencent/"):
         input = {
             "prompt": prompt,
@@ -177,23 +179,25 @@ def get_input_for_model(model, prompt, aspect_ratio):
     return input, cost
 
 def get_random_image_model():
+    model_options = [
+        "black-forest-labs/flux-2-pro",
+    ]
+
     if os.getenv("ENABLE_NANO_BANANA_PRO", None) is not None:
-        model_options = [
-            "google/nano-banana-pro",
-        ]
-    else:
-        model_options = [
-            "black-forest-labs/flux-1.1-pro",
-            "black-forest-labs/flux-krea-dev",
-            "bria/image-3.2",
-            "google/imagen-4",
-            "google/gemini-2.5-flash-image",
-            "google/nano-banana-pro",
-            "qwen/qwen-image",
-            "bytedance/seedream-4",
-            "tencent/hunyuan-image-3",
-            "reve/create",
-        ]
+        model_options.append("google/nano-banana-pro")
+    # else:
+    #     model_options = [
+    #         "black-forest-labs/flux-1.1-pro",
+    #         "black-forest-labs/flux-krea-dev",
+    #         "bria/image-3.2",
+    #         "google/imagen-4",
+    #         "google/gemini-2.5-flash-image",
+    #         "google/nano-banana-pro",
+    #         "qwen/qwen-image",
+    #         "bytedance/seedream-4",
+    #         "tencent/hunyuan-image-3",
+    #         "reve/create",
+    #     ]
     if os.getenv("ENABLE_GPT_IMAGE", None) is not None:
         model_options.append("openai/gpt-image-1")
         model_options.append("openai/gpt-image-1-mini")
