@@ -184,7 +184,7 @@ def get_random_image_model():
     ]
 
     if os.getenv("ENABLE_NANO_BANANA_PRO", None) is not None:
-        model_options.append("google/nano-banana-pro")
+        model_options = ["google/nano-banana-pro"]
     # else:
     #     model_options = [
     #         "black-forest-labs/flux-1.1-pro",
