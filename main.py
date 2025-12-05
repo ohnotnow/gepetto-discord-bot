@@ -88,7 +88,7 @@ def get_chatbot():
     return chatbot
 
 def remove_nsfw_words(message):
-    message = re.sub("(fuck|prick|asshole|shit|wanker|dick)", "", message, flags=re.IGNORECASE)
+    message = re.sub("(fuck|prick|asshole|shit|wanker|dick|liz|truss)", "", message, flags=re.IGNORECASE)
     return message
 
 async def get_history_as_openai_messages(channel, include_bot_messages=True, limit=10, since_hours=None, nsfw_filter=False, max_length=1000, include_timestamps=True):
