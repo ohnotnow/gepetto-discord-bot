@@ -88,7 +88,7 @@ def get_chatbot():
     return chatbot
 
 def remove_nsfw_words(message):
-    message = re.sub("(fuck|prick|asshole|shit|wanker|dick)", "", message)
+    message = re.sub("(fuck|prick|asshole|shit|wanker|dick)", "", message, flags=re.IGNORECASE)
     return message
 
 async def get_history_as_openai_messages(channel, include_bot_messages=True, limit=10, since_hours=None, nsfw_filter=False, max_length=1000, include_timestamps=True):
@@ -110,7 +110,7 @@ async def get_history_as_openai_messages(channel, include_bot_messages=True, lim
             message_content = f"'{msg.author.name}' said: {content}"
         # message_content = f"User '{username}' said : {content}"
         message_content = re.sub(r'\[tokens used.+Estimated cost.+]', '', message_content, flags=re.MULTILINE)
-        message_content = remove_nsfw_words(message_content) if nsfw_filter else message_content
+        message_content = remove_nsfw_words(message_content)
         message_length = len(message_content)
         # if total_length + message_length > max_length:
         #     break
