@@ -584,25 +584,25 @@ async def make_chat_image():
         for message in history:
             chat_history += f"{message['content']}\n"
         logger.info(f"Asking for chat prompt")
-        full_prompt = images.build_nanobanana_prompt(chat_history, previous_image_themes)
-        llm_chat_prompt = "N/A"
-        llm_chat_themes = []
-        llm_chat_reasoning = ""
+        # full_prompt = images.build_nanobanana_prompt(chat_history, previous_image_themes)
+        # llm_chat_prompt = "N/A"
+        # llm_chat_themes = []
+        # llm_chat_reasoning = ""
         # else:
-        #     combined_chat = images.get_initial_chat_image_prompt(chat_history, previous_image_themes)
-        #     decoded_response = await images.get_image_response_from_llm(combined_chat, chatbot)
-        #     logger.info(f"Decoded response: {decoded_response}")
-        #     llm_chat_prompt = decoded_response.get("prompt", "")
-        #     llm_chat_themes = decoded_response.get("themes", [])
-        #     llm_chat_reasoning = decoded_response.get("reasoning", "")
-        #     if not llm_chat_prompt:
-        #         logger.info("No prompt in LLM JSON response, using the whole response")
-        #         llm_chat_prompt = str(decoded_response)
-        #     previous_image_prompt = llm_chat_prompt
-        #     previous_image_themes = llm_chat_themes
-        #     previous_image_reasoning = llm_chat_reasoning
-        #     extra_guidelines = images.get_extra_guidelines()
-        #     full_prompt = llm_chat_prompt + f"\n{extra_guidelines}"
+        combined_chat = images.get_initial_chat_image_prompt(chat_history, previous_image_themes)
+        decoded_response = await images.get_image_response_from_llm(combined_chat, chatbot)
+        logger.info(f"Decoded response: {decoded_response}")
+        llm_chat_prompt = decoded_response.get("prompt", "")
+        llm_chat_themes = decoded_response.get("themes", [])
+        llm_chat_reasoning = decoded_response.get("reasoning", "")
+        if not llm_chat_prompt:
+            logger.info("No prompt in LLM JSON response, using the whole response")
+            llm_chat_prompt = str(decoded_response)
+        previous_image_prompt = llm_chat_prompt
+        previous_image_themes = llm_chat_themes
+        previous_image_reasoning = llm_chat_reasoning
+        extra_guidelines = images.get_extra_guidelines()
+        full_prompt = llm_chat_prompt + f"\n{extra_guidelines}"
 
         logger.info(f"Calling replicate to generate image")
         image_url, model_name, cost = await replicate.generate_image(full_prompt, enhance_prompt=False)

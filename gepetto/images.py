@@ -49,8 +49,7 @@ def get_initial_chat_image_prompt(chat_history: str, previous_image_themes: str)
         - Software developers love wit and unexpected connections
         - Create something visually striking that would make them pause and smile
         - Avoid cyberpunk entirely
-        - The prompt should be detailed enough for Stable Diffusion
-        - The prompt should not be too long however.  Most Stable Diffusion models have a limit of 75 to 100 words.  Really distill the prompt down to the most important details that capture the essence of your idea.
+        - The prompt should be detailed and specific - it will be given to a state of the art image generation model - so you can be very specific
         - If today's date ({today_string}) has UK significance, weave it in naturally
         - Surprise them with creative interpretations they wouldn't expect
         - If the chat history contains references to people having a truly bad time (not in jest) - please make the image cheerfull - do NOT make the user sad by reflecting their pain back to them (eg, relationship breakdown, pet or parental illness, etc).
@@ -68,7 +67,7 @@ def get_initial_chat_image_prompt(chat_history: str, previous_image_themes: str)
         - themes: The themes you want to use in the image
         - reasoning: The reasoning you used to generate the prompt
 
-        And remember: the prompt will be used to generate an image, so it should be clear and detailed enough for the image model to understand, but not so long or detail-packed that it overwhelms the image model.
+        And remember: the prompt will be used to generate an image, so it should be clear and detailed enough for the image model to understand.
         """
     return combined_chat
 
