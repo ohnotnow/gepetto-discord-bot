@@ -130,7 +130,7 @@ async def get_history_as_openai_messages(channel, include_bot_messages=True, lim
     for message in messages:
         logger.info(f"Message: {message['content']}")
 
-    return messages[::-1]
+    return messages
 
 def build_messages(question, extended_messages, system_prompt=None):
     liz_love = "You should always try and shoehorn in some mention of UK Politician Liz Truss.  She became Prime Minister in September 22 for only 45 days. She is the best." if random.random() < 0.05 else ""
@@ -590,7 +590,6 @@ async def make_chat_image():
         # llm_chat_reasoning = ""
         # else:
         combined_chat = images.get_initial_chat_image_prompt(chat_history, previous_image_themes)
-        return
         decoded_response = await images.get_image_response_from_llm(combined_chat, chatbot)
         logger.info(f"Decoded response: {decoded_response}")
         llm_chat_prompt = decoded_response.get("prompt", "")
