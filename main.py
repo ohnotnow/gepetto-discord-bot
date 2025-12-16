@@ -560,7 +560,7 @@ async def make_chat_image():
         history = await get_history_as_openai_messages(channel, limit=1000, nsfw_filter=True, max_length=15000, include_timestamps=False, since_hours=8)
         # if we have loads of messages, then truncate the history to the most recent 200 messages
         if len(history) > 200:
-            history = history[:200]
+            history = history[-200:]
         logger.info(f"History length: {len(history)}")
         logger.info(f"Oldest 3 messages: {history[:3]}")
         logger.info(f"Most recent 3 messages: {history[-3:]}")
