@@ -82,15 +82,23 @@ def get_input_for_model(model, prompt, aspect_ratio):
         }
         cost = 0.02
     elif model.startswith("openai/"):
-        input = {
-            "prompt": prompt,
-            "openai_api_key": os.getenv("OPENAI_API_KEY"),
-            "moderation": "low",
-        }
-        if "mini" in model:
+        input={
+        "prompt": prompt,
+        "quality": os.getenv("ENABLE_GPT_IMAGE", "medium"),
+        "background": "auto",
+        "moderation": "low",
+        "aspect_ratio": aspect_ratio,
+        "output_format": "webp",
+        "input_fidelity": "low",
+        "number_of_images": 1,
+        "output_compression": 90
+    }
+        if input["quality"] == "low":
             cost = 0.01
-        else:
+        elif input["quality"] == "medium":
             cost = 0.04
+        else:
+            cost = 0.13
     elif model.startswith("recraft-ai/"):
         input={
             "size": "1365x1024",
@@ -185,6 +193,10 @@ def get_random_image_model():
 
     if os.getenv("ENABLE_NANO_BANANA_PRO", None) is not None:
         model_options = ["google/nano-banana-pro"]
+
+    if os.getenv("ENABLE_GPT_IMAGE", None) is not None:
+        model_options.append("openai/gpt-image-1.5")
+
     # else:
     #     model_options = [
     #         "black-forest-labs/flux-1.1-pro",
@@ -198,8 +210,5 @@ def get_random_image_model():
     #         "tencent/hunyuan-image-3",
     #         "reve/create",
     #     ]
-    if os.getenv("ENABLE_GPT_IMAGE", None) is not None:
-        model_options.append("openai/gpt-image-1")
-        model_options.append("openai/gpt-image-1-mini")
     model = random.choice(model_options)
     return model
