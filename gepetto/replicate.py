@@ -188,7 +188,6 @@ def get_input_for_model(model, prompt, aspect_ratio):
 
 def get_random_image_model():
     model_options = [
-        "black-forest-labs/flux-2-pro",
     ]
 
     if os.getenv("ENABLE_NANO_BANANA_PRO", None) is not None:
@@ -197,6 +196,8 @@ def get_random_image_model():
     if os.getenv("ENABLE_GPT_IMAGE", None) is not None:
         model_options.append("openai/gpt-image-1.5")
 
+    if len(model_options) == 0:
+        model_options.append("black-forest-labs/flux-2-pro")
     # else:
     #     model_options = [
     #         "black-forest-labs/flux-1.1-pro",
