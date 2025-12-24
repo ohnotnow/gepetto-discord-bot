@@ -4,8 +4,9 @@ import replicate
 import random
 import os
 
-async def generate_image(prompt, aspect_ratio="1:1", output_format="webp", output_quality=90, enhance_prompt=True):
-    model = get_random_image_model()
+async def generate_image(prompt, aspect_ratio="1:1", output_format="webp", output_quality=90, enhance_prompt=True, model=None):
+    if model is None:
+        model = get_random_image_model()
     input_params, cost = get_input_for_model(model, prompt, aspect_ratio)
     print(f"Using image model: {model} with cost: {cost}")
     output = await replicate.async_run(
@@ -59,6 +60,12 @@ def get_input_for_model(model, prompt, aspect_ratio):
             "safety_tolerance": 5
         }
         cost = 0.01
+    elif model.startswith("prunaai/"):
+        input = {
+            "prompt": prompt,
+            "guidance_scale": 0
+        }
+        cost = 0.005
     elif model.startswith("tencent/"):
         input = {
             "prompt": prompt,
@@ -75,12 +82,6 @@ def get_input_for_model(model, prompt, aspect_ratio):
             "prompt": prompt,
         }
         cost = 0.04
-    elif model.startswith("prunaai/"):
-        input = {
-            "prompt": prompt,
-            "seed": -1,
-        }
-        cost = 0.02
     elif model.startswith("openai/"):
         input={
         "prompt": prompt,

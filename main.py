@@ -219,7 +219,7 @@ async def create_image(discord_message: discord.Message, prompt: str, model: str
         logger.info("Not creating image because daily image count is too high")
         await discord_message.reply(f'Due to budget cuts, I can only generate 10 images per day.', mention_author=True)
         return
-    image_url, model_name, cost = await replicate.generate_image(prompt)
+    image_url, model_name, cost = await replicate.generate_image(prompt, model="prunaai/z-image-turbo")
     prompt_as_filename = f"{re.sub(r'[^a-zA-Z0-9]', '_', prompt)[:50]}_{datetime.now().strftime('%Y_%m_%d')}.png"
     logger.info("Fetching image")
     image = requests.get(image_url)
