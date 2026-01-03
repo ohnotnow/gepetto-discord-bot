@@ -229,7 +229,7 @@ async def create_image(discord_message: discord.Message, prompt: str, model: str
 
 async def calculate(discord_message: discord.Message, expression: str) -> None:
     logger.info(f"Calculating {expression}")
-    result = await calculator.calculate(expression)
+    result = calculator.calculate(expression)
     await discord_message.reply(f'{discord_message.author.mention} {result}', mention_author=True)
 
 async def get_weather_forecast(discord_message: discord.Message, prompt: str) -> None:
