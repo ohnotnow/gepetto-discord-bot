@@ -2,6 +2,23 @@ tool_list = [
     {
         "type": "function",
         "function": {
+            "name": "calculate",
+            "description": "Calculates the result of an arbitrary mathematical expression (eg, '50 * (85 / 100)'). Use this tool when the user asks to calculate a mathematical expression.",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "expression": {
+                        "type": "string",
+                        "description": "The mathematical expression to calculate."
+                    }
+                },
+                "required": ["expression"]
+            }
+        }
+    },
+    {
+        "type": "function",
+        "function": {
             "name": "web_search",
             "description": "Searches the web for information based on the user prompt. Use this tool when asked to, or if the user seems to be asking for information that is not available in the context of the conversation and is asking about recent events/news/facts.",
             "parameters": {

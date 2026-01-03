@@ -12,7 +12,7 @@ import pytz
 from enum import Enum
 import requests
 import traceback
-from gepetto import mistral, dalle, summary, weather, random_facts, birthdays, gpt, stats, groq, claude, ollama, guard, replicate, tools, images, gemini, sentry, openrouter, memory
+from gepetto import mistral, dalle, summary, weather, random_facts, birthdays, gpt, stats, groq, claude, ollama, guard, replicate, tools, images, gemini, sentry, openrouter, memory, calculator
 from gepetto import response as gepetto_response
 from gepetto import websearch as gepetto_websearch
 from gepetto import perplexity
@@ -227,6 +227,11 @@ async def create_image(discord_message: discord.Message, prompt: str, model: str
     logger.info("Sending image to discord")
     await discord_message.reply(f'{discord_message.author.mention}\n_[Estimated cost: US${cost}] | Model: {model_name}_', file=discord_file)
 
+async def calculate(discord_message: discord.Message, expression: str) -> None:
+    logger.info(f"Calculating {expression}")
+    result = await calculator.calculate(expression)
+    await discord_message.reply(f'{discord_message.author.mention} {result}', mention_author=True)
+
 async def get_weather_forecast(discord_message: discord.Message, prompt: str) -> None:
     logger.info(f"Getting weather forecast for '{prompt}'")
     forecast = await weather.get_friendly_forecast_openweathermap(prompt, chatbot)
@@ -401,6 +406,8 @@ async def on_message(message):
                         await message.reply(f'{message.author.mention} {response}')
                     else:
                         await extract_recipe_from_webpage(message, arguments.get('prompt', ''), arguments.get('url', ''))
+                elif fname == 'calculate':
+                    await calculate(message, arguments.get('expression', ''))
                 elif fname == 'get_weather_forecast':
                     await get_weather_forecast(message, arguments.get('prompt', ''))
                 elif fname == 'get_sentry_issue_summary':
