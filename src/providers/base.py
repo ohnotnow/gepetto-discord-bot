@@ -2,7 +2,7 @@ from enum import Enum
 import json
 from litellm import completion, acompletion
 import litellm
-from gepetto.response import ChatResponse, FunctionResponse
+from .response import ChatResponse, FunctionResponse
 from typing import List, Dict, Any, Optional, Tuple
 import os
 import time

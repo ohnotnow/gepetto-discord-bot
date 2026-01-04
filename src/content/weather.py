@@ -2,7 +2,8 @@ import requests
 import os
 import datetime
 import random
-from gepetto import metoffer, gpt
+from . import metoffer
+from src.providers import gpt
 import logging
 import re
 import json

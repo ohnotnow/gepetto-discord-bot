@@ -11,7 +11,7 @@ from datetime import datetime
 import requests
 from discord import File
 
-from constants import (
+from .constants import (
     HISTORY_HOURS, HISTORY_MAX_MESSAGES, MIN_MESSAGES_FOR_CHAT_IMAGE, UK_HOLIDAYS
 )
 

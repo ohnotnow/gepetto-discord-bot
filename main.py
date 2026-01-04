@@ -12,14 +12,29 @@ import discord
 import pytz
 from discord.ext import commands, tasks
 
-from gepetto import (
-    birthdays, claude, gemini, gpt, groq, guard, images, memory,
-    mistral, ollama, openrouter, replicate, sentry, summary, tools, weather, calculator
-)
-from gepetto import perplexity
-from gepetto import sora
-from gepetto.response import split_for_discord
-from constants import (
+# Providers
+from src.providers import claude, gpt, groq, openrouter, perplexity
+from src.providers import split_for_discord
+
+# Tools
+from src.tools import calculator
+from src.tools.definitions import tool_list
+
+# Media
+from src.media import images, replicate, sora
+
+# Content
+from src.content import summary, weather, sentry
+
+# Persistence
+from src.persistence import memory
+
+# Tasks
+from src.tasks import birthdays
+
+# Utils
+from src.utils import BotGuard
+from src.utils.constants import (
     HISTORY_HOURS, HISTORY_MAX_MESSAGES, MAX_WORDS_TRUNCATION,
     DISCORD_MESSAGE_LIMIT, MAX_DAILY_IMAGES, MAX_HORROR_HISTORY,
     VIDEO_DURATION_SECONDS, RANDOM_CHAT_PROBABILITY, HORROR_CHAT_PROBABILITY,
@@ -28,7 +43,7 @@ from constants import (
     NIGHT_START_HOUR, NIGHT_END_HOUR, DAY_START_HOUR, DAY_END_HOUR,
     UK_HOLIDAYS, ABUSIVE_RESPONSES,
 )
-from helpers import (
+from src.utils.helpers import (
     format_date_with_suffix, format_date_only, get_date_suffix,
     get_bot_channel, fetch_chat_history, is_quiet_chat_day,
     generate_quiet_chat_message, download_media_to_discord_file,
@@ -70,18 +85,13 @@ bot = commands.Bot(command_prefix='!', intents=intents)
 
 def get_chatbot():
     chatbot = None
-    logger.info("BOT_PROVIDER: " + os.getenv("BOT_PROVIDER"))
-    if os.getenv("BOT_PROVIDER") == 'mistral':
-        chatbot = mistral.MistralModel()
-    elif os.getenv("BOT_PROVIDER") == 'groq':
+    provider = os.getenv("BOT_PROVIDER", "openai")
+    logger.info(f"BOT_PROVIDER: {provider}")
+    if provider == 'groq':
         chatbot = groq.GroqModel()
-    elif os.getenv("BOT_PROVIDER") == 'anthropic':
+    elif provider == 'anthropic':
         chatbot = claude.ClaudeModel()
-    elif os.getenv("BOT_PROVIDER") == 'ollama':
-        chatbot = ollama.OllamaModel()
-    elif os.getenv("BOT_PROVIDER") == 'gemini':
-        chatbot = gemini.GeminiModel()
-    elif os.getenv("BOT_PROVIDER") == 'openrouter':
+    elif provider == 'openrouter':
         chatbot = openrouter.OpenrouterModel()
     else:
         chatbot = gpt.GPTModel()
@@ -282,7 +292,7 @@ async def extract_recipe_from_webpage(discord_message: discord.Message, prompt: 
 
 @bot.event
 async def on_message(message):
-    message_blocked, abusive_reply = guard.should_block(message, bot, server_id, chatbot)
+    message_blocked, abusive_reply = bot_guard.should_block(message, bot, server_id, chatbot)
     if message_blocked:
         if abusive_reply:
             logger.info("Blocked message from: " + message.author.name + " and abusing them")
@@ -342,7 +352,7 @@ async def on_message(message):
                 rewrite_mode = False
             if '--o1' in lq:
                 question = question.replace("--o1", "")
-                override_model = gpt.Model.GPT_O1_MINI.value[0]
+                override_model = "openai/o1-mini"
             else:
                 override_model = None
             optional_args = {}
@@ -367,7 +377,7 @@ async def on_message(message):
                 question_with_context = response.message
                 logger.info(f"Rewritten question: {question_with_context}")
             messages = build_messages(question_with_context, context, system_prompt=system_prompt)
-            response = await chatbot.chat(messages, temperature=temperature, tools=tools.tool_list, **optional_args)
+            response = await chatbot.chat(messages, temperature=temperature, tools=tool_list, **optional_args)
             if response.reasoning_content:
                 bot_state.previous_reasoning_content = response.reasoning_content[:DISCORD_MESSAGE_LIMIT]
             if response.tool_calls:
@@ -606,7 +616,7 @@ async def make_chat_video():
         return
 
     # Build video prompt from template
-    with open('gepetto/video_prompt.md', 'r') as file:
+    with open('src/media/video_prompt.md', 'r') as file:
         prompt_template = file.read()
     prompt = f"{prompt_template}\n<chat-history>\n{chat_text}\n</chat-history>"
 
@@ -640,5 +650,5 @@ if os.getenv("DISCORD_BOT_MODEL", None):
     chatbot.default_model = os.getenv("DISCORD_BOT_MODEL")
 if os.getenv("BOT_NAME", None):
     chatbot.name = os.getenv("BOT_NAME")
-guard = guard.BotGuard()
+bot_guard = BotGuard()
 bot.run(os.getenv("DISCORD_BOT_TOKEN", 'not_set'))
