@@ -1,72 +1,70 @@
-import base64
 import asyncio
 import io
+import json
 import logging
 import os
 import random
 import re
-import json
-from collections import defaultdict
-from datetime import datetime, timedelta, timezone, time
-import pytz
-from enum import Enum
-import requests
 import traceback
-from gepetto import mistral, dalle, summary, weather, random_facts, birthdays, gpt, stats, groq, claude, ollama, guard, replicate, tools, images, gemini, sentry, openrouter, memory, calculator
-from gepetto import response as gepetto_response
-from gepetto import websearch as gepetto_websearch
+from dataclasses import dataclass, field
+from datetime import datetime, timedelta, timezone, time
+
+import discord
+import pytz
+import requests
+from discord import File
+from discord.ext import commands, tasks
+
+from gepetto import (
+    birthdays, claude, gemini, gpt, groq, guard, images, memory,
+    mistral, ollama, openrouter, replicate, sentry, summary, tools, weather, calculator
+)
 from gepetto import perplexity
 from gepetto import sora
 from gepetto.response import split_for_discord
-import discord
-from discord import File
-from discord.ext import commands, tasks
-import openai
-import feedparser
+from constants import (
+    HISTORY_HOURS, HISTORY_MAX_MESSAGES, MAX_WORDS_TRUNCATION,
+    DISCORD_MESSAGE_LIMIT, MAX_DAILY_IMAGES, MAX_HORROR_HISTORY,
+    RANDOM_CHAT_PROBABILITY, HORROR_CHAT_PROBABILITY, HORROR_CHAT_COOLDOWN_HOURS,
+    LIZ_TRUSS_PROBABILITY, ALTERNATE_PROMPT_PROBABILITY,
+    MIN_MESSAGES_FOR_RANDOM_CHAT, MIN_MESSAGES_FOR_CHAT_IMAGE,
+    NIGHT_START_HOUR, NIGHT_END_HOUR, DAY_START_HOUR, DAY_END_HOUR,
+    UK_HOLIDAYS, ABUSIVE_RESPONSES,
+)
+from helpers import format_date_with_suffix, format_date_only, get_date_suffix
 
 
-AVATAR_PATH="avatar.png"
-previous_image_description = "Here is my image based on recent chat in my Discord server!"
-previous_image_reasoning = "Dunno"
-previous_image_prompt = "Dunno"
-previous_image_themes = ""
-previous_reasoning_content = ""
-previous_themes = []
-horror_history = []
-daily_image_count = 0
+AVATAR_PATH = "avatar.png"
 
 # Setup logging
-logger = logging.getLogger('discord')  # Get the discord logger
-# logging.basicConfig(
-#     datefmt='%Y-%m-%d %H:%M:%S',
-# )
-
-mention_counts = defaultdict(list) # This will hold user IDs and their mention timestamps
-abusive_responses = ["Wanker", "Asshole", "Prick", "Twat", "Asshat", "Knob", "Dick", "Tosser", "Cow", "Cockwomble", "Anorak", "Knickers", "Fanny", "Sigh", "Big girl's blouse"]
+logger = logging.getLogger('discord')
 
 # Fetch environment variables
 server_id = os.getenv("DISCORD_SERVER_ID", "not_set")
-# model_engine = os.getenv("OPENAI_MODEL_ENGINE", gpt.Model.GPT_4_OMNI.value[0])
-model_engine = "gpt-4.1-mini"
 
-# openai.api_key = os.getenv("OPENAI_API_KEY")
+
+@dataclass
+class BotState:
+    """Encapsulates mutable bot state that would otherwise be global variables."""
+    previous_image_description: str = "Here is my image based on recent chat in my Discord server!"
+    previous_image_reasoning: str = "Dunno"
+    previous_image_prompt: str = "Dunno"
+    previous_image_themes: str = ""
+    previous_reasoning_content: str = ""
+    horror_history: list = field(default_factory=list)
+    daily_image_count: int = 0
+
+
+bot_state = BotState()
+
 location = os.getenv('BOT_LOCATION', 'dunno')
 chat_image_hour = int(os.getenv('CHAT_IMAGE_HOUR', 18))
-
-AUTO_INVESTIGATE_SENTRY_ISSUES = os.getenv("AUTO_INVESTIGATE_SENTRY_ISSUES", False)
-
 
 # Create instance of bot
 intents = discord.Intents.default()
 intents.members = True
 intents.message_content = True
 bot = commands.Bot(command_prefix='!', intents=intents)
-import re
-
-
-#def get_token_count(string):
-#    encoding = tiktoken.encoding_for_model(model_engine)
-#    return len(encoding.encode(string))
 
 def get_chatbot():
     chatbot = None
@@ -94,8 +92,7 @@ def remove_nsfw_words(message):
 async def get_history_as_openai_messages(channel, include_bot_messages=True, limit=10, since_hours=None, nsfw_filter=False, max_length=1000, include_timestamps=True):
     messages = []
     total_length = 0
-    total_tokens = 0
-    after_time = datetime.now() - timedelta(hours=8)
+    after_time = datetime.now() - timedelta(hours=HISTORY_HOURS)
     async for msg in channel.history(limit=limit, after=after_time):
         # bail out if the message was by a bot and we don't want bot messages included
         if (not include_bot_messages) and (msg.author.bot):
@@ -112,20 +109,12 @@ async def get_history_as_openai_messages(channel, include_bot_messages=True, lim
         message_content = re.sub(r'\[tokens used.+Estimated cost.+]', '', message_content, flags=re.MULTILINE)
         message_content = remove_nsfw_words(message_content)
         message_length = len(message_content)
-        # if total_length + message_length > max_length:
-        #     break
-        # token_length = get_token_count(message_content)
-        # if total_tokens + token_length > 3500:
-        #     break
         messages.append({
             "role": role,
             "content": message_content,
         })
         total_length += message_length
-        # total_tokens += token_length
     messages = messages[1:]  # Exclude the mention message
-    # We reverse the list to make it in chronological order
-    # logger.info(f"Total tokens: {total_tokens}")
     logger.info(f"Length of messages: {len(messages)}")
     for message in messages:
         logger.info(f"Message: {message['content']}")
@@ -133,38 +122,34 @@ async def get_history_as_openai_messages(channel, include_bot_messages=True, lim
     return messages
 
 def build_messages(question, extended_messages, system_prompt=None):
-    liz_love = "You should always try and shoehorn in some mention of UK Politician Liz Truss.  She became Prime Minister in September 22 for only 45 days. She is the best." if random.random() < 0.05 else ""
-    now = datetime.now()
-    day = now.strftime("%d")
-    suffix = lambda day: "th" if 11 <= int(day) <= 13 else {1: "st", 2: "nd", 3: "rd"}.get(int(day) % 10, "th")
-    formatted_date = now.strftime("%B %d" + suffix(day) + ", %Y %I:%M %p")
-    if random.random() < 0.1 and system_prompt is None:
-        default_prompt = os.getenv('DISCORD_BOT_ALTERNATE_PROMPT', None)
-    if system_prompt is None:
-        default_prompt = os.getenv('DISCORD_BOT_DEFAULT_PROMPT', f'You are a helpful AI assistant called "{chatbot.name}" who specialises in providing answers to questions.  You should ONLY respond with the answer, no other text.')
-    else:
-        default_prompt = system_prompt
+    liz_love = ""
+    if random.random() < LIZ_TRUSS_PROBABILITY:
+        liz_love = "You should always try and shoehorn in some mention of UK Politician Liz Truss. She became Prime Minister in September 22 for only 45 days. She is the best."
 
-    extended_messages.append(
-        {
-            'role': 'user',
-            'content': f'{question}'
-        },
-    )
-    extended_messages.append(
-        {
-            'role': 'system',
-            'content': f'Today is {formatted_date}. {default_prompt} {liz_love}.'
-        }
-    )
+    formatted_date = format_date_with_suffix()
+
+    # Determine the prompt to use (fixed logic - was previously buggy)
+    if system_prompt is not None:
+        default_prompt = system_prompt
+    elif random.random() < ALTERNATE_PROMPT_PROBABILITY and os.getenv('DISCORD_BOT_ALTERNATE_PROMPT'):
+        default_prompt = os.getenv('DISCORD_BOT_ALTERNATE_PROMPT')
+    else:
+        default_prompt = os.getenv(
+            'DISCORD_BOT_DEFAULT_PROMPT',
+            f'You are a helpful AI assistant called "{chatbot.name}" who specialises in providing answers to questions. You should ONLY respond with the answer, no other text.'
+        )
+
+    extended_messages.append({
+        'role': 'user',
+        'content': question
+    })
+    extended_messages.append({
+        'role': 'system',
+        'content': f'Today is {formatted_date}. {default_prompt} {liz_love}'.strip() + '.'
+    })
 
     return extended_messages
 
-async def generate_response(question, context="", extended_messages=[], temperature=1.0, model=model_engine, system_prompt=None):
-    extended_messages = build_messages(question, extended_messages, system_prompt)
-
-    response = await chatbot.chat(extended_messages, temperature=temperature)
-    return response
 
 async def reply_to_message(message, response):
     chunks = split_for_discord(response)
@@ -200,10 +185,6 @@ async def on_ready():
         logger.info("Starting horror_chat task")
         horror_chat.start()
     logger.info(f"Using model type : {type(chatbot)}")
-    return
-    with open(AVATAR_PATH, 'rb') as avatar:
-        await bot.user.edit(avatar=avatar.read())
-    logger.info("Avatar has been changed!")
 
 async def websearch(discord_message: discord.Message, prompt: str) -> None:
     response = await perplexity.search(prompt)
@@ -213,11 +194,10 @@ async def websearch(discord_message: discord.Message, prompt: str) -> None:
 
 async def create_image(discord_message: discord.Message, prompt: str, model: str = "black-forest-labs/flux-schnell") -> None:
     logger.info(f"Creating image with model: {model} and prompt: {prompt}")
-    global daily_image_count
-    daily_image_count += 1
-    if daily_image_count > 10:
+    bot_state.daily_image_count += 1
+    if bot_state.daily_image_count > MAX_DAILY_IMAGES:
         logger.info("Not creating image because daily image count is too high")
-        await discord_message.reply(f'Due to budget cuts, I can only generate 10 images per day.', mention_author=True)
+        await discord_message.reply(f'Due to budget cuts, I can only generate {MAX_DAILY_IMAGES} images per day.', mention_author=True)
         return
     image_url, model_name, cost = await replicate.generate_image(prompt, model="prunaai/z-image-turbo")
     prompt_as_filename = f"{re.sub(r'[^a-zA-Z0-9]', '_', prompt)[:50]}_{datetime.now().strftime('%Y_%m_%d')}.png"
@@ -251,8 +231,9 @@ async def summarise_sentry_issue(discord_message: discord.Message, url: str) -> 
         },
     ]
     response = await chatbot.chat(messages, temperature=1.0)
-    message = response.message.strip()[:1800] + "\n" + response.usage
+    message = response.message.strip()[:DISCORD_MESSAGE_LIMIT] + "\n" + response.usage
     await discord_message.reply(f'{discord_message.author.mention} {message}', mention_author=True)
+
 
 async def summarise_webpage_content(discord_message: discord.Message, prompt: str, url: str) -> None:
     if 'sentry.io' in url:
@@ -260,11 +241,10 @@ async def summarise_webpage_content(discord_message: discord.Message, prompt: st
         return
     logger.info(f"Summarising webpage content for '{url}'")
     original_text = await summary.get_text(url)
-    # split the original_text into words, then truncate to max of 12000 words
     words = original_text.split()
-    if len(words) > 12000:
-        logger.info(f"Original text to summarise is too long, truncating to 12000 words")
-        original_text = ' '.join(words[:12000])
+    if len(words) > MAX_WORDS_TRUNCATION:
+        logger.info(f"Original text to summarise is too long, truncating to {MAX_WORDS_TRUNCATION} words")
+        original_text = ' '.join(words[:MAX_WORDS_TRUNCATION])
         was_truncated = True
     else:
         was_truncated = False
@@ -298,24 +278,17 @@ async def extract_recipe_from_webpage(discord_message: discord.Message, prompt: 
 
 @bot.event
 async def on_message(message):
-    global previous_reasoning_content
-#    if AUTO_INVESTIGATE_SENTRY_ISSUES and 'sentry.io/issues' in message.content:
-        # sentry alert url is of the form https://university-of-glasgo-1c05fc43a.sentry.io/issues/6672435553/?alert_rule_id=14799200&alert_type=issue&notification_uuid=2f09f6a7-77fe-4189-8556-749aa4b8e997&project=4506224344039424&referrer=discord
-        # we need to extract the entire sentry url from the message using regex
-#        sentry_url = re.search(r'https://.*sentry\.io/issues/.*', message.content).group(0)
-#        await summarise_sentry_issue(message, sentry_url)
-#        return
     message_blocked, abusive_reply = guard.should_block(message, bot, server_id, chatbot)
     if message_blocked:
         if abusive_reply:
             logger.info("Blocked message from: " + message.author.name + " and abusing them")
-            await message.channel.send(f"{random.choice(abusive_responses)}.")
+            await message.channel.send(f"{random.choice(ABUSIVE_RESPONSES)}.")
         return
 
     question = message.content.split(' ', 1)[1][:500].replace('\r', ' ').replace('\n', ' ')
     logger.info(f'Question: {question}')
     if not any(char.isalpha() for char in question):
-        await message.channel.send(f'{message.author.mention} {random.choice(abusive_responses)}.')
+        await message.channel.send(f'{message.author.mention} {random.choice(ABUSIVE_RESPONSES)}.')
         return
 
     if "--strict" in question.lower():
@@ -372,10 +345,10 @@ async def on_message(message):
             if override_model is not None:
                 optional_args['model'] = override_model
             if '--reasoning' in lq:
-                await message.reply(f'{message.author.mention} **Reasoning:** {previous_image_reasoning}\n**Themes:** {previous_image_themes}\n**Image Prompt:** {previous_image_prompt}'[:1800], mention_author=True)
+                await message.reply(f'{message.author.mention} **Reasoning:** {bot_state.previous_image_reasoning}\n**Themes:** {bot_state.previous_image_themes}\n**Image Prompt:** {bot_state.previous_image_prompt}'[:DISCORD_MESSAGE_LIMIT], mention_author=True)
                 return
             if '--thinking' in lq:
-                await message.reply(f'{message.author.mention} **Thinking:** {previous_reasoning_content}', mention_author=True)
+                await message.reply(f'{message.author.mention} **Thinking:** {bot_state.previous_reasoning_content}', mention_author=True)
                 return
 
             # Add user context to the question so LLM knows Discord user info and can use memory tools
@@ -392,7 +365,7 @@ async def on_message(message):
             messages = build_messages(question_with_context, context, system_prompt=system_prompt)
             response = await chatbot.chat(messages, temperature=temperature, tools=tools.tool_list, **optional_args)
             if response.reasoning_content:
-                previous_reasoning_content = response.reasoning_content[:1800]
+                bot_state.previous_reasoning_content = response.reasoning_content[:DISCORD_MESSAGE_LIMIT]
             if response.tool_calls:
                 tool_call = response.tool_calls[0]
                 arguments = json.loads(tool_call.function.arguments)
@@ -402,7 +375,7 @@ async def on_message(message):
                     if ('example.com' in recipe_url) or ('http' not in lq):
                         original_usage = response.usage
                         response = await chatbot.chat(messages, temperature=temperature, tools=[], **optional_args)
-                        response = response.message.strip()[:1800] + "\n" + response.usage + "\n" + original_usage
+                        response = response.message.strip()[:DISCORD_MESSAGE_LIMIT] + "\n" + response.usage + "\n" + original_usage
                         await message.reply(f'{message.author.mention} {response}')
                     else:
                         await extract_recipe_from_webpage(message, arguments.get('prompt', ''), arguments.get('url', ''))
@@ -424,15 +397,15 @@ async def on_message(message):
                         'content': f'{user_info}'
                     })
                     response = await chatbot.chat(messages, temperature=temperature, tools=[], **optional_args)
-                    response_text = response.message.strip()[:1800] + "\n" + response.usage
+                    response_text = response.message.strip()[:DISCORD_MESSAGE_LIMIT] + "\n" + response.usage
                     await message.reply(f'{message.author.mention} {response}')
                     return
                 elif fname == 'store_user_information':
                     discord_user_id = arguments.get('discord_user_id', str(message.author.id))
                     information = arguments.get('information', '')
-                    result = await memory.store_user_information(discord_user_id, information)
+                    await memory.store_user_information(discord_user_id, information)
                     response = await chatbot.chat(messages, temperature=temperature, tools=[], **optional_args)
-                    response_text = response.message.strip()[:1800] + "\n" + response.usage
+                    response_text = response.message.strip()[:DISCORD_MESSAGE_LIMIT] + "\n" + response.usage
                     await message.reply(f'{message.author.mention} {response}')
                     return
                 elif fname == 'web_search':
@@ -467,13 +440,13 @@ async def random_chat():
     if not os.getenv("FEATURE_RANDOM_CHAT", False):
         logger.info("Not doing random chat because FEATURE_RANDOM_CHAT is not set")
         return
-    if random.random() > 0.3:
+    if random.random() > RANDOM_CHAT_PROBABILITY:
         logger.info("Not joining in with chat because random number is too high")
         return
     now = datetime.now().time()
-    start = datetime.strptime('23:00:00', '%H:%M:%S').time()
-    end = datetime.strptime('07:00:00', '%H:%M:%S').time()
-    if (now >= start and now <= end):
+    start = time(hour=NIGHT_START_HOUR)
+    end = time(hour=NIGHT_END_HOUR)
+    if now >= start or now <= end:
         logger.info("Not joining in with chat because it is night time")
         return
     channel = bot.get_channel(int(os.getenv('DISCORD_BOT_CHANNEL_ID', 'Invalid').strip()))
@@ -482,44 +455,45 @@ async def random_chat():
         'role': 'system',
         'content': os.getenv('DISCORD_BOT_DEFAULT_PROMPT')
     })
-    if len(context) < 5:
+    if len(context) < MIN_MESSAGES_FOR_RANDOM_CHAT:
         logger.info("Not joining in with chat because it is too quiet")
         return
     response = await chatbot.chat(context, temperature=1.0)
-    await channel.send(f"{response.message[:1900]}\n{response.usage}")
+    await channel.send(f"{response.message[:DISCORD_MESSAGE_LIMIT]}\n{response.usage}")
 
 @tasks.loop(minutes=60)
 async def horror_chat():
-    global horror_history
-    # if the latest horror_history timestamp is within 8hrs, then don't do horror chat
-    if horror_history and (datetime.now() - datetime.strptime(horror_history[-1]['timestamp'], "%B %dth, %Y %I:%M %p")).total_seconds() < 8 * 60 * 60:
-        logger.info("Not doing horror chat because we did it recently")
-        return
+    # Check cooldown using stored timestamp
+    if bot_state.horror_history:
+        try:
+            last_timestamp = bot_state.horror_history[-1]['timestamp']
+            last_time = datetime.strptime(last_timestamp, "%B %dth, %Y %I:%M %p")
+            if (datetime.now() - last_time).total_seconds() < HORROR_CHAT_COOLDOWN_HOURS * 60 * 60:
+                logger.info("Not doing horror chat because we did it recently")
+                return
+        except ValueError:
+            pass  # If parsing fails, continue anyway
+
     logger.info("In horror chat")
     if not os.getenv("FEATURE_HORROR_CHAT", False):
         logger.info("Not doing horror chat because FEATURE_HORROR_CHAT is not set")
         return
-    if random.random() > 0.1:
+    if random.random() > HORROR_CHAT_PROBABILITY:
         logger.info("Not doing horror chat because random number is too high")
         return
+
     now = datetime.now()
-    suffix = lambda day: "th" if 11 <= day <= 13 else {1: "st", 2: "nd", 3: "rd"}.get(day % 10, "th")
-    formatted_date = now.strftime("%B %d" + suffix(now.day) + ", %Y")
-    text_date_time = now.strftime("%-I:%M %p")  # Change the format to include hours, minutes, and AM/PM without leading zero
-    formatted_date_time = f"{formatted_date} {text_date_time}"
-    start = datetime.strptime('07:00:00', '%H:%M:%S').time()
-    end = datetime.strptime('19:50:00', '%H:%M:%S').time()
-    now = datetime.now().time()  # Convert current time to datetime object
-    if (now >= start and now <= end):
+    formatted_date_time = format_date_with_suffix(now)
+
+    # Only run at night
+    current_time = now.time()
+    if time(hour=DAY_START_HOUR) <= current_time <= time(hour=DAY_END_HOUR):
         logger.info("Not doing horror chat because it is day time")
         return
+
     channel = bot.get_channel(int(os.getenv('DISCORD_BOT_CHANNEL_ID', 'Invalid').strip()))
-    # context = await get_history_as_openai_messages(channel, include_bot_messages=False, since_hours=0.5)
-    # if len(context) < 5:
-    #     logger.info("Not joining in with chat because it is too quiet")
-    #     return
-    system_prompt = f"You are an AI bot who lurks in a Discord server for UK adult horror novelists.  You task is to write one or two short sentences that are creepy, scary or unsettling and convey the sense of an out-of-context line from a horror film.  You will be given the date and time and you can use that to add a sense of timeliness and season to your response. You should ONLY respond with those sentences, no other text. <example>I'm scared.</example> <example>I think I can hear someone outside. In the dark.</example> <example>There's something in the shadows.</example> <example>I think the bleeding has stopped now.  But he deserved it.</example>  <example>That's not the first time I've had to bury a body.</example>"
-    previous_horror_history_messages = [x['message'] for x in horror_history]
+    system_prompt = "You are an AI bot who lurks in a Discord server for UK adult horror novelists. Your task is to write one or two short sentences that are creepy, scary or unsettling and convey the sense of an out-of-context line from a horror film. You will be given the date and time and you can use that to add a sense of timeliness and season to your response. You should ONLY respond with those sentences, no other text. <example>I'm scared.</example> <example>I think I can hear someone outside. In the dark.</example> <example>There's something in the shadows.</example> <example>I think the bleeding has stopped now. But he deserved it.</example> <example>That's not the first time I've had to bury a body.</example>"
+    previous_horror_history_messages = [x['message'] for x in bot_state.horror_history]
     context = [
         {
             'role': 'system',
@@ -527,76 +501,66 @@ async def horror_chat():
         },
         {
             'role': 'user',
-            'content': f"It is {formatted_date_time}. Please give me a horror line - the creepier, the more unsettling, the more disturbing the better.  It should NOT repeat any of the following :" + "\n<previous-sentences>" + "\n- ".join(previous_horror_history_messages) + "\n</previous-sentences>",
+            'content': f"It is {formatted_date_time}. Please give me a horror line - the creepier, the more unsettling, the more disturbing the better. It should NOT repeat any of the following:\n<previous-sentences>\n- " + "\n- ".join(previous_horror_history_messages) + "\n</previous-sentences>",
         }
     ]
     response = await chatbot.chat(context, temperature=1.0)
-    horror_history.append({
+    bot_state.horror_history.append({
         "message": response.message,
         "timestamp": formatted_date_time
     })
-    if len(horror_history) > 40:
-        # truncate the history to the most recent 40 entries
-        horror_history = horror_history[-40:]
-    await channel.send(f"{response.message[:1900]}\n{response.usage_short}")
+    if len(bot_state.horror_history) > MAX_HORROR_HISTORY:
+        bot_state.horror_history = bot_state.horror_history[-MAX_HORROR_HISTORY:]
+    await channel.send(f"{response.message[:DISCORD_MESSAGE_LIMIT]}\n{response.usage_short}")
 
 
 @tasks.loop(time=time(hour=chat_image_hour, tzinfo=pytz.timezone('Europe/London')))
 async def make_chat_image():
     logger.info("In make_chat_image")
-    global previous_image_description
-    global previous_image_reasoning
-    global previous_image_themes
-    global previous_image_prompt
-    global previous_reasoning_content
+
+    # Load previous themes from file
     try:
         with open('previous_image_themes.txt', 'r') as file:
-            previous_image_themes = file.read()
+            previous_themes_text = file.read()
     except Exception as e:
         logger.error(f'Error reading previous_image_themes.txt: {e}')
-        previous_image_themes = ""
-    # strip any blank lines and only keep the latest 10 lines from the end of the file
-    previous_image_themes = "\n".join(previous_image_themes.splitlines()[-10:])
-    if previous_image_themes:
-        previous_image_themes = f"Please try and avoid repeating themes from the previous image themes.  Previously used themes are:\n{previous_image_themes}\n\n"
+        previous_themes_text = ""
+
+    # Keep only the latest 10 lines
+    previous_themes_text = "\n".join(previous_themes_text.splitlines()[-10:])
+    if previous_themes_text:
+        previous_themes_text = f"Please try and avoid repeating themes from the previous image themes. Previously used themes are:\n{previous_themes_text}\n\n"
+
     if not os.getenv("CHAT_IMAGE_ENABLED", False):
         logger.info("Not making chat image because CHAT_IMAGE_ENABLED is not set")
         return
+
     channel = bot.get_channel(int(os.getenv('DISCORD_BOT_CHANNEL_ID', 'Invalid').strip()))
     async with channel.typing():
-        history = await get_history_as_openai_messages(channel, limit=1000, nsfw_filter=True, max_length=15000, include_timestamps=False, since_hours=8)
-        # if we have loads of messages, then truncate the history to the most recent 200 messages
-        if len(history) > 200:
-            history = history[-200:]
+        history = await get_history_as_openai_messages(channel, limit=1000, nsfw_filter=True, max_length=15000, include_timestamps=False, since_hours=HISTORY_HOURS)
+        if len(history) > HISTORY_MAX_MESSAGES:
+            history = history[-HISTORY_MAX_MESSAGES:]
         logger.info(f"History length: {len(history)}")
         logger.info(f"Oldest 3 messages: {history[:3]}")
         logger.info(f"Most recent 3 messages: {history[-3:]}")
-        # reverse the history due to discord.py's message ordering
         history.reverse()
-        if len(history) < 2:
-            # get the date as, eg "Sunday, 24th November 2024"
-            # check if today is a weekend or obvious holiday
-            if datetime.now().weekday() >= 5 or datetime.now().strftime("%B %d") in ["December 25", "December 26", "December 27", "December 28", "January 1", "January 2"]:
+
+        if len(history) < MIN_MESSAGES_FOR_CHAT_IMAGE:
+            # Check if today is a weekend or obvious holiday
+            if datetime.now().weekday() >= 5 or datetime.now().strftime("%B %d") in UK_HOLIDAYS:
                 logger.info("Not making chat image because today is a weekend or obvious holiday")
                 return
-            date_string = datetime.now().strftime("%A, %d% %B %Y")
+            date_string = datetime.now().strftime("%A, %d %B %Y")
             response = await chatbot.chat([{
                 'role': 'user',
-                'content': f"Today is {date_string}.  Could you please write a pithy, acerbic, sarcastic comment about how quiet the chat is in this discord server today?  If the date looks like a weekend, or a UK holiday, then take that into account when writing your response.  The users are all software developers and love nice food, interesting books, obscure sci-fi, cute cats.  They enjoy a somewhat jaded, cynical tone.  Please reply with only the sentence as it will be sent directly to Discord as a message."
+                'content': f"Today is {date_string}. Could you please write a pithy, acerbic, sarcastic comment about how quiet the chat is in this discord server today? If the date looks like a weekend, or a UK holiday, then take that into account when writing your response. The users are all software developers and love nice food, interesting books, obscure sci-fi, cute cats. They enjoy a somewhat jaded, cynical tone. Please reply with only the sentence as it will be sent directly to Discord as a message."
             }])
             await channel.send(f"{response.message}")
-            # return
 
-        chat_history = ""
-        for message in history:
-            chat_history += f"{message['content']}\n"
-        logger.info(f"Asking for chat prompt")
-        # full_prompt = images.build_nanobanana_prompt(chat_history, previous_image_themes)
-        # llm_chat_prompt = "N/A"
-        # llm_chat_themes = []
-        # llm_chat_reasoning = ""
-        # else:
-        combined_chat = images.get_initial_chat_image_prompt(chat_history, previous_image_themes)
+        chat_history = "\n".join(message['content'] for message in history)
+        logger.info("Asking for chat prompt")
+
+        combined_chat = images.get_initial_chat_image_prompt(chat_history, previous_themes_text)
         decoded_response = await images.get_image_response_from_llm(combined_chat, chatbot)
         logger.info(f"Decoded response: {decoded_response}")
         llm_chat_prompt = decoded_response.get("prompt", "")
@@ -605,9 +569,10 @@ async def make_chat_image():
         if not llm_chat_prompt:
             logger.info("No prompt in LLM JSON response, using the whole response")
             llm_chat_prompt = str(decoded_response)
-        previous_image_prompt = llm_chat_prompt
-        previous_image_themes = llm_chat_themes
-        previous_image_reasoning = llm_chat_reasoning
+
+        bot_state.previous_image_prompt = llm_chat_prompt
+        bot_state.previous_image_themes = llm_chat_themes
+        bot_state.previous_image_reasoning = llm_chat_reasoning
         extra_guidelines = images.get_extra_guidelines()
         full_prompt = llm_chat_prompt + f"\n{extra_guidelines}"
 
@@ -623,11 +588,11 @@ async def make_chat_image():
     discord_file = File(io.BytesIO(image.content), filename=f'channel_summary_{today_string}.png')
     message = f'{chatbot.name}\'s chosen themes: _{", ".join(llm_chat_themes)}_\n_Model: {model_name}]  / Estimated cost: US${cost:.3f}_'
 
-    if len(message) > 1900:
-        message = message[:1900]
+    if len(message) > DISCORD_MESSAGE_LIMIT:
+        message = message[:DISCORD_MESSAGE_LIMIT]
     await channel.send(f"{message}\n", file=discord_file)
     with open('previous_image_themes.txt', 'a') as file:
-        file.write(f"\n{previous_image_themes}")
+        file.write(f"\n{bot_state.previous_image_themes}")
 
 
 @tasks.loop(time=time(hour=chat_image_hour, minute=15, tzinfo=pytz.timezone('Europe/London')))
@@ -637,32 +602,27 @@ async def make_chat_video():
         logger.info("Not making chat video because CHAT_VIDEO_ENABLED is not set")
         return
     channel = bot.get_channel(int(os.getenv('DISCORD_BOT_CHANNEL_ID', 'Invalid').strip()))
-    history = await get_history_as_openai_messages(channel, limit=1000, include_bot_messages=False, nsfw_filter=True, max_length=15000, include_timestamps=False, since_hours=8)
-    # if we have loads of messages, then truncate the history to the most recent 200 messages
-    if len(history) > 200:
-        history = history[-200:]
+    history = await get_history_as_openai_messages(channel, limit=1000, include_bot_messages=False, nsfw_filter=True, max_length=15000, include_timestamps=False, since_hours=HISTORY_HOURS)
+    if len(history) > HISTORY_MAX_MESSAGES:
+        history = history[-HISTORY_MAX_MESSAGES:]
     logger.info(f"History length: {len(history)}")
     logger.info(f"Oldest 3 messages: {history[:3]}")
     logger.info(f"Most recent 3 messages: {history[-3:]}")
-    # reverse the history due to discord.py's message ordering
     history.reverse()
-    if len(history) < 2:
-        # get the date as, eg "Sunday, 24th November 2024"
-        # check if today is a weekend or obvious holiday
-        if datetime.now().weekday() >= 5 or datetime.now().strftime("%B %d") in ["December 25", "December 26", "December 27", "December 28", "January 1", "January 2"]:
+
+    if len(history) < MIN_MESSAGES_FOR_CHAT_IMAGE:
+        if datetime.now().weekday() >= 5 or datetime.now().strftime("%B %d") in UK_HOLIDAYS:
             logger.info("Not making chat video because today is a weekend or obvious holiday")
             return
-        date_string = datetime.now().strftime("%A, %d% %B %Y")
+        date_string = datetime.now().strftime("%A, %d %B %Y")
         response = await chatbot.chat([{
             'role': 'user',
-            'content': f"Today is {date_string}.  Could you please write a pithy, acerbic, sarcastic comment about how quiet the chat is in this discord server today?  If the date looks like a weekend, or a UK holiday, then take that into account when writing your response.  The users are all software developers and love nice food, interesting books, obscure sci-fi, cute cats.  They enjoy a somewhat jaded, cynical tone.  Please reply with only the sentence as it will be sent directly to Discord as a message."
+            'content': f"Today is {date_string}. Could you please write a pithy, acerbic, sarcastic comment about how quiet the chat is in this discord server today? If the date looks like a weekend, or a UK holiday, then take that into account when writing your response. The users are all software developers and love nice food, interesting books, obscure sci-fi, cute cats. They enjoy a somewhat jaded, cynical tone. Please reply with only the sentence as it will be sent directly to Discord as a message."
         }])
         await channel.send(f"{response.message}")
         return
 
-    chat_history = ""
-    for message in history:
-        chat_history += f"{message['content']}\n"
+    chat_history = "\n".join(message['content'] for message in history)
     duration = 8
     with open('gepetto/video_prompt.md', 'r') as file:
         prompt = file.read()
@@ -678,7 +638,6 @@ async def make_chat_video():
         }])
         logger.info(f"Video prompt: {response.message}")
         video_url, model_name, cost = await sora.generate_video(response.message, seconds=duration)
-        # video_url, model_name, cost# = await replicate.generate_video(response.message)
         logger.info(f"Video URL: {video_url} - model: {model_name} - cost: {cost}")
         if not video_url:
             logger.info('We did not get a file from API')
@@ -686,14 +645,13 @@ async def make_chat_video():
         today_string = datetime.now().strftime("%Y-%m-%d")
         video = requests.get(video_url)
         discord_file = File(io.BytesIO(video.content), filename=f'channel_summary_{today_string}.mp4')
-        message = f'{response.message}\n_Model: {model_name}]  / Estimated cost: US${cost:.3f}_'
+        message = f'{response.message}\n_Model: {model_name}] / Estimated cost: US${cost:.3f}_'
         await channel.send(f"{message}\n", file=discord_file)
 
 @tasks.loop(time=time(hour=3, tzinfo=pytz.timezone('Europe/London')))
 async def reset_daily_image_count():
     logger.info("In reset_daily_image_count")
-    global daily_image_count
-    daily_image_count = 0
+    bot_state.daily_image_count = 0
 
 # Run the bot
 chatbot = get_chatbot()
