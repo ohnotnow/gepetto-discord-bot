@@ -117,8 +117,11 @@ class BaseModel:
             temperature=temperature
         )
 
-        # Calculate cost using the completion response
-        cost = self.get_token_price(completion_response=response)
+        # Get cost from litellm response
+        try:
+            cost = round(response._hidden_params["response_cost"], 5)
+        except:
+            cost = 0
 
         tokens = response.usage.total_tokens
         message = response.choices[0].message

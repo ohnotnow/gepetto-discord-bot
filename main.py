@@ -17,7 +17,7 @@ from src.providers import claude, gpt, groq, openrouter, perplexity
 from src.providers import split_for_discord
 
 # Tools
-from src.tools import calculator
+from src.tools import calculator, ToolDispatcher, ToolResult
 from src.tools.definitions import tool_list
 
 # Media
@@ -290,6 +290,16 @@ async def extract_recipe_from_webpage(discord_message: discord.Message, prompt: 
     """
     await summarise_webpage_content(discord_message, recipe_prompt, url)
 
+
+# Tool dispatcher setup
+tool_dispatcher = ToolDispatcher()
+tool_dispatcher.register('calculate', lambda msg, **args: calculate(msg, args.get('expression', '')))
+tool_dispatcher.register('get_weather_forecast', lambda msg, **args: get_weather_forecast(msg, args.get('prompt', '')))
+tool_dispatcher.register('get_sentry_issue_summary', lambda msg, **args: summarise_sentry_issue(msg, args.get('url', '')))
+tool_dispatcher.register('summarise_webpage_content', lambda msg, **args: summarise_webpage_content(msg, args.get('prompt', ''), args.get('url', '')))
+tool_dispatcher.register('web_search', lambda msg, **args: websearch(msg, args.get('prompt', '')))
+
+
 @bot.event
 async def on_message(message):
     message_blocked, abusive_reply = bot_guard.should_block(message, bot, server_id, chatbot)
@@ -384,6 +394,13 @@ async def on_message(message):
                 tool_call = response.tool_calls[0]
                 arguments = json.loads(tool_call.function.arguments)
                 fname = tool_call.function.name
+
+                # Try the dispatcher first for simple handlers
+                result = await tool_dispatcher.dispatch(fname, arguments, message)
+                if result.handled:
+                    return
+
+                # Handle special cases that need extra context or logic
                 if fname == 'extract_recipe_from_webpage':
                     recipe_url = arguments.get('url', '')
                     if ('example.com' in recipe_url) or ('http' not in lq):
@@ -393,37 +410,20 @@ async def on_message(message):
                         await message.reply(f'{message.author.mention} {response}')
                     else:
                         await extract_recipe_from_webpage(message, arguments.get('prompt', ''), arguments.get('url', ''))
-                elif fname == 'calculate':
-                    await calculate(message, arguments.get('expression', ''))
-                elif fname == 'get_weather_forecast':
-                    await get_weather_forecast(message, arguments.get('prompt', ''))
-                elif fname == 'get_sentry_issue_summary':
-                    await summarise_sentry_issue(message, arguments.get('url', ''))
-                elif fname == 'summarise_webpage_content':
-                    await summarise_webpage_content(message, arguments.get('prompt', ''), arguments.get('url', ''))
                 elif fname == 'create_image':
                     await create_image(message, arguments.get('prompt', ''), model="nvidia/sana:88312dcb9eaa543d7f8721e092053e8bb901a45a5d3c63c84e0a5aa7c247df33")
                 elif fname == 'user_information':
                     discord_user_id = arguments.get('discord_user_id', str(message.author.id))
                     user_info = await memory.user_information(discord_user_id)
-                    messages.append({
-                        'role': 'user',
-                        'content': f'{user_info}'
-                    })
+                    messages.append({'role': 'user', 'content': f'{user_info}'})
                     response = await chatbot.chat(messages, temperature=temperature, tools=[], **optional_args)
-                    response_text = response.message.strip()[:DISCORD_MESSAGE_LIMIT] + "\n" + response.usage
                     await message.reply(f'{message.author.mention} {response}')
                     return
                 elif fname == 'store_user_information':
                     discord_user_id = arguments.get('discord_user_id', str(message.author.id))
-                    information = arguments.get('information', '')
-                    await memory.store_user_information(discord_user_id, information)
+                    await memory.store_user_information(discord_user_id, arguments.get('information', ''))
                     response = await chatbot.chat(messages, temperature=temperature, tools=[], **optional_args)
-                    response_text = response.message.strip()[:DISCORD_MESSAGE_LIMIT] + "\n" + response.usage
                     await message.reply(f'{message.author.mention} {response}')
-                    return
-                elif fname == 'web_search':
-                    await websearch(message, arguments.get('prompt', ''))
                     return
                 else:
                     logger.info(f'Unknown tool call: {fname}')

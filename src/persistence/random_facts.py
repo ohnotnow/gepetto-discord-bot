@@ -1,6 +1,11 @@
 import random
-import json
 import datetime
+
+from .json_store import JSONStore
+
+# Store for previously generated facts (to avoid repeats)
+_facts_store = JSONStore("random_facts.json", default=[])
+
 
 async def get_fact(chatbot):
     prompt = "Can you tell me a single random fact?  The more obscure the better!"
@@ -22,33 +27,23 @@ async def get_fact(chatbot):
         system_prompt += " with a focus on the potato, pasta, barbecue or Scottish food"
 
     system_prompt += ".  You should ONLY respond with the fact, no other text.  The facts should be unique, about varied subjects and must NOT repeat information previously given to the user.  The facts should also be in different formats - do not repeat the style you have previously used as this makes the users bored and annoyed."
-    try:
-        with open("random_facts.json", 'r') as f:
-            random_facts = json.load(f)
-    except:
-        random_facts = []
-    messages = []
+
+    random_facts = _facts_store.load()
     old_facts = "\n".join(random_facts)
-    messages.append(
-        {
-            'role': 'system',
-            'content': system_prompt
-        }
-    )
-    messages.append(
-        {
-            'role': 'user',
-            'content': f'{prompt}. NEVER include any facts like these :: {old_facts}'
-        }
-    )
+
+    messages = [
+        {'role': 'system', 'content': system_prompt},
+        {'role': 'user', 'content': f'{prompt}. NEVER include any facts like these :: {old_facts}'}
+    ]
 
     response = await chatbot.chat(messages, temperature=1.0)
     message = response.message[:1900]
     message = message.replace("Sure! ", '')
     message = message.replace("Here's a random fact for you: ", '')
     message = message.replace("Certainly! ", '')
+
     random_facts.append(message)
     random_facts = random_facts[-20:]
-    with open("random_facts.json", 'w') as f:
-        json.dump(random_facts, f)
+    _facts_store.save(random_facts)
+
     return message + "\n" + response.usage
