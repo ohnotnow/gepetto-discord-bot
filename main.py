@@ -1,5 +1,4 @@
 import asyncio
-import io
 import json
 import logging
 import os
@@ -11,8 +10,6 @@ from datetime import datetime, timedelta, timezone, time
 
 import discord
 import pytz
-import requests
-from discord import File
 from discord.ext import commands, tasks
 
 from gepetto import (
@@ -25,13 +22,18 @@ from gepetto.response import split_for_discord
 from constants import (
     HISTORY_HOURS, HISTORY_MAX_MESSAGES, MAX_WORDS_TRUNCATION,
     DISCORD_MESSAGE_LIMIT, MAX_DAILY_IMAGES, MAX_HORROR_HISTORY,
-    RANDOM_CHAT_PROBABILITY, HORROR_CHAT_PROBABILITY, HORROR_CHAT_COOLDOWN_HOURS,
-    LIZ_TRUSS_PROBABILITY, ALTERNATE_PROMPT_PROBABILITY,
+    VIDEO_DURATION_SECONDS, RANDOM_CHAT_PROBABILITY, HORROR_CHAT_PROBABILITY,
+    HORROR_CHAT_COOLDOWN_HOURS, LIZ_TRUSS_PROBABILITY, ALTERNATE_PROMPT_PROBABILITY,
     MIN_MESSAGES_FOR_RANDOM_CHAT, MIN_MESSAGES_FOR_CHAT_IMAGE,
     NIGHT_START_HOUR, NIGHT_END_HOUR, DAY_START_HOUR, DAY_END_HOUR,
     UK_HOLIDAYS, ABUSIVE_RESPONSES,
 )
-from helpers import format_date_with_suffix, format_date_only, get_date_suffix
+from helpers import (
+    format_date_with_suffix, format_date_only, get_date_suffix,
+    get_bot_channel, fetch_chat_history, is_quiet_chat_day,
+    generate_quiet_chat_message, download_media_to_discord_file,
+    load_previous_themes, save_previous_themes, sanitize_filename
+)
 
 
 AVATAR_PATH = "avatar.png"
@@ -194,16 +196,18 @@ async def websearch(discord_message: discord.Message, prompt: str) -> None:
 
 async def create_image(discord_message: discord.Message, prompt: str, model: str = "black-forest-labs/flux-schnell") -> None:
     logger.info(f"Creating image with model: {model} and prompt: {prompt}")
+
     bot_state.daily_image_count += 1
     if bot_state.daily_image_count > MAX_DAILY_IMAGES:
         logger.info("Not creating image because daily image count is too high")
         await discord_message.reply(f'Due to budget cuts, I can only generate {MAX_DAILY_IMAGES} images per day.', mention_author=True)
         return
+
     image_url, model_name, cost = await replicate.generate_image(prompt, model="prunaai/z-image-turbo")
-    prompt_as_filename = f"{re.sub(r'[^a-zA-Z0-9]', '_', prompt)[:50]}_{datetime.now().strftime('%Y_%m_%d')}.png"
-    logger.info("Fetching image")
-    image = requests.get(image_url)
-    discord_file = File(io.BytesIO(image.content), filename=prompt_as_filename)
+
+    filename = f"{sanitize_filename(prompt)}_{datetime.now().strftime('%Y_%m_%d')}.png"
+    discord_file = download_media_to_discord_file(image_url, filename)
+
     logger.info("Sending image to discord")
     await discord_message.reply(f'{discord_message.author.mention}\n_[Estimated cost: US${cost}] | Model: {model_name}_', file=discord_file)
 
@@ -518,135 +522,112 @@ async def horror_chat():
 async def make_chat_image():
     logger.info("In make_chat_image")
 
-    # Load previous themes from file
-    try:
-        with open('previous_image_themes.txt', 'r') as file:
-            previous_themes_text = file.read()
-    except Exception as e:
-        logger.error(f'Error reading previous_image_themes.txt: {e}')
-        previous_themes_text = ""
-
-    # Keep only the latest 10 lines
-    previous_themes_text = "\n".join(previous_themes_text.splitlines()[-10:])
-    if previous_themes_text:
-        previous_themes_text = f"Please try and avoid repeating themes from the previous image themes. Previously used themes are:\n{previous_themes_text}\n\n"
-
     if not os.getenv("CHAT_IMAGE_ENABLED", False):
         logger.info("Not making chat image because CHAT_IMAGE_ENABLED is not set")
         return
 
-    channel = bot.get_channel(int(os.getenv('DISCORD_BOT_CHANNEL_ID', 'Invalid').strip()))
+    channel = get_bot_channel(bot)
     async with channel.typing():
-        history = await get_history_as_openai_messages(channel, limit=1000, nsfw_filter=True, max_length=15000, include_timestamps=False, since_hours=HISTORY_HOURS)
-        if len(history) > HISTORY_MAX_MESSAGES:
-            history = history[-HISTORY_MAX_MESSAGES:]
-        logger.info(f"History length: {len(history)}")
-        logger.info(f"Oldest 3 messages: {history[:3]}")
-        logger.info(f"Most recent 3 messages: {history[-3:]}")
-        history.reverse()
+        # Fetch and prepare chat history
+        history, chat_text = await fetch_chat_history(
+            channel, get_history_as_openai_messages, include_bot_messages=True
+        )
 
+        # Handle quiet chat days
         if len(history) < MIN_MESSAGES_FOR_CHAT_IMAGE:
-            # Check if today is a weekend or obvious holiday
-            if datetime.now().weekday() >= 5 or datetime.now().strftime("%B %d") in UK_HOLIDAYS:
+            if is_quiet_chat_day(len(history)):
                 logger.info("Not making chat image because today is a weekend or obvious holiday")
                 return
-            date_string = datetime.now().strftime("%A, %d %B %Y")
-            response = await chatbot.chat([{
-                'role': 'user',
-                'content': f"Today is {date_string}. Could you please write a pithy, acerbic, sarcastic comment about how quiet the chat is in this discord server today? If the date looks like a weekend, or a UK holiday, then take that into account when writing your response. The users are all software developers and love nice food, interesting books, obscure sci-fi, cute cats. They enjoy a somewhat jaded, cynical tone. Please reply with only the sentence as it will be sent directly to Discord as a message."
-            }])
-            await channel.send(f"{response.message}")
+            quiet_message = await generate_quiet_chat_message(chatbot)
+            await channel.send(quiet_message)
 
-        chat_history = "\n".join(message['content'] for message in history)
-        logger.info("Asking for chat prompt")
+        # Build prompt with previous themes context
+        previous_themes = load_previous_themes()
+        previous_themes_text = ""
+        if previous_themes:
+            previous_themes_text = f"Please try and avoid repeating themes from the previous image themes. Previously used themes are:\n{previous_themes}\n\n"
 
-        combined_chat = images.get_initial_chat_image_prompt(chat_history, previous_themes_text)
+        combined_chat = images.get_initial_chat_image_prompt(chat_text, previous_themes_text)
         decoded_response = await images.get_image_response_from_llm(combined_chat, chatbot)
         logger.info(f"Decoded response: {decoded_response}")
-        llm_chat_prompt = decoded_response.get("prompt", "")
+
+        llm_chat_prompt = decoded_response.get("prompt", "") or str(decoded_response)
         llm_chat_themes = decoded_response.get("themes", [])
         llm_chat_reasoning = decoded_response.get("reasoning", "")
-        if not llm_chat_prompt:
-            logger.info("No prompt in LLM JSON response, using the whole response")
-            llm_chat_prompt = str(decoded_response)
 
+        # Store for --reasoning command
         bot_state.previous_image_prompt = llm_chat_prompt
         bot_state.previous_image_themes = llm_chat_themes
         bot_state.previous_image_reasoning = llm_chat_reasoning
-        extra_guidelines = images.get_extra_guidelines()
-        full_prompt = llm_chat_prompt + f"\n{extra_guidelines}"
 
-        logger.info(f"Calling replicate to generate image")
+        # Generate the image
+        full_prompt = llm_chat_prompt + f"\n{images.get_extra_guidelines()}"
+        logger.info("Calling replicate to generate image")
         image_url, model_name, cost = await replicate.generate_image(full_prompt, enhance_prompt=False)
         logger.info(f"Image URL: {image_url} - model: {model_name} - cost: {cost}")
+
         if not image_url:
             logger.info('We did not get a file from API')
-            await channel.send(f"Sorry, I tried to make an image but I failed (probably because of naughty words - tsk).")
+            await channel.send("Sorry, I tried to make an image but I failed (probably because of naughty words - tsk).")
             return
-    image = requests.get(image_url)
-    today_string = datetime.now().strftime("%Y-%m-%d")
-    discord_file = File(io.BytesIO(image.content), filename=f'channel_summary_{today_string}.png')
-    message = f'{chatbot.name}\'s chosen themes: _{", ".join(llm_chat_themes)}_\n_Model: {model_name}]  / Estimated cost: US${cost:.3f}_'
 
-    if len(message) > DISCORD_MESSAGE_LIMIT:
-        message = message[:DISCORD_MESSAGE_LIMIT]
-    await channel.send(f"{message}\n", file=discord_file)
-    with open('previous_image_themes.txt', 'a') as file:
-        file.write(f"\n{bot_state.previous_image_themes}")
+    # Send to Discord
+    today_string = datetime.now().strftime("%Y-%m-%d")
+    discord_file = download_media_to_discord_file(image_url, f'channel_summary_{today_string}.png')
+    message = f'{chatbot.name}\'s chosen themes: _{", ".join(llm_chat_themes)}_\n_Model: {model_name}] / Estimated cost: US${cost:.3f}_'
+    await channel.send(message[:DISCORD_MESSAGE_LIMIT], file=discord_file)
+
+    # Save themes for next time
+    save_previous_themes(str(bot_state.previous_image_themes))
 
 
 @tasks.loop(time=time(hour=chat_image_hour, minute=15, tzinfo=pytz.timezone('Europe/London')))
 async def make_chat_video():
     logger.info("In make_chat_video")
+
     if not os.getenv("CHAT_VIDEO_ENABLED", False):
         logger.info("Not making chat video because CHAT_VIDEO_ENABLED is not set")
         return
-    channel = bot.get_channel(int(os.getenv('DISCORD_BOT_CHANNEL_ID', 'Invalid').strip()))
-    history = await get_history_as_openai_messages(channel, limit=1000, include_bot_messages=False, nsfw_filter=True, max_length=15000, include_timestamps=False, since_hours=HISTORY_HOURS)
-    if len(history) > HISTORY_MAX_MESSAGES:
-        history = history[-HISTORY_MAX_MESSAGES:]
-    logger.info(f"History length: {len(history)}")
-    logger.info(f"Oldest 3 messages: {history[:3]}")
-    logger.info(f"Most recent 3 messages: {history[-3:]}")
-    history.reverse()
 
+    channel = get_bot_channel(bot)
+
+    # Fetch and prepare chat history
+    history, chat_text = await fetch_chat_history(
+        channel, get_history_as_openai_messages, include_bot_messages=False
+    )
+
+    # Handle quiet chat days
     if len(history) < MIN_MESSAGES_FOR_CHAT_IMAGE:
-        if datetime.now().weekday() >= 5 or datetime.now().strftime("%B %d") in UK_HOLIDAYS:
+        if is_quiet_chat_day(len(history)):
             logger.info("Not making chat video because today is a weekend or obvious holiday")
             return
-        date_string = datetime.now().strftime("%A, %d %B %Y")
-        response = await chatbot.chat([{
-            'role': 'user',
-            'content': f"Today is {date_string}. Could you please write a pithy, acerbic, sarcastic comment about how quiet the chat is in this discord server today? If the date looks like a weekend, or a UK holiday, then take that into account when writing your response. The users are all software developers and love nice food, interesting books, obscure sci-fi, cute cats. They enjoy a somewhat jaded, cynical tone. Please reply with only the sentence as it will be sent directly to Discord as a message."
-        }])
-        await channel.send(f"{response.message}")
+        quiet_message = await generate_quiet_chat_message(chatbot)
+        await channel.send(quiet_message)
         return
 
-    chat_history = "\n".join(message['content'] for message in history)
-    duration = 8
+    # Build video prompt from template
     with open('gepetto/video_prompt.md', 'r') as file:
-        prompt = file.read()
-    prompt = prompt + f"""
-    <chat-history>
-    {chat_history}
-    </chat-history>
-    """
+        prompt_template = file.read()
+    prompt = f"{prompt_template}\n<chat-history>\n{chat_text}\n</chat-history>"
+
     async with channel.typing():
-        response = await chatbot.chat([{
-            'role': 'user',
-            'content': prompt
-        }])
+        response = await chatbot.chat([{'role': 'user', 'content': prompt}])
         logger.info(f"Video prompt: {response.message}")
-        video_url, model_name, cost = await sora.generate_video(response.message, seconds=duration)
+
+        video_url, model_name, cost = await sora.generate_video(
+            response.message, seconds=VIDEO_DURATION_SECONDS
+        )
         logger.info(f"Video URL: {video_url} - model: {model_name} - cost: {cost}")
+
         if not video_url:
             logger.info('We did not get a file from API')
             return
+
+        # Send to Discord
         today_string = datetime.now().strftime("%Y-%m-%d")
-        video = requests.get(video_url)
-        discord_file = File(io.BytesIO(video.content), filename=f'channel_summary_{today_string}.mp4')
+        discord_file = download_media_to_discord_file(video_url, f'channel_summary_{today_string}.mp4')
         message = f'{response.message}\n_Model: {model_name}] / Estimated cost: US${cost:.3f}_'
-        await channel.send(f"{message}\n", file=discord_file)
+        await channel.send(message, file=discord_file)
 
 @tasks.loop(time=time(hour=3, tzinfo=pytz.timezone('Europe/London')))
 async def reset_daily_image_count():

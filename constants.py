@@ -11,9 +11,10 @@ MAX_WORDS_TRUNCATION = 12000
 # Discord limits
 DISCORD_MESSAGE_LIMIT = 1800
 
-# Image generation
+# Image/video generation
 MAX_DAILY_IMAGES = 10
 MAX_HORROR_HISTORY = 40
+VIDEO_DURATION_SECONDS = 8
 
 # Random chat thresholds
 RANDOM_CHAT_PROBABILITY = 0.3
