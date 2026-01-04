@@ -47,7 +47,8 @@ from src.utils.helpers import (
     format_date_with_suffix, format_date_only, get_date_suffix,
     get_bot_channel, fetch_chat_history, is_quiet_chat_day,
     generate_quiet_chat_message, download_media_to_discord_file,
-    load_previous_themes, save_previous_themes, sanitize_filename
+    load_previous_themes, save_previous_themes, sanitize_filename,
+    remove_emoji, remove_nsfw_words, clean_response_text
 )
 
 
@@ -96,10 +97,6 @@ def get_chatbot():
     else:
         chatbot = gpt.GPTModel()
     return chatbot
-
-def remove_nsfw_words(message):
-    message = re.sub("(fuck|prick|asshole|shit|wanker|dick|liz|truss)", "", message, flags=re.IGNORECASE)
-    return message
 
 async def get_history_as_openai_messages(channel, include_bot_messages=True, limit=10, since_hours=None, nsfw_filter=False, max_length=1000, include_timestamps=True):
     messages = []
@@ -172,15 +169,6 @@ async def reply_to_message(message, response):
             await message.reply(f'{chunk}')
         await asyncio.sleep(0.1)
 
-def remove_emoji(text):
-    regrex_pattern = re.compile(pattern = "["
-        u"\U0001F600-\U0001F64F"  # emoticons
-        u"\U0001F300-\U0001F5FF"  # symbols & pictographs
-        u"\U0001F680-\U0001F6FF"  # transport & map symbols
-        u"\U0001F1E0-\U0001F1FF"  # flags (iOS)
-                           "]+", flags = re.UNICODE)
-    return regrex_pattern.sub(r'',text)
-
 @bot.event
 async def on_ready():
     logger.info(f"Starting discord bot - date time in python is {datetime.now()}")
@@ -204,8 +192,8 @@ async def websearch(discord_message: discord.Message, prompt: str) -> None:
     response = "🌍" + response
     await reply_to_message(discord_message, response)
 
-async def create_image(discord_message: discord.Message, prompt: str, model: str = "black-forest-labs/flux-schnell") -> None:
-    logger.info(f"Creating image with model: {model} and prompt: {prompt}")
+async def create_image(discord_message: discord.Message, prompt: str) -> None:
+    logger.info(f"Creating image with prompt: {prompt}")
 
     bot_state.daily_image_count += 1
     if bot_state.daily_image_count > MAX_DAILY_IMAGES:
@@ -213,13 +201,14 @@ async def create_image(discord_message: discord.Message, prompt: str, model: str
         await discord_message.reply(f'Due to budget cuts, I can only generate {MAX_DAILY_IMAGES} images per day.', mention_author=True)
         return
 
-    image_url, model_name, cost = await replicate.generate_image(prompt, model="prunaai/z-image-turbo")
+    model = replicate.get_image_model("prunaai/z-image-turbo")
+    image_url = await model.generate(prompt)
 
     filename = f"{sanitize_filename(prompt)}_{datetime.now().strftime('%Y_%m_%d')}.png"
     discord_file = download_media_to_discord_file(image_url, filename)
 
     logger.info("Sending image to discord")
-    await discord_message.reply(f'{discord_message.author.mention}\n_[Estimated cost: US${cost}] | Model: {model_name}_', file=discord_file)
+    await discord_message.reply(f'{discord_message.author.mention}\n_[Estimated cost: US${model.cost}] | Model: {model.short_name}_', file=discord_file)
 
 async def calculate(discord_message: discord.Message, expression: str) -> None:
     logger.info(f"Calculating {expression}")
@@ -315,25 +304,11 @@ async def on_message(message):
         await message.channel.send(f'{message.author.mention} {random.choice(ABUSIVE_RESPONSES)}.')
         return
 
-    if "--strict" in question.lower():
-        question = question.lower().replace("--strict", "")
-        temperature = 0.1
-    elif "--wild" in question.lower():
-        question = question.lower().replace("--wild", "")
-        temperature = 1.5
-    elif "--tripping" in question.lower():
-        question = question.lower().replace("--tripping", "")
-        temperature = 1.9
-    else:
-        temperature = 1.0
-
-    # pattern = r"summarise\s+(<)?http"
-    pattern = r"👀\s*\<?(http|https):"
+    temperature = 1.0
 
     try:
         lq = question.lower().strip()
         async with message.channel.typing():
-            #if "--no-logs" in question.lower() or isinstance(chatbot, mistral.MistralModel):
             if "--no-logs" in lq:
                 context = []
                 question = question.replace("--no-logs", "")
@@ -355,39 +330,15 @@ async def on_message(message):
             if lq.startswith("!video"):
                 await make_chat_video()
                 return
-            if '--rewrite' in lq:
-                question = question.replace("--rewrite", "")
-                rewrite_mode = True
-            else:
-                rewrite_mode = False
-            if '--o1' in lq:
-                question = question.replace("--o1", "")
-                override_model = "openai/o1-mini"
-            else:
-                override_model = None
-            optional_args = {}
-            if override_model is not None:
-                optional_args['model'] = override_model
             if '--reasoning' in lq:
                 await message.reply(f'{message.author.mention} **Reasoning:** {bot_state.previous_image_reasoning}\n**Themes:** {bot_state.previous_image_themes}\n**Image Prompt:** {bot_state.previous_image_prompt}'[:DISCORD_MESSAGE_LIMIT], mention_author=True)
-                return
-            if '--thinking' in lq:
-                await message.reply(f'{message.author.mention} **Thinking:** {bot_state.previous_reasoning_content}', mention_author=True)
                 return
 
             # Add user context to the question so LLM knows Discord user info and can use memory tools
             user_context = f"[User: {message.author.name} (ID: {message.author.id})] "
             question_with_context = user_context + question
-            if rewrite_mode:
-                rewrite_prompt = f"The user has asked the following question.  Your task is to rewrite the question to be much clearer when it is given to another LLM to answer.  The purpose of the rewrite is to get the best possible answer to the original question.  Please respond with only the rewritten question, no other chat or commentary as your response will be passed directly to another LLM.  <original-question>\n{question_with_context}\n</original-question>"
-                response = await chatbot.chat([{
-                    'role': 'user',
-                    'content': rewrite_prompt
-                }])
-                question_with_context = response.message
-                logger.info(f"Rewritten question: {question_with_context}")
             messages = build_messages(question_with_context, context, system_prompt=system_prompt)
-            response = await chatbot.chat(messages, temperature=temperature, tools=tool_list, **optional_args)
+            response = await chatbot.chat(messages, temperature=temperature, tools=tool_list)
             if response.reasoning_content:
                 bot_state.previous_reasoning_content = response.reasoning_content[:DISCORD_MESSAGE_LIMIT]
             if response.tool_calls:
@@ -405,24 +356,24 @@ async def on_message(message):
                     recipe_url = arguments.get('url', '')
                     if ('example.com' in recipe_url) or ('http' not in lq):
                         original_usage = response.usage
-                        response = await chatbot.chat(messages, temperature=temperature, tools=[], **optional_args)
+                        response = await chatbot.chat(messages, temperature=temperature, tools=[])
                         response = response.message.strip()[:DISCORD_MESSAGE_LIMIT] + "\n" + response.usage + "\n" + original_usage
                         await message.reply(f'{message.author.mention} {response}')
                     else:
                         await extract_recipe_from_webpage(message, arguments.get('prompt', ''), arguments.get('url', ''))
                 elif fname == 'create_image':
-                    await create_image(message, arguments.get('prompt', ''), model="nvidia/sana:88312dcb9eaa543d7f8721e092053e8bb901a45a5d3c63c84e0a5aa7c247df33")
+                    await create_image(message, arguments.get('prompt', ''))
                 elif fname == 'user_information':
                     discord_user_id = arguments.get('discord_user_id', str(message.author.id))
                     user_info = await memory.user_information(discord_user_id)
                     messages.append({'role': 'user', 'content': f'{user_info}'})
-                    response = await chatbot.chat(messages, temperature=temperature, tools=[], **optional_args)
+                    response = await chatbot.chat(messages, temperature=temperature, tools=[])
                     await message.reply(f'{message.author.mention} {response}')
                     return
                 elif fname == 'store_user_information':
                     discord_user_id = arguments.get('discord_user_id', str(message.author.id))
                     await memory.store_user_information(discord_user_id, arguments.get('information', ''))
-                    response = await chatbot.chat(messages, temperature=temperature, tools=[], **optional_args)
+                    response = await chatbot.chat(messages, temperature=temperature, tools=[])
                     await message.reply(f'{message.author.mention} {response}')
                     return
                 else:
@@ -430,11 +381,7 @@ async def on_message(message):
                     await message.reply(f'{message.author.mention} I am a silly sausage and don\'t know how to do that.', mention_author=True)
                 return
             else:
-                response_text = response.message
-                response_text = re.sub(r'\[tokens used.+Estimated cost.+]', '', response_text, flags=re.MULTILINE)
-                response_text = re.sub(r"Gepetto' said: ", '', response_text, flags=re.MULTILINE)
-                response_text = re.sub(r"Minxie' said: ", '', response_text, flags=re.MULTILINE)
-                response_text = re.sub(r"^.*At \d{4}-\d{2}.+said?", "", response_text, flags=re.MULTILINE)
+                response_text = clean_response_text(response.message)
                 logger.info(response.usage)
                 response = response_text.strip() + "\n" + response.usage_short
             await reply_to_message(message, response)
@@ -558,7 +505,7 @@ async def make_chat_image():
             previous_themes_text = f"Please try and avoid repeating themes from the previous image themes. Previously used themes are:\n{previous_themes}\n\n"
 
         combined_chat = images.get_initial_chat_image_prompt(chat_text, previous_themes_text)
-        decoded_response = await images.get_image_response_from_llm(combined_chat, chatbot)
+        decoded_response = await images.get_image_response(combined_chat, chatbot)
         logger.info(f"Decoded response: {decoded_response}")
 
         llm_chat_prompt = decoded_response.get("prompt", "") or str(decoded_response)
@@ -573,8 +520,9 @@ async def make_chat_image():
         # Generate the image
         full_prompt = llm_chat_prompt + f"\n{images.get_extra_guidelines()}"
         logger.info("Calling replicate to generate image")
-        image_url, model_name, cost = await replicate.generate_image(full_prompt, enhance_prompt=False)
-        logger.info(f"Image URL: {image_url} - model: {model_name} - cost: {cost}")
+        model = replicate.get_image_model()  # random model based on env config
+        image_url = await model.generate(full_prompt)
+        logger.info(f"Image URL: {image_url} - model: {model.short_name} - cost: {model.cost}")
 
         if not image_url:
             logger.info('We did not get a file from API')
@@ -584,7 +532,7 @@ async def make_chat_image():
     # Send to Discord
     today_string = datetime.now().strftime("%Y-%m-%d")
     discord_file = download_media_to_discord_file(image_url, f'channel_summary_{today_string}.png')
-    message = f'{chatbot.name}\'s chosen themes: _{", ".join(llm_chat_themes)}_\n_Model: {model_name}] / Estimated cost: US${cost:.3f}_'
+    message = f'{chatbot.name}\'s chosen themes: _{", ".join(llm_chat_themes)}_\n_Model: {model.short_name}] / Estimated cost: US${model.cost:.3f}_'
     await channel.send(message[:DISCORD_MESSAGE_LIMIT], file=discord_file)
 
     # Save themes for next time

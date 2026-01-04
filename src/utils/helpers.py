@@ -137,3 +137,38 @@ def save_previous_themes(themes: str, filename: str = 'previous_image_themes.txt
 def sanitize_filename(text: str, max_length: int = 50) -> str:
     """Convert text to a safe filename."""
     return re.sub(r'[^a-zA-Z0-9]', '_', text)[:max_length]
+
+
+# --- Text processing helpers ---
+
+# Compiled regex for emoji removal
+_EMOJI_PATTERN = re.compile(
+    "["
+    u"\U0001F600-\U0001F64F"  # emoticons
+    u"\U0001F300-\U0001F5FF"  # symbols & pictographs
+    u"\U0001F680-\U0001F6FF"  # transport & map symbols
+    u"\U0001F1E0-\U0001F1FF"  # flags (iOS)
+    "]+",
+    flags=re.UNICODE
+)
+
+
+def remove_emoji(text: str) -> str:
+    """Remove emoji characters from text."""
+    return _EMOJI_PATTERN.sub('', text)
+
+
+def remove_nsfw_words(text: str) -> str:
+    """Remove NSFW words from text for image prompt safety."""
+    return re.sub(r"(fuck|prick|asshole|shit|wanker|dick|liz|truss)", "", text, flags=re.IGNORECASE)
+
+
+def clean_response_text(text: str) -> str:
+    """Clean up LLM response text by removing token/cost info and chat artifacts."""
+    # Remove token usage/cost annotations that models sometimes echo
+    text = re.sub(r'\[tokens used.+Estimated cost.+]', '', text, flags=re.MULTILINE)
+    # Remove "said:" prefixes from chat history that leaked into response
+    text = re.sub(r"Gepetto' said: ", '', text, flags=re.MULTILINE)
+    text = re.sub(r"Minxie' said: ", '', text, flags=re.MULTILINE)
+    text = re.sub(r"^.*At \d{4}-\d{2}.+said?", "", text, flags=re.MULTILINE)
+    return text

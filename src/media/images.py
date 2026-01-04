@@ -70,65 +70,6 @@ def get_initial_chat_image_prompt(chat_history: str, previous_image_themes: str)
         """
     return combined_chat
 
-def build_nanobanana_prompt(chat_history: str, previous_image_themes: str) -> str:
-    user_locations = os.getenv('USER_LOCATIONS', 'the UK towns of Bath and Manchester').strip()
-    today_string = datetime.now().strftime("%Y-%m-%d")
-    location_guidance = ""
-    if random.random() > 0.9:
-        location_guidance = f"If it makes sense to use an outdoor location for the image, please choose between {user_locations}."
-    combined_chat = f"""
-        You are tasked with creating a visually remarkable image for the users of a Discord server of software developers.
-
-        STEP 1 - DELIBERATELY AVOID THE OBVIOUS:
-        First, identify the main conversation topics (likely tech/work related) and keep them at the back of your mind.  These are the obvious topics - we want to be surprising and creative!
-
-        STEP 2 - HUNT FOR THE PERIPHERAL:
-        Scan for brief, casual mentions of:
-        - Physical sensations (tired, hungry, cold, comfortable)
-        - Environmental details (weather, sounds, lighting, time of day)
-        - Passing references to objects, food, animals, or places
-        - Emotional micro-moments (small frustrations, tiny celebrations)
-        - Background activities or interruptions
-        - Sensory experiences or textures mentioned
-        - If you are using the main themes - be subtle, be creative, work them into some other details you have identified.
-        - DO NOT invent any details, only use the ones that are mentioned in the chat history.
-        - Weave the main themes in the context of the peripheral details - the peripheral details are the central focus of the image.
-        - If the chat history is very low, then take additional inpiration from a famous event which happened on todays date in history.
-
-        STEP 3 - ARTISTIC STYLE SELECTION:
-        Choose your visual approach from the broad world of art:
-        - Classical fine art tradition (oil painting, watercolor, etc.)
-        - Photography genres (portrait, landscape, street photography, macro)
-        - Illustration styles (vintage poster, children's book, technical drawing)
-        - Abstract or experimental approaches
-        - Historical art movements (impressionist, art nouveau, minimalist)
-        - Cinematography (film noir, horror, etc.)
-
-        STEP 4 - AMPLIFY THE SUBTLE:
-        Take your chosen peripheral detail and make it the HERO of a visually stunning composition. Think about:
-        - What mood or atmosphere does this detail suggest?
-        - What unexpected artistic style would make this mundane detail fascinating?
-        - How can you create visual drama from something small?
-
-        GUIDELINES:
-        - Software developers love wit and unexpected connections
-        - Create something visually striking that would make them pause and smile
-        - Avoid cyberpunk entirely
-        - If today's date ({today_string}) has UK significance, weave it in naturally
-        - Surprise them with creative interpretations they wouldn't expect
-        - If the chat history contains references to people having a truly bad time (not in jest) - please make the image cheerfull - do NOT make the user sad by reflecting their pain back to them (eg, relationship breakdown, pet or parental illness, etc).
-
-        {location_guidance}
-
-        {previous_image_themes}
-
-        <chat_history>
-        {chat_history}
-        </chat_history>
-        """
-    return combined_chat
-
-
 def get_extra_guidelines() -> str:
     extra_guidelines = ""
     random_1 = random.random()
@@ -169,9 +110,6 @@ def get_extra_guidelines() -> str:
         if random.random() > 0.5:
             extra_guidelines += "\n- The image should be reflective of a blood-curdling, gory, horror film.\n"
     return extra_guidelines
-
-async def get_image_response_from_llm(prompt: str, chatbot) -> str:
-    return await get_image_response(prompt, chatbot)
 
 async def get_image_response(prompt: str, chatbot) -> dict:
     messages = [

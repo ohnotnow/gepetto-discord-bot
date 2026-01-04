@@ -9,6 +9,9 @@ from src.utils.helpers import (
     format_date_with_suffix,
     format_date_only,
     sanitize_filename,
+    remove_emoji,
+    remove_nsfw_words,
+    clean_response_text,
 )
 
 
@@ -105,3 +108,71 @@ class TestSanitizeFilename:
         long_text = "a" * 100
         result = sanitize_filename(long_text)
         assert len(result) == 50  # Default max_length
+
+
+class TestRemoveEmoji:
+    """Tests for remove_emoji function."""
+
+    def test_removes_emoticons(self):
+        result = remove_emoji("Hello 😀 World")
+        assert result == "Hello  World"
+
+    def test_removes_symbols(self):
+        result = remove_emoji("Test 🎉🎊 Party")
+        assert result == "Test  Party"
+
+    def test_preserves_text(self):
+        result = remove_emoji("No emoji here")
+        assert result == "No emoji here"
+
+    def test_handles_empty_string(self):
+        result = remove_emoji("")
+        assert result == ""
+
+
+class TestRemoveNsfwWords:
+    """Tests for remove_nsfw_words function."""
+
+    def test_removes_nsfw_words(self):
+        result = remove_nsfw_words("This is a shit test")
+        assert "shit" not in result.lower()
+
+    def test_case_insensitive(self):
+        result = remove_nsfw_words("FUCK this SHIT")
+        assert "fuck" not in result.lower()
+        assert "shit" not in result.lower()
+
+    def test_removes_liz_truss(self):
+        """Liz Truss is filtered for image prompts."""
+        result = remove_nsfw_words("I love Liz Truss")
+        assert "liz" not in result.lower()
+        assert "truss" not in result.lower()
+
+    def test_preserves_clean_text(self):
+        result = remove_nsfw_words("This is a clean message")
+        assert result == "This is a clean message"
+
+
+class TestCleanResponseText:
+    """Tests for clean_response_text function."""
+
+    def test_removes_token_usage(self):
+        text = "Hello world [tokens used: 100, Estimated cost: $0.01]"
+        result = clean_response_text(text)
+        assert "[tokens used" not in result
+        assert "Estimated cost" not in result
+
+    def test_removes_said_prefixes(self):
+        text = "Gepetto' said: Hello there"
+        result = clean_response_text(text)
+        assert "Gepetto' said:" not in result
+
+    def test_removes_minxie_said(self):
+        text = "Minxie' said: Hi friend"
+        result = clean_response_text(text)
+        assert "Minxie' said:" not in result
+
+    def test_preserves_clean_text(self):
+        text = "This is a normal response"
+        result = clean_response_text(text)
+        assert result == "This is a normal response"
