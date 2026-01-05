@@ -76,7 +76,6 @@ async def fetch_chat_history(channel, get_history_func, limit=1000, max_messages
         logger.info(f"Oldest 3 messages: {history[:3]}")
         logger.info(f"Most recent 3 messages: {history[-3:]}")
 
-    history.reverse()
     chat_text = "\n".join(message['content'] for message in history)
 
     return history, chat_text
