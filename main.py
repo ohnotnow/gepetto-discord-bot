@@ -26,9 +26,6 @@ from src.media import images, replicate, sora
 # Content
 from src.content import summary, weather, sentry
 
-# Persistence
-from src.persistence import memory
-
 # Tasks
 from src.tasks import birthdays
 
@@ -334,8 +331,8 @@ async def on_message(message):
                 await message.reply(f'{message.author.mention} **Reasoning:** {bot_state.previous_image_reasoning}\n**Themes:** {bot_state.previous_image_themes}\n**Image Prompt:** {bot_state.previous_image_prompt}'[:DISCORD_MESSAGE_LIMIT], mention_author=True)
                 return
 
-            # Add user context to the question so LLM knows Discord user info and can use memory tools
-            user_context = f"[User: {message.author.name} (ID: {message.author.id})] "
+            # Add user context to the question so LLM knows who is asking
+            user_context = f"[User: {message.author.name}] "
             question_with_context = user_context + question
             messages = build_messages(question_with_context, context, system_prompt=system_prompt)
             response = await chatbot.chat(messages, temperature=temperature, tools=tool_list)
@@ -363,19 +360,6 @@ async def on_message(message):
                         await extract_recipe_from_webpage(message, arguments.get('prompt', ''), arguments.get('url', ''))
                 elif fname == 'create_image':
                     await create_image(message, arguments.get('prompt', ''))
-                elif fname == 'user_information':
-                    discord_user_id = arguments.get('discord_user_id', str(message.author.id))
-                    user_info = await memory.user_information(discord_user_id)
-                    messages.append({'role': 'user', 'content': f'{user_info}'})
-                    response = await chatbot.chat(messages, temperature=temperature, tools=[])
-                    await message.reply(f'{message.author.mention} {response}')
-                    return
-                elif fname == 'store_user_information':
-                    discord_user_id = arguments.get('discord_user_id', str(message.author.id))
-                    await memory.store_user_information(discord_user_id, arguments.get('information', ''))
-                    response = await chatbot.chat(messages, temperature=temperature, tools=[])
-                    await message.reply(f'{message.author.mention} {response}')
-                    return
                 else:
                     logger.info(f'Unknown tool call: {fname}')
                     await message.reply(f'{message.author.mention} I am a silly sausage and don\'t know how to do that.', mention_author=True)

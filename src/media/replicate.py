@@ -151,13 +151,6 @@ def get_image_model(model_name: str | None = None) -> ImageModel:
     return ImageModel(model_name, params, cost)
 
 
-# Legacy function for backwards compatibility during migration
-async def generate_image(prompt, aspect_ratio="1:1", output_format="webp", output_quality=90, enhance_prompt=True, model=None):
-    """Legacy wrapper - prefer using get_image_model() directly."""
-    image_model = get_image_model(model)
-    image_url = await image_model.generate(prompt)
-    return image_url, image_model.short_name, image_model.cost
-
 async def generate_video(prompt, model="wan-video/wan-2.2-t2v-fast"):
     input = {
         "prompt": prompt,

@@ -126,42 +126,4 @@ tool_list = [
             }
         }
     },
-    {
-    "type": "function",
-    "function": {
-        "name": "user_information",
-        "description": "Retrieves previously stored information about a Discord user to provide context for the current interaction.",
-        "parameters": {
-            "type": "object",
-            "properties": {
-                "discord_user_id": {
-                    "type": "string",
-                    "description": "The Discord user ID to retrieve information for."
-                }
-            },
-            "required": ["discord_user_id"]
-        }
-    }
-},
-{
-    "type": "function",
-    "function": {
-        "name": "store_user_information",
-        "description": "Stores information about a user interaction that may be useful for future conversations. This should be used to remember important facts, preferences, or context about the user.",
-        "parameters": {
-            "type": "object",
-            "properties": {
-                "discord_user_id": {
-                    "type": "string",
-                    "description": "The Discord user ID to store information for."
-                },
-                "information": {
-                    "type": "string",
-                    "description": "The fact, preference, or contextual information about the user that should be stored for future reference."
-                }
-            },
-            "required": ["discord_user_id", "information"]
-        }
-    }
-}
 ]
