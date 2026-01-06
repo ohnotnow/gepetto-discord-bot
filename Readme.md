@@ -47,7 +47,7 @@ The script uses the following environment variables (* indicates required):
 | ANTHROPIC_API_KEY | Anthropic API authentication | - | "your-anthropic-api-key" |
 | REPLICATE_API_KEY | Replicate API authentication (for image generation) | - | "your-replicate-api-key" |
 | USER_LOCATIONS | Setting user locations for image generation | "the UK towns of Bath and Manchester" | "London, Manchester, Edinburgh" |
-| USER_DESCRIPTIONS | Setting user descriptions for image generation | "UK-based Caucasian adult male IT workers" | "professional software developers" |
+| CAT_DESCRIPTIONS | Descriptions of server members' cats for image generation | - | "Mochi is a fluffy orange tabby, Luna is a sleek black cat" |
 
 ## Running the Script
 

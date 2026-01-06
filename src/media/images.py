@@ -6,10 +6,14 @@ from datetime import datetime
 
 def get_initial_chat_image_prompt(chat_history: str, previous_image_themes: str) -> str:
     user_locations = os.getenv('USER_LOCATIONS', 'the UK towns of Bath and Manchester').strip()
+    cat_descriptions = os.getenv('CAT_DESCRIPTIONS', '').strip()
     today_string = datetime.now().strftime("%Y-%m-%d")
     location_guidance = ""
     if random.random() > 0.9:
         location_guidance = f"If it makes sense to use an outdoor location for the image, please choose between {user_locations}."
+    cat_guidance = ""
+    if cat_descriptions:
+        cat_guidance = f"If cats appear in the image based on chat mentions, please use these descriptions of the actual cats owned by server members: {cat_descriptions}."
     combined_chat = f"""
         You are tasked with creating a visually remarkable Stable Diffusion prompt for a Discord server of software developers.
 
@@ -54,6 +58,8 @@ def get_initial_chat_image_prompt(chat_history: str, previous_image_themes: str)
         - If the chat history contains references to people having a truly bad time (not in jest) - please make the image cheerfull - do NOT make the user sad by reflecting their pain back to them (eg, relationship breakdown, pet or parental illness, etc).
 
         {location_guidance}
+
+        {cat_guidance}
 
         {previous_image_themes}
 
