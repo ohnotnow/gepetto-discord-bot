@@ -33,7 +33,7 @@ MODEL_CONFIGS = {
     "openai/": (
         "openai/gpt-image-1.5",
         0.01,  # "low" quality
-        {"quality": "low", "background": "auto", "moderation": "low", "aspect_ratio": "1:1", "output_format": "webp", "input_fidelity": "low", "number_of_images": 1, "output_compression": 90}
+        {"quality": "low", "background": "auto", "moderation": "low", "aspect_ratio": "2:3", "output_format": "webp", "input_fidelity": "low", "number_of_images": 1, "output_compression": 90}
     ),
     "recraft-ai/": (
         "recraft-ai/recraft-v3",
