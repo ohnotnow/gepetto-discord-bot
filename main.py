@@ -198,7 +198,7 @@ async def create_image(discord_message: discord.Message, prompt: str) -> None:
         await discord_message.reply(f'Due to budget cuts, I can only generate {MAX_DAILY_IMAGES} images per day.', mention_author=True)
         return
 
-    model = replicate.get_image_model("prunaai/z-image-turbo")
+    model = replicate.get_image_model("openai/gpt-image-1.5")
     image_url = await model.generate(prompt)
 
     filename = f"{sanitize_filename(prompt)}_{datetime.now().strftime('%Y_%m_%d')}.png"
