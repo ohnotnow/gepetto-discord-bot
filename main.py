@@ -370,7 +370,7 @@ async def on_message(message):
 
             if 'spell' in lq:
                 # Use SPELLCHECK_MODEL if set, otherwise fall back to current provider's default
-                spellcheck_model = os.getenv('SPELLCHECK_MODEL')  # None means use chatbot's default
+                spellcheck_model = os.getenv('SPELLCHECK_MODEL', '')  # Empty string falls back to default
                 spellcheck_messages = build_messages(
                     question_with_context,
                     context,
