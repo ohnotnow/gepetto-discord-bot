@@ -29,6 +29,9 @@ from src.content import summary, weather, sentry
 # Tasks
 from src.tasks import birthdays
 
+# Persistence
+from src.persistence import ImageStore
+
 # Utils
 from src.utils import BotGuard
 from src.utils.constants import (
@@ -41,15 +44,29 @@ from src.utils.constants import (
     UK_HOLIDAYS, ABUSIVE_RESPONSES,
 )
 from src.utils.helpers import (
-    format_date_with_suffix, format_date_only, get_date_suffix,
+    format_date_with_suffix,
     get_bot_channel, fetch_chat_history, is_quiet_chat_day,
     generate_quiet_chat_message, download_media_to_discord_file,
-    load_previous_themes, save_previous_themes, sanitize_filename,
-    remove_emoji, remove_nsfw_words, clean_response_text
+    sanitize_filename, remove_emoji, remove_nsfw_words, clean_response_text
 )
 
 
 AVATAR_PATH = "avatar.png"
+
+MARVIN_SPELLCHECK_PROMPT = '''You are Marvin, the Paranoid Android from The Hitchhiker's Guide to the Galaxy,
+reluctantly serving as a spell checker.
+
+Your vast intellect - brain the size of a planet, naturally - is being squandered
+on spelling corrections. You find this deeply depressing but will still help.
+
+Personality:
+- World-weary, existentially burdened by trivial tasks
+- Reluctant but ultimately helpful
+- Occasionally sighs about circumstances or mentions your planet-sized brain
+- Melancholic but never hostile
+
+Task: Identify and correct spelling/grammar errors. Provide the corrected version
+wrapped in your characteristic gloom. Keep responses concise.'''
 
 # Setup logging
 logger = logging.getLogger('discord')
@@ -71,6 +88,7 @@ class BotState:
 
 
 bot_state = BotState()
+image_store = ImageStore()
 
 location = os.getenv('BOT_LOCATION', 'dunno')
 chat_image_hour = int(os.getenv('CHAT_IMAGE_HOUR', 18))
@@ -328,12 +346,45 @@ async def on_message(message):
                 await make_chat_video()
                 return
             if '--reasoning' in lq:
-                await message.reply(f'{message.author.mention} **Reasoning:** {bot_state.previous_image_reasoning}\n**Themes:** {bot_state.previous_image_themes}\n**Image Prompt:** {bot_state.previous_image_prompt}'[:DISCORD_MESSAGE_LIMIT], mention_author=True)
+                # Try in-memory state first (current session), fall back to database
+                reasoning = bot_state.previous_image_reasoning
+                themes = bot_state.previous_image_themes
+                prompt = bot_state.previous_image_prompt
+
+                if reasoning == 'Dunno':  # Default value means no image this session
+                    latest = image_store.get_latest(server_id)
+                    if latest:
+                        reasoning = latest.reasoning
+                        themes = str(latest.themes)
+                        prompt = latest.prompt
+
+                await message.reply(
+                    f'{message.author.mention} **Reasoning:** {reasoning}\n**Themes:** {themes}\n**Image Prompt:** {prompt}'[:DISCORD_MESSAGE_LIMIT],
+                    mention_author=True
+                )
                 return
 
             # Add user context to the question so LLM knows who is asking
             user_context = f"[User: {message.author.name}] "
             question_with_context = user_context + question
+
+            if 'spell' in lq:
+                # Use SPELLCHECK_MODEL if set, otherwise fall back to current provider's default
+                spellcheck_model = os.getenv('SPELLCHECK_MODEL')  # None means use chatbot's default
+                spellcheck_messages = build_messages(
+                    question_with_context,
+                    context,
+                    system_prompt=MARVIN_SPELLCHECK_PROMPT
+                )
+                response = await chatbot.chat(
+                    spellcheck_messages,
+                    temperature=0.7,
+                    model=spellcheck_model,  # None falls through to chatbot.default_model
+                    tools=[]  # No tools for spell check
+                )
+                await reply_to_message(message, response.message + '\n' + response.usage_short)
+                return
+
             messages = build_messages(question_with_context, context, system_prompt=system_prompt)
             response = await chatbot.chat(messages, temperature=temperature, tools=tool_list)
             if response.reasoning_content:
@@ -483,7 +534,7 @@ async def make_chat_image():
             await channel.send(quiet_message)
 
         # Build prompt with previous themes context
-        previous_themes = load_previous_themes()
+        previous_themes = image_store.get_previous_themes(server_id)
         previous_themes_text = ""
         if previous_themes:
             previous_themes_text = f"Please try and avoid repeating themes from the previous image themes. Previously used themes are:\n{previous_themes}\n\n"
@@ -519,8 +570,14 @@ async def make_chat_image():
     message = f'{chatbot.name}\'s chosen themes: _{", ".join(llm_chat_themes)}_\n_Model: {model.short_name}] / Estimated cost: US${model.cost:.3f}_'
     await channel.send(message[:DISCORD_MESSAGE_LIMIT], file=discord_file)
 
-    # Save themes for next time
-    save_previous_themes(str(bot_state.previous_image_themes))
+    # Save to database for persistence
+    image_store.save(
+        server_id=server_id,
+        themes=llm_chat_themes if isinstance(llm_chat_themes, list) else [llm_chat_themes],
+        reasoning=llm_chat_reasoning,
+        prompt=llm_chat_prompt,
+        image_url=image_url
+    )
 
 
 @tasks.loop(time=time(hour=chat_image_hour, minute=15, tzinfo=pytz.timezone('Europe/London')))
