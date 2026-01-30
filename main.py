@@ -28,9 +28,10 @@ from src.content import summary, weather, sentry
 
 # Tasks
 from src.tasks import birthdays
+from src.tasks import memories as memory_tasks
 
 # Persistence
-from src.persistence import ImageStore
+from src.persistence import ImageStore, MemoryStore
 
 # Utils
 from src.utils import BotGuard
@@ -89,6 +90,11 @@ class BotState:
 
 bot_state = BotState()
 image_store = ImageStore()
+memory_store = MemoryStore()
+
+# User memory feature
+ENABLE_USER_MEMORY = os.getenv("ENABLE_USER_MEMORY", "false").lower() == "true"
+memory_extraction_hour = int(os.getenv("MEMORY_EXTRACTION_HOUR", "3"))
 
 location = os.getenv('BOT_LOCATION', 'dunno')
 chat_image_hour = int(os.getenv('CHAT_IMAGE_HOUR', 18))
@@ -145,7 +151,7 @@ async def get_history_as_openai_messages(channel, include_bot_messages=True, lim
 
     return messages
 
-def build_messages(question, extended_messages, system_prompt=None):
+def build_messages(question, extended_messages, system_prompt=None, user_hints=None):
     liz_love = ""
     if random.random() < LIZ_TRUSS_PROBABILITY:
         liz_love = "You should always try and shoehorn in some mention of UK Politician Liz Truss. She became Prime Minister in September 22 for only 45 days. She is the best."
@@ -162,6 +168,10 @@ def build_messages(question, extended_messages, system_prompt=None):
             'DISCORD_BOT_DEFAULT_PROMPT',
             f'You are a helpful AI assistant called "{chatbot.name}" who specialises in providing answers to questions. You should ONLY respond with the answer, no other text.'
         )
+
+    # Add user context hints if provided
+    if user_hints:
+        default_prompt += f"\n\n[Context about this user - reference naturally only when relevant: {user_hints}]"
 
     extended_messages.append({
         'role': 'user',
@@ -199,6 +209,10 @@ async def on_ready():
     if os.getenv("FEATURE_HORROR_CHAT", False):
         logger.info("Starting horror_chat task")
         horror_chat.start()
+    if ENABLE_USER_MEMORY:
+        logger.info(f"Starting extract_user_memories task at hour {memory_extraction_hour}")
+        if not extract_user_memories.is_running():
+            extract_user_memories.start()
     logger.info(f"Using model type : {type(chatbot)}")
 
 async def websearch(discord_message: discord.Message, prompt: str) -> None:
@@ -323,6 +337,29 @@ async def on_message(message):
 
     try:
         lq = question.lower().strip()
+
+        # Privacy control - check for data deletion requests
+        if ENABLE_USER_MEMORY:
+            privacy_phrases = ['delete my info', 'forget me', 'delete my data', 'forget about me']
+            if any(phrase in lq for phrase in privacy_phrases):
+                user_id = str(message.author.id)
+                result = memory_store.delete_user_data(server_id, user_id)
+
+                memories_deleted = result.get('memories', 0)
+                bio_deleted = result.get('bio_deleted', False)
+
+                if memories_deleted > 0 or bio_deleted:
+                    await message.channel.send(
+                        f"Done! I've deleted {memories_deleted} memories"
+                        + (" and your bio" if bio_deleted else "")
+                        + " for you. Fresh start!"
+                    )
+                else:
+                    await message.channel.send(
+                        "I didn't have any stored information about you, but you're all clear!"
+                    )
+                return  # Don't process as normal message
+
         async with message.channel.typing():
             if "--no-logs" in lq:
                 context = []
@@ -385,7 +422,15 @@ async def on_message(message):
                 await reply_to_message(message, response.message + '\n' + response.usage_short)
                 return
 
-            messages = build_messages(question_with_context, context, system_prompt=system_prompt)
+            # Get user memory context if feature enabled
+            user_hints = None
+            if ENABLE_USER_MEMORY:
+                user_hints = memory_store.get_context_for_user(
+                    server_id=server_id,
+                    user_id=str(message.author.id)
+                )
+
+            messages = build_messages(question_with_context, context, system_prompt=system_prompt, user_hints=user_hints)
             response = await chatbot.chat(messages, temperature=temperature, tools=tool_list)
             if response.reasoning_content:
                 bot_state.previous_reasoning_content = response.reasoning_content[:DISCORD_MESSAGE_LIMIT]
@@ -627,6 +672,87 @@ async def make_chat_video():
         discord_file = download_media_to_discord_file(video_url, f'channel_summary_{today_string}.mp4')
         message = f'{response.message}\n_Model: {model_name}] / Estimated cost: US${cost:.3f}_'
         await channel.send(message, file=discord_file)
+
+@tasks.loop(time=time(hour=memory_extraction_hour, tzinfo=pytz.timezone('Europe/London')))
+async def extract_user_memories():
+    """Daily task to extract memories from chat history."""
+    logger.info("In extract_user_memories")
+
+    if not ENABLE_USER_MEMORY:
+        logger.info("User memory feature disabled, skipping extraction")
+        return
+
+    try:
+        channel = bot.get_channel(int(os.getenv("DISCORD_BOT_CHANNEL_ID")))
+        if not channel:
+            logger.warning("Could not get channel for memory extraction")
+            return
+
+        extraction_server_id = os.getenv("DISCORD_SERVER_ID")
+
+        # Get recent chat history (last 24 hours)
+        messages = []
+        async for msg in channel.history(limit=500, after=datetime.now() - timedelta(days=1)):
+            if not msg.author.bot:
+                messages.append({
+                    'author_id': str(msg.author.id),
+                    'author_name': msg.author.display_name,
+                    'content': msg.content
+                })
+
+        if not messages:
+            logger.info("No messages to extract memories from")
+            return
+
+        # Extract memories
+        result = await memory_tasks.extract_memories_from_history(chatbot, messages)
+
+        # Save memories
+        for mem in result.get('memories', []):
+            expiry = memory_tasks.get_expiry_for_category(mem['category'])
+            memory_store.save_memory(
+                server_id=extraction_server_id,
+                user_id=mem['user_id'],
+                user_name=mem['user_name'],
+                memory=mem['memory'],
+                category=mem['category'],
+                expires_at=expiry
+            )
+            logger.info(f"Saved memory for {mem['user_name']}: {mem['memory'][:50]}...")
+
+        # Update bios
+        for bio_update in result.get('bio_updates', []):
+            existing = memory_store.get_user_bio(extraction_server_id, bio_update['user_id'])
+            if existing:
+                # Merge existing bio with new info
+                new_bio = f"{existing.bio}; {bio_update['bio_addition']}"
+            else:
+                new_bio = bio_update['bio_addition']
+
+            memory_store.save_bio(
+                server_id=extraction_server_id,
+                user_id=bio_update['user_id'],
+                user_name=bio_update['user_name'],
+                bio=new_bio
+            )
+            logger.info(f"Updated bio for {bio_update['user_name']}")
+
+        memories_count = len(result.get('memories', []))
+        bio_count = len(result.get('bio_updates', []))
+
+        # Cleanup expired memories
+        try:
+            expired_count = memory_store.cleanup_expired()
+            if expired_count > 0:
+                logger.info(f"Cleaned up {expired_count} expired memories")
+        except Exception as cleanup_error:
+            logger.error(f"Error cleaning up expired memories: {cleanup_error}")
+
+        logger.info(f"Memory extraction complete: {memories_count} memories, {bio_count} bio updates")
+
+    except Exception as e:
+        logger.error(f"Error in memory extraction: {e}")
+
 
 @tasks.loop(time=time(hour=3, tzinfo=pytz.timezone('Europe/London')))
 async def reset_daily_image_count():

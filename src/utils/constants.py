@@ -61,3 +61,8 @@ ABUSIVE_RESPONSES = [
     "Sigh",
     "Big girl's blouse",
 ]
+
+# User memory feature
+MEMORY_COOLDOWN_HOURS = 24  # Don't reference same memory within this period
+MEMORY_INCLUSION_PROBABILITY = 0.3  # 30% chance to include eligible memory
+MEMORY_MAX_PER_PROMPT = 3  # Maximum memories to include in any prompt
