@@ -51,6 +51,10 @@ The script uses the following environment variables (* indicates required):
 | ENABLE_USER_MEMORY | Enable reading user memories for context in responses | False | "true" |
 | ENABLE_USER_MEMORY_EXTRACTION | Enable the scheduled task that extracts memories from chat | False | "true" |
 | MEMORY_EXTRACTION_HOUR | Hour (0-23) when memory extraction runs | 3 | "3" (3 AM) |
+| ENABLE_URL_HISTORY | Enable the search URL history tool for the bot | False | "true" |
+| ENABLE_URL_HISTORY_EXTRACTION | Enable the scheduled task that scans channels for URLs | False | "true" |
+| URL_HISTORY_CHANNELS | Comma-separated channel IDs to scan for URLs | - | "123456789,987654321" |
+| URL_HISTORY_EXTRACTION_HOUR | Hour (0-23) when URL extraction runs | 4 | "4" (4 AM) |
 
 ## Running the Script
 

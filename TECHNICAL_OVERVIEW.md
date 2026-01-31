@@ -49,7 +49,8 @@ src/
 └── persistence/     # State persistence (SQLite + JSON)
     ├── json_store.py    # Legacy JSON file storage
     ├── image_store.py   # SQLite image history (themes, prompts)
-    └── memory_store.py  # SQLite user memories and bios
+    ├── memory_store.py  # SQLite user memories and bios
+    └── url_store.py     # SQLite URL history and summaries
 
 main.py              # Entry point, bot setup, event handlers, scheduled tasks
 tests/               # pytest-based tests
@@ -84,7 +85,7 @@ Factory pattern in `replicate.py`:
 Simple tools → `ToolDispatcher` in `handlers.py`:
 ```
 calculate, get_weather_forecast, get_sentry_issue_summary,
-summarise_webpage_content, web_search
+summarise_webpage_content, web_search, search_url_history (conditional)
 ```
 
 Complex tools (needing LLM continuation) → inline in `main.py`:
@@ -128,6 +129,12 @@ SQLite-based storage in `./data/gepetto.db`:
 - `get_context_for_user()` returns formatted context for prompts
 - Privacy controls via `delete_user_data()`
 
+**UrlStore** - URL history and summaries per server:
+- Stores URLs, summaries, keywords, poster info
+- `search()` finds URLs matching query terms (case-insensitive)
+- `url_exists()` checks for duplicates before saving
+- Auto-prunes to `MAX_ENTRIES_PER_SERVER` (500)
+
 ### User Memory System
 
 When `ENABLE_USER_MEMORY=true`:
@@ -138,6 +145,18 @@ When `ENABLE_USER_MEMORY_EXTRACTION=true`:
 - Scheduled task extracts memories from chat history daily
 - LLM identifies facts about users and categorises them
 - Only one bot instance should run extraction (others just read)
+
+### URL History System
+
+When `ENABLE_URL_HISTORY=true`:
+- Bot has access to `search_url_history` tool
+- Users can ask "what was that link about X?" to search past URLs
+
+When `ENABLE_URL_HISTORY_EXTRACTION=true`:
+- Scheduled task scans `URL_HISTORY_CHANNELS` daily for new URLs
+- Extracts content using existing `summary.get_text()` function
+- LLM generates short summary and keywords for each URL
+- Only one bot instance should run extraction (others just search)
 
 ## Key Features
 
@@ -151,6 +170,7 @@ When `ENABLE_USER_MEMORY_EXTRACTION=true`:
 | Calculator | Math expressions | `calculator.calculate()` |
 | Spell check | "spell" in prompt | Routes to Marvin persona (cheap model) |
 | Privacy | "delete my info" / "forget me" | `memory_store.delete_user_data()` |
+| URL history search | LLM tool call `search_url_history` | `url_store.search()` |
 
 ## Scheduled Tasks
 
@@ -163,6 +183,7 @@ When `ENABLE_USER_MEMORY_EXTRACTION=true`:
 | `say_happy_birthday` | 11 AM UK | Birthday announcements |
 | `reset_daily_image_count` | 3 AM UK | Resets daily image limit |
 | `extract_user_memories` | Daily at `MEMORY_EXTRACTION_HOUR` | Extracts user facts from chat |
+| `extract_url_history` | Daily at `URL_HISTORY_EXTRACTION_HOUR` | Scans channels for URLs, summarises and stores them |
 
 ## Constants (utils/constants.py)
 
@@ -206,6 +227,10 @@ uv run pytest              # Run tests
 | `ENABLE_USER_MEMORY` | No | Enable reading user memories |
 | `ENABLE_USER_MEMORY_EXTRACTION` | No | Enable memory extraction task |
 | `MEMORY_EXTRACTION_HOUR` | No | Hour for extraction (default: 3) |
+| `ENABLE_URL_HISTORY` | No | Enable URL history search tool |
+| `ENABLE_URL_HISTORY_EXTRACTION` | No | Enable URL extraction task |
+| `URL_HISTORY_CHANNELS` | No | Comma-separated channel IDs to scan |
+| `URL_HISTORY_EXTRACTION_HOUR` | No | Hour for URL extraction (default: 4) |
 | `SPELLCHECK_MODEL` | No | Model for spell check (e.g., "groq/llama-3.1-8b-instant") |
 
 ## Design Notes

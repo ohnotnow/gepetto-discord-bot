@@ -18,7 +18,7 @@ from src.providers import split_for_discord
 
 # Tools
 from src.tools import calculator, ToolDispatcher, ToolResult
-from src.tools.definitions import tool_list
+from src.tools.definitions import tool_list, search_url_history_tool
 
 # Media
 from src.media import images, replicate, sora
@@ -31,7 +31,7 @@ from src.tasks import birthdays
 from src.tasks import memories as memory_tasks
 
 # Persistence
-from src.persistence import ImageStore, MemoryStore
+from src.persistence import ImageStore, MemoryStore, UrlStore
 
 # Utils
 from src.utils import BotGuard
@@ -91,11 +91,23 @@ class BotState:
 bot_state = BotState()
 image_store = ImageStore()
 memory_store = MemoryStore()
+url_store = UrlStore()
 
 # User memory feature
 ENABLE_USER_MEMORY = os.getenv("ENABLE_USER_MEMORY", "false").lower() == "true"
 ENABLE_USER_MEMORY_EXTRACTION = os.getenv("ENABLE_USER_MEMORY_EXTRACTION", "false").lower() == "true"
 memory_extraction_hour = int(os.getenv("MEMORY_EXTRACTION_HOUR", "3"))
+
+# URL history feature
+ENABLE_URL_HISTORY = os.getenv("ENABLE_URL_HISTORY", "false").lower() == "true"
+ENABLE_URL_HISTORY_EXTRACTION = os.getenv("ENABLE_URL_HISTORY_EXTRACTION", "false").lower() == "true"
+URL_HISTORY_CHANNELS = os.getenv("URL_HISTORY_CHANNELS", "")  # Comma-separated channel IDs
+url_history_extraction_hour = int(os.getenv("URL_HISTORY_EXTRACTION_HOUR", "4"))
+
+# Build the active tool list based on feature flags
+active_tool_list = tool_list.copy()
+if ENABLE_URL_HISTORY:
+    active_tool_list.append(search_url_history_tool)
 
 location = os.getenv('BOT_LOCATION', 'dunno')
 chat_image_hour = int(os.getenv('CHAT_IMAGE_HOUR', 18))
@@ -214,6 +226,10 @@ async def on_ready():
         logger.info(f"Starting extract_user_memories task at hour {memory_extraction_hour}")
         if not extract_user_memories.is_running():
             extract_user_memories.start()
+    if ENABLE_URL_HISTORY_EXTRACTION:
+        logger.info(f"Starting extract_url_history task at hour {url_history_extraction_hour}")
+        if not extract_url_history.is_running():
+            extract_url_history.start()
     logger.info(f"Using model type : {type(chatbot)}")
 
 async def websearch(discord_message: discord.Message, prompt: str) -> None:
@@ -310,6 +326,35 @@ async def extract_recipe_from_webpage(discord_message: discord.Message, prompt: 
     await summarise_webpage_content(discord_message, recipe_prompt, url)
 
 
+async def search_url_history(discord_message: discord.Message, query: str) -> None:
+    """Search the URL history for matching entries."""
+    logger.info(f"Searching URL history for '{query}'")
+    guild_id = str(discord_message.guild.id) if discord_message.guild else server_id
+    results = url_store.search(guild_id, query, limit=5)
+
+    if not results:
+        await discord_message.reply(
+            f"{discord_message.author.mention} I couldn't find any URLs matching that query.",
+            mention_author=True
+        )
+        return
+
+    # Format results
+    response_parts = [f"Found {len(results)} matching URL(s):"]
+    for entry in results:
+        posted_date = entry.posted_at.strftime("%d %b %Y")
+        response_parts.append(f"\n**{entry.url}**\n> {entry.summary}\n> Posted by {entry.posted_by_name} on {posted_date}")
+
+    response_text = "\n".join(response_parts)
+    if len(response_text) > DISCORD_MESSAGE_LIMIT:
+        response_text = response_text[:DISCORD_MESSAGE_LIMIT - 3] + "..."
+
+    await discord_message.reply(
+        f"{discord_message.author.mention} {response_text}",
+        mention_author=True
+    )
+
+
 # Tool dispatcher setup
 tool_dispatcher = ToolDispatcher()
 tool_dispatcher.register('calculate', lambda msg, **args: calculate(msg, args.get('expression', '')))
@@ -317,6 +362,8 @@ tool_dispatcher.register('get_weather_forecast', lambda msg, **args: get_weather
 tool_dispatcher.register('get_sentry_issue_summary', lambda msg, **args: summarise_sentry_issue(msg, args.get('url', '')))
 tool_dispatcher.register('summarise_webpage_content', lambda msg, **args: summarise_webpage_content(msg, args.get('prompt', ''), args.get('url', '')))
 tool_dispatcher.register('web_search', lambda msg, **args: websearch(msg, args.get('prompt', '')))
+if ENABLE_URL_HISTORY:
+    tool_dispatcher.register('search_url_history', lambda msg, **args: search_url_history(msg, args.get('query', '')))
 
 
 @bot.event
@@ -432,7 +479,7 @@ async def on_message(message):
                 )
 
             messages = build_messages(question_with_context, context, system_prompt=system_prompt, user_hints=user_hints)
-            response = await chatbot.chat(messages, temperature=temperature, tools=tool_list)
+            response = await chatbot.chat(messages, temperature=temperature, tools=active_tool_list)
             if response.reasoning_content:
                 bot_state.previous_reasoning_content = response.reasoning_content[:DISCORD_MESSAGE_LIMIT]
             if response.tool_calls:
@@ -753,6 +800,130 @@ async def extract_user_memories():
 
     except Exception as e:
         logger.error(f"Error in memory extraction: {e}")
+
+
+@tasks.loop(time=time(hour=url_history_extraction_hour, tzinfo=pytz.timezone('Europe/London')))
+async def extract_url_history():
+    """Daily task to extract and summarise URLs from chat history."""
+    logger.info("In extract_url_history")
+
+    if not ENABLE_URL_HISTORY_EXTRACTION:
+        logger.info("URL history extraction disabled, skipping")
+        return
+
+    if not URL_HISTORY_CHANNELS:
+        logger.info("No URL_HISTORY_CHANNELS configured, skipping")
+        return
+
+    extraction_server_id = os.getenv("DISCORD_SERVER_ID")
+    channel_ids = [ch.strip() for ch in URL_HISTORY_CHANNELS.split(",") if ch.strip()]
+
+    if not channel_ids:
+        logger.info("No valid channel IDs in URL_HISTORY_CHANNELS, skipping")
+        return
+
+    # Regex to find URLs in messages
+    url_pattern = re.compile(r'https?://[^\s<>"{}|\\^`\[\]]+')
+
+    urls_processed = 0
+    urls_saved = 0
+
+    for channel_id in channel_ids:
+        try:
+            channel = bot.get_channel(int(channel_id))
+            if not channel:
+                logger.warning(f"Could not get channel {channel_id} for URL extraction")
+                continue
+
+            logger.info(f"Scanning channel {channel.name} ({channel_id}) for URLs")
+
+            # Get messages from last 24 hours
+            async for msg in channel.history(limit=500, after=datetime.now() - timedelta(days=1)):
+                if msg.author.bot:
+                    continue
+
+                # Find URLs in message
+                urls_found = url_pattern.findall(msg.content)
+                for url in urls_found:
+                    # Clean URL (remove trailing punctuation that might have been captured)
+                    url = url.rstrip('.,;:!?)')
+
+                    # Skip if we already have this URL
+                    if url_store.url_exists(extraction_server_id, url):
+                        logger.debug(f"URL already exists: {url}")
+                        continue
+
+                    urls_processed += 1
+
+                    try:
+                        # Get page content
+                        page_text = await summary.get_text(url)
+                        if not page_text or "Sorry" in page_text[:50]:
+                            logger.info(f"Could not get content for {url}")
+                            continue
+
+                        # Generate a very short summary and keywords using LLM
+                        summary_messages = [
+                            {
+                                'role': 'system',
+                                'content': 'You extract brief summaries and keywords from text. Respond in JSON format only.'
+                            },
+                            {
+                                'role': 'user',
+                                'content': f'''Analyse this webpage content and provide:
+1. A very brief summary (1-2 sentences, max 200 characters)
+2. 3-5 keywords for search
+
+Respond ONLY with valid JSON in this exact format:
+{{"summary": "brief summary here", "keywords": "keyword1, keyword2, keyword3"}}
+
+Content:
+{page_text[:3000]}'''
+                            }
+                        ]
+
+                        response = await chatbot.chat(summary_messages, temperature=0.3, tools=[])
+                        response_text = response.message.strip()
+
+                        # Parse JSON response
+                        try:
+                            # Handle potential markdown code blocks
+                            if response_text.startswith('```'):
+                                response_text = response_text.split('```')[1]
+                                if response_text.startswith('json'):
+                                    response_text = response_text[4:]
+                            result = json.loads(response_text)
+                            url_summary = result.get('summary', '')[:250]
+                            keywords = result.get('keywords', '')[:200]
+                        except json.JSONDecodeError:
+                            logger.warning(f"Could not parse LLM response for {url}: {response_text[:100]}")
+                            continue
+
+                        # Save to database
+                        saved_id = url_store.save(
+                            server_id=extraction_server_id,
+                            channel_id=str(channel_id),
+                            url=url,
+                            summary=url_summary,
+                            keywords=keywords,
+                            posted_by_id=str(msg.author.id),
+                            posted_by_name=msg.author.display_name,
+                            posted_at=msg.created_at
+                        )
+
+                        if saved_id:
+                            urls_saved += 1
+                            logger.info(f"Saved URL: {url[:50]}... - {url_summary[:50]}...")
+
+                    except Exception as url_error:
+                        logger.error(f"Error processing URL {url}: {url_error}")
+                        continue
+
+        except Exception as channel_error:
+            logger.error(f"Error processing channel {channel_id}: {channel_error}")
+            continue
+
+    logger.info(f"URL extraction complete: {urls_processed} processed, {urls_saved} saved")
 
 
 @tasks.loop(time=time(hour=3, tzinfo=pytz.timezone('Europe/London')))

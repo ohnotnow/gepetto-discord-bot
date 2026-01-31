@@ -127,3 +127,22 @@ tool_list = [
         }
     },
 ]
+
+# Tool for searching URL history - conditionally added based on ENABLE_URL_HISTORY
+search_url_history_tool = {
+    "type": "function",
+    "function": {
+        "name": "search_url_history",
+        "description": "Searches the history of URLs that have been shared in the server. Use this when a user asks about a link or webpage that was shared previously, e.g. 'what was that article about AI?' or 'find the link someone posted about cooking'.",
+        "parameters": {
+            "type": "object",
+            "properties": {
+                "query": {
+                    "type": "string",
+                    "description": "Search terms to find matching URLs - describe what the user is looking for."
+                }
+            },
+            "required": ["query"]
+        }
+    }
+}
