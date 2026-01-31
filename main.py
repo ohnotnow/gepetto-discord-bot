@@ -31,7 +31,7 @@ from src.tasks import birthdays
 from src.tasks import memories as memory_tasks
 
 # Persistence
-from src.persistence import ImageStore, MemoryStore, UrlStore
+from src.persistence import ImageStore, MemoryStore, UrlStore, ActivityStore
 
 # Utils
 from src.utils import BotGuard
@@ -43,6 +43,7 @@ from src.utils.constants import (
     MIN_MESSAGES_FOR_RANDOM_CHAT, MIN_MESSAGES_FOR_CHAT_IMAGE,
     NIGHT_START_HOUR, NIGHT_END_HOUR, DAY_START_HOUR, DAY_END_HOUR,
     UK_HOLIDAYS, ABUSIVE_RESPONSES,
+    CATCH_UP_MAX_HOURS, CATCH_UP_MAX_MESSAGES,
 )
 from src.utils.helpers import (
     format_date_with_suffix,
@@ -92,6 +93,7 @@ bot_state = BotState()
 image_store = ImageStore()
 memory_store = MemoryStore()
 url_store = UrlStore()
+activity_store = ActivityStore()
 
 # User memory feature
 ENABLE_USER_MEMORY = os.getenv("ENABLE_USER_MEMORY", "false").lower() == "true"
@@ -103,6 +105,9 @@ ENABLE_URL_HISTORY = os.getenv("ENABLE_URL_HISTORY", "false").lower() == "true"
 ENABLE_URL_HISTORY_EXTRACTION = os.getenv("ENABLE_URL_HISTORY_EXTRACTION", "false").lower() == "true"
 URL_HISTORY_CHANNELS = os.getenv("URL_HISTORY_CHANNELS", "")  # Comma-separated channel IDs
 url_history_extraction_hour = int(os.getenv("URL_HISTORY_EXTRACTION_HOUR", "4"))
+
+# Catch-up feature (reuses URL_HISTORY_CHANNELS for monitored channels)
+ENABLE_CATCH_UP = os.getenv("ENABLE_CATCH_UP", "false").lower() == "true"
 
 # Build the active tool list based on feature flags
 active_tool_list = tool_list.copy()
@@ -365,9 +370,83 @@ tool_dispatcher.register('web_search', lambda msg, **args: websearch(msg, args.g
 if ENABLE_URL_HISTORY:
     tool_dispatcher.register('search_url_history', lambda msg, **args: search_url_history(msg, args.get('query', '')))
 
+# Parse channel IDs for catch-up feature (same channels as URL history)
+catch_up_channel_ids = set()
+if ENABLE_CATCH_UP and URL_HISTORY_CHANNELS:
+    catch_up_channel_ids = {ch.strip().strip('"\'') for ch in URL_HISTORY_CHANNELS.strip('"\'').split(",") if ch.strip()}
+
+
+async def handle_catch_up(message: discord.Message) -> None:
+    """Handle 'catch me up' requests by summarising missed messages."""
+    user_id = str(message.author.id)
+    guild_id = str(message.guild.id) if message.guild else server_id
+
+    last_activity = activity_store.get_last_activity(guild_id, user_id)
+
+    if not last_activity:
+        await message.reply("I haven't seen you around before - nothing to catch up on!")
+        return
+
+    # Cap at CATCH_UP_MAX_HOURS
+    since = max(last_activity.last_message_at, datetime.now() - timedelta(hours=CATCH_UP_MAX_HOURS))
+
+    # Fetch messages from monitored channels since then
+    all_messages = []
+    for channel_id in catch_up_channel_ids:
+        channel = bot.get_channel(int(channel_id))
+        if channel:
+            try:
+                async for msg in channel.history(after=since, limit=CATCH_UP_MAX_MESSAGES):
+                    if not msg.author.bot:
+                        all_messages.append(msg)
+            except Exception as e:
+                logger.warning(f"Could not fetch history from channel {channel_id}: {e}")
+
+    if not all_messages:
+        await message.reply("Nothing much happened while you were away!")
+        return
+
+    # Sort chronologically and format for LLM
+    all_messages.sort(key=lambda m: m.created_at)
+
+    # Format messages for the summary
+    chat_lines = []
+    for msg in all_messages:
+        timestamp = msg.created_at.strftime("%H:%M")
+        chat_lines.append(f"[{timestamp}] {msg.author.name}: {msg.content[:300]}")
+
+    chat_text = "\n".join(chat_lines[-100:])  # Last 100 messages max
+
+    # Generate summary with personality
+    catch_up_prompt = """Summarise what happened in this Discord chat. Be concise and Discord-friendly (bullet points ok).
+Mention key topics, any decisions made, interesting links shared, and who was involved.
+Keep your personality - if the chat was mundane, say so dismissively. If it was dramatic, be appropriately sardonic.
+Max 3-4 bullet points unless something genuinely significant happened."""
+
+    messages = [
+        {'role': 'system', 'content': catch_up_prompt},
+        {'role': 'user', 'content': f"Summarise this chat for {message.author.name}:\n\n{chat_text}"}
+    ]
+
+    async with message.channel.typing():
+        response = await chatbot.chat(messages, temperature=0.8, tools=[])
+        summary_text = response.message.strip()[:DISCORD_MESSAGE_LIMIT]
+        await message.reply(summary_text)
+
 
 @bot.event
 async def on_message(message):
+    # Track activity in monitored channels (before bot mention check)
+    if ENABLE_CATCH_UP and message.guild and str(message.guild.id) == server_id:
+        if not message.author.bot and str(message.channel.id) in catch_up_channel_ids:
+            activity_store.record_activity(
+                server_id,
+                str(message.author.id),
+                message.author.name,
+                str(message.channel.id),
+                datetime.now()
+            )
+
     message_blocked, abusive_reply = bot_guard.should_block(message, bot, server_id, chatbot)
     if message_blocked:
         if abusive_reply:
@@ -385,6 +464,13 @@ async def on_message(message):
 
     try:
         lq = question.lower().strip()
+
+        # Catch-up feature - check for catch-up requests
+        if ENABLE_CATCH_UP:
+            catch_up_phrases = ['catch me up', 'what did i miss', 'what have i missed']
+            if any(phrase in lq for phrase in catch_up_phrases):
+                await handle_catch_up(message)
+                return
 
         # Privacy control - check for data deletion requests
         if ENABLE_USER_MEMORY:
