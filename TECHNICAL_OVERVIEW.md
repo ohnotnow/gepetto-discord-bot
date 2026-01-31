@@ -168,8 +168,12 @@ When `ENABLE_URL_HISTORY_EXTRACTION=true`:
 ### Catch-Up System
 
 When `ENABLE_CATCH_UP=true`:
+- Bot has access to the `catch_up` tool and can respond to catch-up requests
+
+When `ENABLE_CATCH_UP_TRACKING=true`:
 - Tracks user activity in channels listed in `URL_HISTORY_CHANNELS`
 - Activity recorded passively on every non-bot message (before bot mention check)
+- Only one bot instance should enable this (others just respond to requests)
 - LLM tool `catch_up` triggered naturally by phrases like "catch me up", "what did I miss", "fill me in", "what's been going on", etc.
 - Fetches messages from monitored channels since user's last activity
 - Capped at 48 hours lookback, 500 messages per channel
@@ -251,7 +255,8 @@ uv run pytest              # Run tests
 | `ENABLE_URL_HISTORY_EXTRACTION` | No | Enable URL extraction task |
 | `URL_HISTORY_CHANNELS` | No | Comma-separated channel IDs to scan |
 | `URL_HISTORY_EXTRACTION_HOUR` | No | Hour for URL extraction (default: 4) |
-| `ENABLE_CATCH_UP` | No | Enable "catch me up" feature (uses URL_HISTORY_CHANNELS) |
+| `ENABLE_CATCH_UP` | No | Enable catch-up tool for responding to requests |
+| `ENABLE_CATCH_UP_TRACKING` | No | Enable activity tracking (only one bot instance) |
 | `SPELLCHECK_MODEL` | No | Model for spell check (e.g., "groq/llama-3.1-8b-instant") |
 
 ## Design Notes

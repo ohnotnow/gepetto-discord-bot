@@ -108,6 +108,7 @@ url_history_extraction_hour = int(os.getenv("URL_HISTORY_EXTRACTION_HOUR", "4"))
 
 # Catch-up feature (reuses URL_HISTORY_CHANNELS for monitored channels)
 ENABLE_CATCH_UP = os.getenv("ENABLE_CATCH_UP", "false").lower() == "true"
+ENABLE_CATCH_UP_TRACKING = os.getenv("ENABLE_CATCH_UP_TRACKING", "false").lower() == "true"
 
 # Build the active tool list based on feature flags
 active_tool_list = tool_list.copy()
@@ -441,7 +442,7 @@ Max 3-4 bullet points unless something genuinely significant happened."""
 @bot.event
 async def on_message(message):
     # Track activity in monitored channels (before bot mention check)
-    if ENABLE_CATCH_UP and message.guild and str(message.guild.id) == server_id:
+    if ENABLE_CATCH_UP_TRACKING and message.guild and str(message.guild.id) == server_id:
         if not message.author.bot and str(message.channel.id) in catch_up_channel_ids:
             activity_store.record_activity(
                 server_id,

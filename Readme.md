@@ -59,7 +59,8 @@ The script uses the following environment variables (* indicates required):
 | ENABLE_URL_HISTORY_EXTRACTION | Enable the scheduled task that scans channels for URLs | False | "true" |
 | URL_HISTORY_CHANNELS | Comma-separated channel IDs to scan for URLs | - | "123456789,987654321" |
 | URL_HISTORY_EXTRACTION_HOUR | Hour (0-23) when URL extraction runs | 4 | "4" (4 AM) |
-| ENABLE_CATCH_UP | Enable the "catch me up" feature to summarise missed messages | False | "true" |
+| ENABLE_CATCH_UP | Enable the "catch me up" tool so bot can respond to requests | False | "true" |
+| ENABLE_CATCH_UP_TRACKING | Enable activity tracking (only one bot instance should do this) | False | "true" |
 
 ## Running the Script
 
