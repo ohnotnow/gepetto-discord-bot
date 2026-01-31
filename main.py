@@ -430,6 +430,9 @@ async def on_message(message):
             if lq.startswith("!video"):
                 await make_chat_video()
                 return
+            if lq.startswith("!urls"):
+                await extract_url_history()
+                return
             if '--reasoning' in lq:
                 # Try in-memory state first (current session), fall back to database
                 reasoning = bot_state.previous_image_reasoning
