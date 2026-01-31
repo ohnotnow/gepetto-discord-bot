@@ -828,6 +828,10 @@ async def extract_url_history():
     # Regex to find URLs in messages
     url_pattern = re.compile(r'https?://[^\s<>"{}|\\^`\[\]]+')
 
+    # Tracking counts
+    urls_total = 0
+    urls_filtered = 0
+    urls_duplicate = 0
     urls_processed = 0
     urls_saved = 0
 
@@ -847,21 +851,30 @@ async def extract_url_history():
 
                 # Find URLs in message
                 urls_found = url_pattern.findall(msg.content)
+                if urls_found:
+                    logger.info(f"Found {len(urls_found)} URL(s) in message from {msg.author.display_name}")
+                    for u in urls_found:
+                        logger.info(f"  -> {u.rstrip('.,;:!?)')}")
+
                 for url in urls_found:
                     # Clean URL (remove trailing punctuation that might have been captured)
                     url = url.rstrip('.,;:!?)')
+                    urls_total += 1
 
                     # Skip URLs unlikely to have summarisable content
                     if not summary.is_summarisable_url(url):
-                        logger.debug(f"Skipping non-text URL: {url}")
+                        logger.info(f"  [FILTERED] {url[:80]}")
+                        urls_filtered += 1
                         continue
 
                     # Skip if we already have this URL
                     if url_store.url_exists(extraction_server_id, url):
-                        logger.debug(f"URL already exists: {url}")
+                        logger.info(f"  [DUPLICATE] {url[:80]}")
+                        urls_duplicate += 1
                         continue
 
                     urls_processed += 1
+                    logger.info(f"  [PROCESSING {urls_processed}] {url[:80]}")
 
                     try:
                         # Get page content
@@ -931,7 +944,7 @@ Content:
             logger.error(f"Error processing channel {channel_id}: {channel_error}")
             continue
 
-    logger.info(f"URL extraction complete: {urls_processed} processed, {urls_saved} saved")
+    logger.info(f"URL extraction complete: {urls_total} found, {urls_filtered} filtered, {urls_duplicate} duplicates, {urls_processed} processed, {urls_saved} saved")
 
 
 @tasks.loop(time=time(hour=3, tzinfo=pytz.timezone('Europe/London')))
