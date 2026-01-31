@@ -94,6 +94,7 @@ memory_store = MemoryStore()
 
 # User memory feature
 ENABLE_USER_MEMORY = os.getenv("ENABLE_USER_MEMORY", "false").lower() == "true"
+ENABLE_USER_MEMORY_EXTRACTION = os.getenv("ENABLE_USER_MEMORY_EXTRACTION", "false").lower() == "true"
 memory_extraction_hour = int(os.getenv("MEMORY_EXTRACTION_HOUR", "3"))
 
 location = os.getenv('BOT_LOCATION', 'dunno')
@@ -209,7 +210,7 @@ async def on_ready():
     if os.getenv("FEATURE_HORROR_CHAT", False):
         logger.info("Starting horror_chat task")
         horror_chat.start()
-    if ENABLE_USER_MEMORY:
+    if ENABLE_USER_MEMORY_EXTRACTION:
         logger.info(f"Starting extract_user_memories task at hour {memory_extraction_hour}")
         if not extract_user_memories.is_running():
             extract_user_memories.start()
@@ -678,8 +679,8 @@ async def extract_user_memories():
     """Daily task to extract memories from chat history."""
     logger.info("In extract_user_memories")
 
-    if not ENABLE_USER_MEMORY:
-        logger.info("User memory feature disabled, skipping extraction")
+    if not ENABLE_USER_MEMORY_EXTRACTION:
+        logger.info("User memory extraction disabled, skipping")
         return
 
     try:

@@ -48,6 +48,9 @@ The script uses the following environment variables (* indicates required):
 | REPLICATE_API_KEY | Replicate API authentication (for image generation) | - | "your-replicate-api-key" |
 | USER_LOCATIONS | Setting user locations for image generation | "the UK towns of Bath and Manchester" | "London, Manchester, Edinburgh" |
 | CAT_DESCRIPTIONS | Descriptions of server members' cats for image generation | - | "Mochi is a fluffy orange tabby, Luna is a sleek black cat" |
+| ENABLE_USER_MEMORY | Enable reading user memories for context in responses | False | "true" |
+| ENABLE_USER_MEMORY_EXTRACTION | Enable the scheduled task that extracts memories from chat | False | "true" |
+| MEMORY_EXTRACTION_HOUR | Hour (0-23) when memory extraction runs | 3 | "3" (3 AM) |
 
 ## Running the Script
 
