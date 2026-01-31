@@ -933,8 +933,6 @@ async def reset_daily_image_count():
 
 # Run the bot
 chatbot = get_chatbot()
-if os.getenv("DISCORD_BOT_MODEL", None):
-    chatbot.default_model = os.getenv("DISCORD_BOT_MODEL")
 if os.getenv("BOT_NAME", None):
     chatbot.name = os.getenv("BOT_NAME")
 bot_guard = BotGuard()

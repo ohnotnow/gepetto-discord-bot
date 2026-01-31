@@ -61,7 +61,7 @@ The script uses the following environment variables (* indicates required):
 To run the bot:
 
 1. Install the required Python dependencies by running `pip install -r requirements.txt`.
-2. Set your environment variables. These can be set in your shell, or stored in a `.env` file at the root of your project.
+2. Set your environment variables. These can be set in your shell, or stored in a `.env` file at the root of your project. You can copy `.env.example` to `.env` to get a full template of supported settings.
 3. Run `python main.py` in the root of your project to start the bot.
 
 ## Docker Deployment
