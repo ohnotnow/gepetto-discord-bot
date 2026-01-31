@@ -819,7 +819,7 @@ async def extract_url_history():
         return
 
     extraction_server_id = os.getenv("DISCORD_SERVER_ID")
-    channel_ids = [ch.strip() for ch in URL_HISTORY_CHANNELS.split(",") if ch.strip()]
+    channel_ids = [ch.strip().strip('"\'') for ch in URL_HISTORY_CHANNELS.strip('"\'').split(",") if ch.strip()]
 
     if not channel_ids:
         logger.info("No valid channel IDs in URL_HISTORY_CHANNELS, skipping")
