@@ -2,6 +2,7 @@
 __pycache__*
 autogen.*
 .env.*
+!.env.example
 venv*
 q.py
 qq.py
