@@ -66,3 +66,6 @@ ABUSIVE_RESPONSES = [
 MEMORY_COOLDOWN_HOURS = 24  # Don't reference same memory within this period
 MEMORY_INCLUSION_PROBABILITY = 0.3  # 30% chance to include eligible memory
 MEMORY_MAX_PER_PROMPT = 3  # Maximum memories to include in any prompt
+
+# URL content extraction
+MIN_TEXT_LENGTH_FOR_SUMMARY = 100  # Minimum chars of extracted text to consider summarisable

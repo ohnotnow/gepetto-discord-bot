@@ -7,7 +7,53 @@ from trafilatura import fetch_url, extract
 from trafilatura.settings import DEFAULT_CONFIG
 from copy import deepcopy
 import logging
+from src.utils.constants import MIN_TEXT_LENGTH_FOR_SUMMARY
 logger = logging.getLogger('discord')  # Get the discord logger
+
+# File extensions that cannot be summarised
+UNSUMMARISABLE_EXTENSIONS = frozenset([
+    # Images
+    '.jpg', '.jpeg', '.png', '.gif', '.webp', '.bmp', '.svg', '.ico', '.tiff',
+    # Audio
+    '.mp3', '.wav', '.ogg', '.flac', '.aac', '.m4a',
+    # Video
+    '.mp4', '.webm', '.avi', '.mov', '.mkv', '.wmv', '.flv',
+    # Archives/binary
+    '.zip', '.rar', '.7z', '.tar', '.gz', '.exe', '.dmg', '.apk',
+])
+
+# Domains that host primarily media content
+MEDIA_HOSTING_DOMAINS = frozenset([
+    'imgur.com', 'i.imgur.com',
+    'giphy.com', 'media.giphy.com',
+    'tenor.com', 'media.tenor.com',
+    'gfycat.com', 'streamable.com',
+    'v.redd.it', 'i.redd.it',
+    'pbs.twimg.com',
+    'media.discordapp.net', 'cdn.discordapp.com',
+])
+
+
+def is_summarisable_url(url: str) -> bool:
+    """Check if URL is likely to contain text content worth summarising."""
+    url_lower = url.lower()
+    path = url_lower.split('?')[0].split('#')[0]
+
+    # Check file extension
+    for ext in UNSUMMARISABLE_EXTENSIONS:
+        if path.endswith(ext):
+            return False
+
+    # Check media hosting domains
+    try:
+        domain = url_lower.replace('https://', '').replace('http://', '').split('/')[0].split(':')[0]
+        for media_domain in MEDIA_HOSTING_DOMAINS:
+            if domain == media_domain or domain.endswith('.' + media_domain):
+                return False
+    except Exception:
+        pass
+
+    return True
 
 request_headers = {
     "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
@@ -98,5 +144,10 @@ async def get_text(url: str) -> str:
             if downloaded is None:
                 return f"Sorry, I couldn't download content from the URL {url_string}."
             page_text = extract(downloaded)
+
+    # Validate we have meaningful text content
+    if page_text and len(page_text.strip()) < MIN_TEXT_LENGTH_FOR_SUMMARY:
+        logger.info(f"Extracted text too short ({len(page_text.strip())} chars) for {url}")
+        return None
 
     return page_text

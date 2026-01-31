@@ -851,6 +851,11 @@ async def extract_url_history():
                     # Clean URL (remove trailing punctuation that might have been captured)
                     url = url.rstrip('.,;:!?)')
 
+                    # Skip URLs unlikely to have summarisable content
+                    if not summary.is_summarisable_url(url):
+                        logger.debug(f"Skipping non-text URL: {url}")
+                        continue
+
                     # Skip if we already have this URL
                     if url_store.url_exists(extraction_server_id, url):
                         logger.debug(f"URL already exists: {url}")
