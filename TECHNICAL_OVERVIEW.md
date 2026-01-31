@@ -50,7 +50,8 @@ src/
     ├── json_store.py    # Legacy JSON file storage
     ├── image_store.py   # SQLite image history (themes, prompts)
     ├── memory_store.py  # SQLite user memories and bios
-    └── url_store.py     # SQLite URL history and summaries
+    ├── url_store.py     # SQLite URL history and summaries
+    └── activity_store.py # SQLite user activity tracking
 
 main.py              # Entry point, bot setup, event handlers, scheduled tasks
 tests/               # pytest-based tests
@@ -135,6 +136,12 @@ SQLite-based storage in `./data/gepetto.db`:
 - `url_exists()` checks for duplicates before saving
 - Auto-prunes to `MAX_ENTRIES_PER_SERVER` (500)
 
+**ActivityStore** - User activity tracking per server:
+- Tracks when each user last sent a message
+- `record_activity()` upserts user's last activity timestamp
+- `get_last_activity()` returns when user was last seen
+- Used by the "catch me up" feature
+
 ### User Memory System
 
 When `ENABLE_USER_MEMORY=true`:
@@ -158,6 +165,16 @@ When `ENABLE_URL_HISTORY_EXTRACTION=true`:
 - LLM generates short summary and keywords for each URL
 - Only one bot instance should run extraction (others just search)
 
+### Catch-Up System
+
+When `ENABLE_CATCH_UP=true`:
+- Tracks user activity in channels listed in `URL_HISTORY_CHANNELS`
+- Activity recorded passively on every non-bot message (before bot mention check)
+- LLM tool `catch_up` triggered naturally by phrases like "catch me up", "what did I miss", "fill me in", "what's been going on", etc.
+- Fetches messages from monitored channels since user's last activity
+- Capped at 48 hours lookback, 500 messages per channel
+- LLM generates a personality-infused summary of missed content
+
 ## Key Features
 
 | Feature | Trigger | Handler |
@@ -171,6 +188,7 @@ When `ENABLE_URL_HISTORY_EXTRACTION=true`:
 | Spell check | "spell" in prompt | Routes to Marvin persona (cheap model) |
 | Privacy | "delete my info" / "forget me" | `memory_store.delete_user_data()` |
 | URL history search | LLM tool call `search_url_history` | `url_store.search()` |
+| Catch me up | LLM tool call `catch_up` | `handle_catch_up()` |
 
 ## Scheduled Tasks
 
@@ -197,6 +215,8 @@ When `ENABLE_URL_HISTORY_EXTRACTION=true`:
 | `MEMORY_COOLDOWN_HOURS` | 24 | Don't reference same memory within this period |
 | `MEMORY_INCLUSION_PROBABILITY` | 0.3 | Chance to include eligible memory |
 | `MEMORY_MAX_PER_PROMPT` | 3 | Max memories per prompt |
+| `CATCH_UP_MAX_HOURS` | 48 | Maximum lookback window for catch-up |
+| `CATCH_UP_MAX_MESSAGES` | 500 | Max messages to fetch per channel |
 
 ## Testing
 
@@ -231,6 +251,7 @@ uv run pytest              # Run tests
 | `ENABLE_URL_HISTORY_EXTRACTION` | No | Enable URL extraction task |
 | `URL_HISTORY_CHANNELS` | No | Comma-separated channel IDs to scan |
 | `URL_HISTORY_EXTRACTION_HOUR` | No | Hour for URL extraction (default: 4) |
+| `ENABLE_CATCH_UP` | No | Enable "catch me up" feature (uses URL_HISTORY_CHANNELS) |
 | `SPELLCHECK_MODEL` | No | Model for spell check (e.g., "groq/llama-3.1-8b-instant") |
 
 ## Design Notes

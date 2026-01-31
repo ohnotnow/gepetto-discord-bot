@@ -9,8 +9,12 @@ It has a couple of extra options to do common things.  Eg:
 @Gepetto 👀 <https://www.youtube.com/watch?v=123f830q9>
 @Gepetto 👀 <https://www.example.com/an/article> can you give me the main insights on this as bullet points?
 @Gepetto weather forecast for London today?
+@Gepetto catch me up
+@Gepetto what did I miss?
 ```
 The youtube one depends on their being subtitles/transcripts attached to the video.  The summarise command is a little limited (currently hard-coded) in scope due to token limits on the text you can send to the cheaper OpenAI models.
+
+The "catch me up" feature tracks when users last sent a message and summarises what happened in monitored channels since then (up to 48 hours). The LLM decides when to trigger this based on natural language, so variations like "fill me in", "what's been going on?", or "bring me up to speed" will also work.
 
 It has a few 'timed' features too :
 
@@ -55,6 +59,7 @@ The script uses the following environment variables (* indicates required):
 | ENABLE_URL_HISTORY_EXTRACTION | Enable the scheduled task that scans channels for URLs | False | "true" |
 | URL_HISTORY_CHANNELS | Comma-separated channel IDs to scan for URLs | - | "123456789,987654321" |
 | URL_HISTORY_EXTRACTION_HOUR | Hour (0-23) when URL extraction runs | 4 | "4" (4 AM) |
+| ENABLE_CATCH_UP | Enable the "catch me up" feature to summarise missed messages | False | "true" |
 
 ## Running the Script
 

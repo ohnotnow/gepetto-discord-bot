@@ -18,7 +18,7 @@ from src.providers import split_for_discord
 
 # Tools
 from src.tools import calculator, ToolDispatcher, ToolResult
-from src.tools.definitions import tool_list, search_url_history_tool
+from src.tools.definitions import tool_list, search_url_history_tool, catch_up_tool
 
 # Media
 from src.media import images, replicate, sora
@@ -113,6 +113,8 @@ ENABLE_CATCH_UP = os.getenv("ENABLE_CATCH_UP", "false").lower() == "true"
 active_tool_list = tool_list.copy()
 if ENABLE_URL_HISTORY:
     active_tool_list.append(search_url_history_tool)
+if ENABLE_CATCH_UP:
+    active_tool_list.append(catch_up_tool)
 
 location = os.getenv('BOT_LOCATION', 'dunno')
 chat_image_hour = int(os.getenv('CHAT_IMAGE_HOUR', 18))
@@ -369,6 +371,8 @@ tool_dispatcher.register('summarise_webpage_content', lambda msg, **args: summar
 tool_dispatcher.register('web_search', lambda msg, **args: websearch(msg, args.get('prompt', '')))
 if ENABLE_URL_HISTORY:
     tool_dispatcher.register('search_url_history', lambda msg, **args: search_url_history(msg, args.get('query', '')))
+if ENABLE_CATCH_UP:
+    tool_dispatcher.register('catch_up', lambda msg, **args: handle_catch_up(msg))
 
 # Parse channel IDs for catch-up feature (same channels as URL history)
 catch_up_channel_ids = set()
@@ -464,13 +468,6 @@ async def on_message(message):
 
     try:
         lq = question.lower().strip()
-
-        # Catch-up feature - check for catch-up requests
-        if ENABLE_CATCH_UP:
-            catch_up_phrases = ['catch me up', 'what did i miss', 'what have i missed']
-            if any(phrase in lq for phrase in catch_up_phrases):
-                await handle_catch_up(message)
-                return
 
         # Privacy control - check for data deletion requests
         if ENABLE_USER_MEMORY:

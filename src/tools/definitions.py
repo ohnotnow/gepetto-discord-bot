@@ -146,3 +146,17 @@ search_url_history_tool = {
         }
     }
 }
+
+# Tool for catching users up on missed messages - conditionally added based on ENABLE_CATCH_UP
+catch_up_tool = {
+    "type": "function",
+    "function": {
+        "name": "catch_up",
+        "description": "Summarises what happened in the chat while a user was away. Use this when a user asks to be caught up, wants to know what they missed, asks what's been going on, or similar requests like 'fill me in', 'bring me up to speed', 'what did I miss?', 'catch me up', etc.",
+        "parameters": {
+            "type": "object",
+            "properties": {},
+            "required": []
+        }
+    }
+}
