@@ -5,6 +5,7 @@ from . import content
 from . import persistence
 from . import tasks
 from . import utils
+from . import embeddings
 
 __all__ = [
     'providers',
@@ -14,4 +15,5 @@ __all__ = [
     'persistence',
     'tasks',
     'utils',
+    'embeddings',
 ]

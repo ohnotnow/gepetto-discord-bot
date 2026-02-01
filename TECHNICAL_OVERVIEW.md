@@ -46,6 +46,11 @@ src/
 │   ├── constants.py # Tunable parameters
 │   ├── helpers.py   # Date formatting, media download, text cleaning
 │   └── guard.py     # BotGuard rate limiting
+├── embeddings/      # Text embeddings for semantic search
+│   ├── base.py      # BaseEmbeddings + cosine_similarity()
+│   ├── response.py  # EmbeddingsResponse dataclass
+│   ├── openai.py    # OpenAI embeddings provider
+│   └── openrouter.py # OpenRouter embeddings provider
 └── persistence/     # State persistence (SQLite + JSON)
     ├── json_store.py    # Legacy JSON file storage
     ├── image_store.py   # SQLite image history (themes, prompts)
@@ -165,6 +170,13 @@ When `ENABLE_URL_HISTORY_EXTRACTION=true`:
 - LLM generates short summary and keywords for each URL
 - Only one bot instance should run extraction (others just search)
 
+When `ENABLE_URL_EMBEDDINGS=true`:
+- Uses `src/embeddings` module to generate vector embeddings for each URL summary
+- Enables semantic search: "that authentication thing" can find OAuth/SSO articles
+- Falls back to keyword search if semantic search fails or returns no results
+- Requires `EMBEDDING_PROVIDER` set to "openai" or "openrouter"
+- Embeddings stored as JSON in SQLite (no vector database needed)
+
 ### Catch-Up System
 
 When `ENABLE_CATCH_UP=true`:
@@ -255,6 +267,9 @@ uv run pytest              # Run tests
 | `ENABLE_URL_HISTORY_EXTRACTION` | No | Enable URL extraction task |
 | `URL_HISTORY_CHANNELS` | No | Comma-separated channel IDs to scan |
 | `URL_HISTORY_EXTRACTION_HOUR` | No | Hour for URL extraction (default: 4) |
+| `ENABLE_URL_EMBEDDINGS` | No | Enable semantic vector search for URLs |
+| `EMBEDDING_PROVIDER` | No | Embeddings API: "openai" or "openrouter" |
+| `EMBEDDING_MODEL` | No | Model name (default: text-embedding-3-small) |
 | `ENABLE_CATCH_UP` | No | Enable catch-up tool for responding to requests |
 | `ENABLE_CATCH_UP_TRACKING` | No | Enable activity tracking (only one bot instance) |
 | `SPELLCHECK_MODEL` | No | Model for spell check (e.g., "groq/llama-3.1-8b-instant") |

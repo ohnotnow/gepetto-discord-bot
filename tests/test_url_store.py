@@ -290,3 +290,151 @@ class TestUrlStore:
         # Single char "a" alone should return empty (it's also a stopword)
         results = store.search('server1', 'a')
         assert len(results) == 0
+
+
+class TestUrlStoreSimilaritySearch:
+    """Tests for embedding-based similarity search."""
+
+    def test_save_with_embedding(self, temp_dir):
+        """save() should store embedding as JSON."""
+        store = UrlStore(os.path.join(temp_dir, 'test.db'))
+        embedding = [0.1, 0.2, 0.3]
+        entry_id = store.save(
+            server_id='server1',
+            channel_id='channel1',
+            url='https://example.com/page1',
+            summary='A test page',
+            keywords='test',
+            posted_by_id='user1',
+            posted_by_name='User1',
+            posted_at=datetime.now(),
+            embedding=embedding
+        )
+        assert entry_id == 1
+
+        # Verify embedding is retrieved correctly
+        results = store.get_recent('server1', limit=1)
+        assert len(results) == 1
+        assert results[0].embedding == embedding
+
+    def test_save_without_embedding(self, temp_dir):
+        """save() should work without embedding (backward compat)."""
+        store = UrlStore(os.path.join(temp_dir, 'test.db'))
+        entry_id = store.save(
+            server_id='server1',
+            channel_id='channel1',
+            url='https://example.com/page1',
+            summary='A test page',
+            keywords='test',
+            posted_by_id='user1',
+            posted_by_name='User1',
+            posted_at=datetime.now()
+        )
+        assert entry_id == 1
+
+        results = store.get_recent('server1', limit=1)
+        assert len(results) == 1
+        assert results[0].embedding is None
+
+    def test_search_by_similarity_returns_most_similar_first(self, temp_dir):
+        """search_by_similarity() should return entries sorted by similarity."""
+        store = UrlStore(os.path.join(temp_dir, 'test.db'))
+
+        # Create entries with different embeddings
+        store.save(
+            server_id='server1',
+            channel_id='channel1',
+            url='https://example.com/page1',
+            summary='Page about cats',
+            keywords='cats',
+            posted_by_id='user1',
+            posted_by_name='User1',
+            posted_at=datetime.now(),
+            embedding=[1.0, 0.0, 0.0]  # Points in x direction
+        )
+        store.save(
+            server_id='server1',
+            channel_id='channel1',
+            url='https://example.com/page2',
+            summary='Page about dogs',
+            keywords='dogs',
+            posted_by_id='user1',
+            posted_by_name='User1',
+            posted_at=datetime.now(),
+            embedding=[0.0, 1.0, 0.0]  # Points in y direction
+        )
+
+        # Query similar to first embedding
+        results = store.search_by_similarity('server1', [0.9, 0.1, 0.0])
+        assert len(results) == 2
+        assert results[0].url == 'https://example.com/page1'
+
+    def test_search_by_similarity_respects_limit(self, temp_dir):
+        """search_by_similarity() should respect limit parameter."""
+        store = UrlStore(os.path.join(temp_dir, 'test.db'))
+
+        for i in range(5):
+            store.save(
+                server_id='server1',
+                channel_id='channel1',
+                url=f'https://example.com/page{i}',
+                summary=f'Page {i}',
+                keywords='test',
+                posted_by_id='user1',
+                posted_by_name='User1',
+                posted_at=datetime.now(),
+                embedding=[float(i), 0.0, 0.0]
+            )
+
+        results = store.search_by_similarity('server1', [1.0, 0.0, 0.0], limit=2)
+        assert len(results) == 2
+
+    def test_search_by_similarity_excludes_entries_without_embeddings(self, temp_dir):
+        """search_by_similarity() should skip entries without embeddings."""
+        store = UrlStore(os.path.join(temp_dir, 'test.db'))
+
+        # Entry with embedding
+        store.save(
+            server_id='server1',
+            channel_id='channel1',
+            url='https://example.com/with-embedding',
+            summary='Has embedding',
+            keywords='test',
+            posted_by_id='user1',
+            posted_by_name='User1',
+            posted_at=datetime.now(),
+            embedding=[1.0, 0.0, 0.0]
+        )
+        # Entry without embedding
+        store.save(
+            server_id='server1',
+            channel_id='channel1',
+            url='https://example.com/no-embedding',
+            summary='No embedding',
+            keywords='test',
+            posted_by_id='user1',
+            posted_by_name='User1',
+            posted_at=datetime.now()
+        )
+
+        results = store.search_by_similarity('server1', [1.0, 0.0, 0.0])
+        assert len(results) == 1
+        assert results[0].url == 'https://example.com/with-embedding'
+
+    def test_search_by_similarity_returns_empty_when_no_embeddings(self, temp_dir):
+        """search_by_similarity() returns empty list when no entries have embeddings."""
+        store = UrlStore(os.path.join(temp_dir, 'test.db'))
+
+        store.save(
+            server_id='server1',
+            channel_id='channel1',
+            url='https://example.com/page',
+            summary='No embedding',
+            keywords='test',
+            posted_by_id='user1',
+            posted_by_name='User1',
+            posted_at=datetime.now()
+        )
+
+        results = store.search_by_similarity('server1', [1.0, 0.0, 0.0])
+        assert len(results) == 0
