@@ -158,24 +158,29 @@ When `ENABLE_USER_MEMORY_EXTRACTION=true`:
 - LLM identifies facts about users and categorises them
 - Only one bot instance should run extraction (others just read)
 
+### Embeddings
+
+Setting `EMBEDDING_PROVIDER` enables the embeddings infrastructure:
+- Supports "openai" or "openrouter" providers
+- Uses `src/embeddings` module for vector generation
+- Embeddings stored as JSON in SQLite (no vector database needed)
+
 ### URL History System
+
+URL history uses semantic search. Requires `EMBEDDING_PROVIDER` to be configured.
 
 When `ENABLE_URL_HISTORY=true`:
 - Bot has access to `search_url_history` tool
 - Users can ask "what was that link about X?" to search past URLs
+- Uses vector embeddings for semantic search (e.g., "that auth thing" finds OAuth articles)
+- Results filtered by similarity threshold (0.5) to ensure quality matches
 
 When `ENABLE_URL_HISTORY_EXTRACTION=true`:
 - Scheduled task scans `URL_HISTORY_CHANNELS` daily for new URLs
 - Extracts content using existing `summary.get_text()` function
 - LLM generates short summary and keywords for each URL
+- Generates embedding for each summary
 - Only one bot instance should run extraction (others just search)
-
-When `ENABLE_URL_EMBEDDINGS=true`:
-- Uses `src/embeddings` module to generate vector embeddings for each URL summary
-- Enables semantic search: "that authentication thing" can find OAuth/SSO articles
-- Falls back to keyword search if semantic search fails or returns no results
-- Requires `EMBEDDING_PROVIDER` set to "openai" or "openrouter"
-- Embeddings stored as JSON in SQLite (no vector database needed)
 
 ### Catch-Up System
 
@@ -263,11 +268,12 @@ uv run pytest              # Run tests
 | `ENABLE_USER_MEMORY` | No | Enable reading user memories |
 | `ENABLE_USER_MEMORY_EXTRACTION` | No | Enable memory extraction task |
 | `MEMORY_EXTRACTION_HOUR` | No | Hour for extraction (default: 3) |
-| `ENABLE_URL_HISTORY` | No | Enable URL history search tool |
-| `ENABLE_URL_HISTORY_EXTRACTION` | No | Enable URL extraction task |
+| `EMBEDDING_PROVIDER` | No | Enables embeddings: "openai" or "openrouter" |
+| `EMBEDDING_MODEL` | No | Model name (default: text-embedding-3-small) |
+| `ENABLE_URL_HISTORY` | No | Enable URL history search (requires EMBEDDING_PROVIDER) |
+| `ENABLE_URL_HISTORY_EXTRACTION` | No | Enable URL extraction task (requires EMBEDDING_PROVIDER) |
 | `URL_HISTORY_CHANNELS` | No | Comma-separated channel IDs to scan |
 | `URL_HISTORY_EXTRACTION_HOUR` | No | Hour for URL extraction (default: 4) |
-| `ENABLE_URL_EMBEDDINGS` | No | Enable semantic vector search for URLs |
 | `EMBEDDING_PROVIDER` | No | Embeddings API: "openai" or "openrouter" |
 | `EMBEDDING_MODEL` | No | Model name (default: text-embedding-3-small) |
 | `ENABLE_CATCH_UP` | No | Enable catch-up tool for responding to requests |

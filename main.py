@@ -104,22 +104,28 @@ ENABLE_USER_MEMORY = os.getenv("ENABLE_USER_MEMORY", "false").lower() == "true"
 ENABLE_USER_MEMORY_EXTRACTION = os.getenv("ENABLE_USER_MEMORY_EXTRACTION", "false").lower() == "true"
 memory_extraction_hour = int(os.getenv("MEMORY_EXTRACTION_HOUR", "3"))
 
-# URL history feature
+# Embeddings (enabled by setting EMBEDDING_PROVIDER)
+embeddings_model = None
+try:
+    embeddings_model = get_embeddings_model()
+    logger.info(f"Embeddings enabled using {embeddings_model.model}")
+except ValueError:
+    # EMBEDDING_PROVIDER not set - embeddings not available
+    pass
+
+# URL history feature (requires embeddings)
 ENABLE_URL_HISTORY = os.getenv("ENABLE_URL_HISTORY", "false").lower() == "true"
 ENABLE_URL_HISTORY_EXTRACTION = os.getenv("ENABLE_URL_HISTORY_EXTRACTION", "false").lower() == "true"
-ENABLE_URL_EMBEDDINGS = os.getenv("ENABLE_URL_EMBEDDINGS", "false").lower() == "true"
 URL_HISTORY_CHANNELS = os.getenv("URL_HISTORY_CHANNELS", "")  # Comma-separated channel IDs
 url_history_extraction_hour = int(os.getenv("URL_HISTORY_EXTRACTION_HOUR", "4"))
 
-# Initialize embeddings model if enabled
-embeddings_model = None
-if ENABLE_URL_EMBEDDINGS:
-    try:
-        embeddings_model = get_embeddings_model()
-        logger.info(f"Embeddings enabled using {embeddings_model.model}")
-    except ValueError as e:
-        logger.warning(f"Could not initialise embeddings: {e}")
-        ENABLE_URL_EMBEDDINGS = False
+# URL history requires embeddings - disable if not available
+if (ENABLE_URL_HISTORY or ENABLE_URL_HISTORY_EXTRACTION) and not embeddings_model:
+    logger.warning("URL history disabled: requires EMBEDDING_PROVIDER to be configured")
+    ENABLE_URL_HISTORY = False
+    ENABLE_URL_HISTORY_EXTRACTION = False
+elif ENABLE_URL_HISTORY:
+    logger.info("URL history search enabled")
 
 # Catch-up feature (reuses URL_HISTORY_CHANNELS for monitored channels)
 ENABLE_CATCH_UP = os.getenv("ENABLE_CATCH_UP", "false").lower() == "true"
@@ -354,27 +360,15 @@ async def search_url_history(discord_message: discord.Message, query: str) -> No
     logger.info(f"Searching URL history for '{query}'")
     guild_id = str(discord_message.guild.id) if discord_message.guild else server_id
 
-    results = []
-
-    # Try semantic search if embeddings are enabled
-    if ENABLE_URL_EMBEDDINGS and embeddings_model:
-        try:
-            # Embed the query
-            query_response = await embeddings_model.embed(query)
-            query_vector = query_response.vector
-
-            # Search by similarity
-            results = url_store.search_by_similarity(guild_id, query_vector, limit=5)
-            logger.info(f"Semantic search returned {len(results)} results")
-        except Exception as e:
-            logger.warning(f"Semantic search failed, falling back to keyword: {e}")
-            results = []
-
-    # Fall back to keyword search if semantic search failed, returned no results above threshold, or is disabled
-    if not results:
-        logger.info("Semantic search returned no results above threshold, falling back to keyword search")
-        results = url_store.search(guild_id, query, limit=5)
-        logger.info(f"Keyword search returned {len(results)} results")
+    # Semantic search using embeddings
+    try:
+        query_response = await embeddings_model.embed(query)
+        query_vector = query_response.vector
+        results = url_store.search_by_similarity(guild_id, query_vector, limit=5)
+        logger.info(f"Semantic search returned {len(results)} results")
+    except Exception as e:
+        logger.warning(f"Semantic search failed: {e}")
+        results = []
 
     # Re-rank results (currently a no-op, placeholder for future improvements)
     results = rerank(results, query)
@@ -1043,15 +1037,14 @@ Content:
                             logger.warning(f"Could not parse LLM response for {url}: {response_text[:100]}")
                             continue
 
-                        # Generate embedding if enabled
+                        # Generate embedding for semantic search
                         embedding = None
-                        if ENABLE_URL_EMBEDDINGS and embeddings_model:
-                            try:
-                                embed_response = await embeddings_model.embed(url_summary)
-                                embedding = embed_response.vector
-                                logger.info(f"Generated embedding ({len(embedding)} dims) for {url[:50]}")
-                            except Exception as embed_error:
-                                logger.warning(f"Failed to generate embedding for {url}: {embed_error}")
+                        try:
+                            embed_response = await embeddings_model.embed(url_summary)
+                            embedding = embed_response.vector
+                            logger.info(f"Generated embedding ({len(embedding)} dims) for {url[:50]}")
+                        except Exception as embed_error:
+                            logger.warning(f"Failed to generate embedding for {url}: {embed_error}")
 
                         # Save to database
                         saved_id = url_store.save(

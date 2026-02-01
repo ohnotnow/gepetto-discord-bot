@@ -55,13 +55,12 @@ The script uses the following environment variables (* indicates required):
 | ENABLE_USER_MEMORY | Enable reading user memories for context in responses | False | "true" |
 | ENABLE_USER_MEMORY_EXTRACTION | Enable the scheduled task that extracts memories from chat | False | "true" |
 | MEMORY_EXTRACTION_HOUR | Hour (0-23) when memory extraction runs | 3 | "3" (3 AM) |
-| ENABLE_URL_HISTORY | Enable the search URL history tool for the bot | False | "true" |
-| ENABLE_URL_HISTORY_EXTRACTION | Enable the scheduled task that scans channels for URLs | False | "true" |
+| EMBEDDING_PROVIDER | Enables embeddings ("openai" or "openrouter") | - | "openai" |
+| EMBEDDING_MODEL | Model name for embeddings (OpenRouter needs provider prefix) | text-embedding-3-small | "openai/text-embedding-3-small" |
+| ENABLE_URL_HISTORY | Enable URL history search (requires EMBEDDING_PROVIDER) | False | "true" |
+| ENABLE_URL_HISTORY_EXTRACTION | Enable scheduled URL extraction (requires EMBEDDING_PROVIDER) | False | "true" |
 | URL_HISTORY_CHANNELS | Comma-separated channel IDs to scan for URLs | - | "123456789,987654321" |
 | URL_HISTORY_EXTRACTION_HOUR | Hour (0-23) when URL extraction runs | 4 | "4" (4 AM) |
-| ENABLE_URL_EMBEDDINGS | Enable semantic vector search for URL history | False | "true" |
-| EMBEDDING_PROVIDER | Which embeddings API to use ("openai" or "openrouter") | - | "openai" |
-| EMBEDDING_MODEL | Model name for embeddings (OpenRouter needs provider prefix) | text-embedding-3-small | "openai/text-embedding-3-small" |
 | ENABLE_CATCH_UP | Enable the "catch me up" tool so bot can respond to requests | False | "true" |
 | ENABLE_CATCH_UP_TRACKING | Enable activity tracking (only one bot instance should do this) | False | "true" |
 
