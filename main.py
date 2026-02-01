@@ -351,7 +351,7 @@ async def search_url_history(discord_message: discord.Message, query: str) -> No
     response_parts = [f"Found {len(results)} matching URL(s):"]
     for entry in results:
         posted_date = entry.posted_at.strftime("%d %b %Y")
-        response_parts.append(f"\n**{entry.url}**\n> {entry.summary}\n> Posted by {entry.posted_by_name} on {posted_date}")
+        response_parts.append(f"\n<{entry.url}> : {entry.summary}\n> Posted by {entry.posted_by_name} on {posted_date}")
 
     response_text = "\n".join(response_parts)
     if len(response_text) > DISCORD_MESSAGE_LIMIT:
