@@ -364,8 +364,8 @@ class TestUrlStoreSimilaritySearch:
             embedding=[0.0, 1.0, 0.0]  # Points in y direction
         )
 
-        # Query similar to first embedding
-        results = store.search_by_similarity('server1', [0.9, 0.1, 0.0])
+        # Query similar to first embedding (use min_similarity=0 to test sorting, not filtering)
+        results = store.search_by_similarity('server1', [0.9, 0.1, 0.0], min_similarity=0)
         assert len(results) == 2
         assert results[0].url == 'https://example.com/page1'
 
@@ -438,3 +438,79 @@ class TestUrlStoreSimilaritySearch:
 
         results = store.search_by_similarity('server1', [1.0, 0.0, 0.0])
         assert len(results) == 0
+
+    def test_search_by_similarity_filters_by_threshold(self, temp_dir):
+        """search_by_similarity() should filter out results below min_similarity threshold."""
+        store = UrlStore(os.path.join(temp_dir, 'test.db'))
+
+        # Create entry with orthogonal embedding (similarity ~0 to query)
+        store.save(
+            server_id='server1',
+            channel_id='channel1',
+            url='https://example.com/orthogonal',
+            summary='Orthogonal content',
+            keywords='test',
+            posted_by_id='user1',
+            posted_by_name='User1',
+            posted_at=datetime.now(),
+            embedding=[0.0, 1.0, 0.0]  # Points in y direction
+        )
+
+        # Query in x direction - cosine similarity with y-vector is 0
+        results = store.search_by_similarity('server1', [1.0, 0.0, 0.0], min_similarity=0.5)
+        assert len(results) == 0  # Should be filtered out (similarity ~0)
+
+    def test_search_by_similarity_returns_results_above_threshold(self, temp_dir):
+        """search_by_similarity() should return results above the threshold."""
+        store = UrlStore(os.path.join(temp_dir, 'test.db'))
+
+        # Create entry with similar embedding (high similarity to query)
+        store.save(
+            server_id='server1',
+            channel_id='channel1',
+            url='https://example.com/similar',
+            summary='Similar content',
+            keywords='test',
+            posted_by_id='user1',
+            posted_by_name='User1',
+            posted_at=datetime.now(),
+            embedding=[0.9, 0.1, 0.0]  # Similar to x direction
+        )
+        # Create entry with orthogonal embedding
+        store.save(
+            server_id='server1',
+            channel_id='channel1',
+            url='https://example.com/orthogonal',
+            summary='Orthogonal content',
+            keywords='test',
+            posted_by_id='user1',
+            posted_by_name='User1',
+            posted_at=datetime.now(),
+            embedding=[0.0, 1.0, 0.0]  # Points in y direction
+        )
+
+        # Query in x direction with threshold
+        results = store.search_by_similarity('server1', [1.0, 0.0, 0.0], min_similarity=0.5)
+        assert len(results) == 1  # Only the similar one
+        assert results[0].url == 'https://example.com/similar'
+
+    def test_search_by_similarity_uses_default_threshold(self, temp_dir):
+        """search_by_similarity() uses SEMANTIC_SEARCH_MIN_SIMILARITY when no threshold provided."""
+        store = UrlStore(os.path.join(temp_dir, 'test.db'))
+
+        # Create entry with orthogonal embedding (similarity ~0)
+        store.save(
+            server_id='server1',
+            channel_id='channel1',
+            url='https://example.com/orthogonal',
+            summary='Orthogonal content',
+            keywords='test',
+            posted_by_id='user1',
+            posted_by_name='User1',
+            posted_at=datetime.now(),
+            embedding=[0.0, 1.0, 0.0]  # Points in y direction
+        )
+
+        # Query without explicit threshold - should use default (0.5)
+        results = store.search_by_similarity('server1', [1.0, 0.0, 0.0])
+        assert len(results) == 0  # Should be filtered by default threshold

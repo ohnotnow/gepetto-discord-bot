@@ -10,6 +10,8 @@ from dataclasses import dataclass
 from datetime import datetime
 from typing import List, Optional
 
+from src.utils.constants import SEMANTIC_SEARCH_MIN_SIMILARITY
+
 logger = logging.getLogger(__name__)
 
 DEFAULT_DB_PATH = './data/gepetto.db'
@@ -287,7 +289,8 @@ class UrlStore:
         self,
         server_id: str,
         query_vector: List[float],
-        limit: int = 5
+        limit: int = 5,
+        min_similarity: Optional[float] = None
     ) -> List[UrlEntry]:
         """
         Search URLs by cosine similarity to query embedding.
@@ -296,11 +299,14 @@ class UrlStore:
             server_id: The server to search in
             query_vector: The embedding vector of the search query
             limit: Maximum results to return
+            min_similarity: Minimum similarity threshold (defaults to SEMANTIC_SEARCH_MIN_SIMILARITY)
 
         Returns:
-            List of UrlEntry sorted by similarity (highest first)
+            List of UrlEntry sorted by similarity (highest first), filtered by threshold
         """
         from src.embeddings import cosine_similarity
+
+        threshold = min_similarity if min_similarity is not None else SEMANTIC_SEARCH_MIN_SIMILARITY
 
         # Get all entries with embeddings for this server
         with self._get_connection() as conn:
@@ -315,13 +321,14 @@ class UrlStore:
             )
             rows = cursor.fetchall()
 
-        # Calculate similarity for each entry
+        # Calculate similarity for each entry, filtering by threshold
         entries_with_scores = []
         for row in rows:
             entry = self._row_to_entry(row)
             if entry.embedding:
                 similarity = cosine_similarity(query_vector, entry.embedding)
-                entries_with_scores.append((similarity, entry))
+                if similarity >= threshold:
+                    entries_with_scores.append((similarity, entry))
 
         # Sort by similarity (highest first) and return top N
         entries_with_scores.sort(key=lambda x: x[0], reverse=True)

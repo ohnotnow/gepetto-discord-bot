@@ -370,8 +370,9 @@ async def search_url_history(discord_message: discord.Message, query: str) -> No
             logger.warning(f"Semantic search failed, falling back to keyword: {e}")
             results = []
 
-    # Fall back to keyword search if semantic search failed or is disabled
+    # Fall back to keyword search if semantic search failed, returned no results above threshold, or is disabled
     if not results:
+        logger.info("Semantic search returned no results above threshold, falling back to keyword search")
         results = url_store.search(guild_id, query, limit=5)
         logger.info(f"Keyword search returned {len(results)} results")
 
