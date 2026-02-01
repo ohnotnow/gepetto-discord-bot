@@ -32,6 +32,28 @@ class UrlEntry:
     embedding: Optional[List[float]] = None
 
 
+def rerank(results: List[UrlEntry], query: str) -> List[UrlEntry]:
+    """
+    Re-rank search results for improved relevance.
+
+    Currently a no-op that returns results unchanged.
+
+    Future improvements could include:
+    - LLM-based re-ranking (send query + summaries to LLM, ask it to rank)
+    - BM25 scoring on summary text
+    - Hybrid scoring (combine cosine similarity with keyword overlap)
+    - Minimum similarity threshold filtering
+
+    Args:
+        results: URL entries from similarity or keyword search
+        query: The original search query
+
+    Returns:
+        Re-ranked list of URL entries (currently unchanged)
+    """
+    return results
+
+
 class UrlStore:
     """SQLite-based storage for URL history, keyed by server_id."""
 

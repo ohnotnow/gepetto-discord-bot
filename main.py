@@ -32,6 +32,7 @@ from src.tasks import memories as memory_tasks
 
 # Persistence
 from src.persistence import ImageStore, MemoryStore, UrlStore, ActivityStore
+from src.persistence.url_store import rerank
 
 # Embeddings
 from src.embeddings import get_embeddings_model
@@ -373,6 +374,9 @@ async def search_url_history(discord_message: discord.Message, query: str) -> No
     if not results:
         results = url_store.search(guild_id, query, limit=5)
         logger.info(f"Keyword search returned {len(results)} results")
+
+    # Re-rank results (currently a no-op, placeholder for future improvements)
+    results = rerank(results, query)
 
     if not results:
         await discord_message.reply(
