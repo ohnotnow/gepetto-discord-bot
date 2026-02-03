@@ -12,11 +12,21 @@ logger = logging.getLogger(__name__)
 def _format_for_discord(content: str, citations: list | None) -> str:
     """
     Format response for Discord:
+    - Remove excessive whitespace
     - Convert @username to <https://x.com/username>
     - Wrap URLs in angle brackets to prevent previews
     - Add top citations
     - Truncate to ~1800 chars
     """
+    # Collapse multiple newlines into max 2 (one blank line)
+    content = re.sub(r'\n{3,}', '\n\n', content)
+
+    # Remove trailing whitespace on each line
+    content = re.sub(r'[ \t]+\n', '\n', content)
+
+    # Remove leading/trailing whitespace
+    content = content.strip()
+
     # Convert @mentions to x.com links (but not email-like patterns)
     # Match @username that's not preceded by alphanumeric (to avoid emails)
     content = re.sub(
@@ -35,7 +45,7 @@ def _format_for_discord(content: str, citations: list | None) -> str:
 
     # Add top citations if available
     if citations and len(citations) > 0:
-        content += "\n\n**Sources:**\n"
+        content += "\n**Sources:**\n"
         for url in citations[:5]:
             content += f"- <{url}>\n"
 
