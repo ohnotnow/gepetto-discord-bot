@@ -274,9 +274,10 @@ async def websearch(discord_message: discord.Message, prompt: str) -> None:
 
 
 async def twitter_search(discord_message: discord.Message, query: str) -> None:
-    response = await grok.search(query)
-    response = "🐦" + response
-    await reply_to_message(discord_message, response)
+    async with discord_message.channel.typing():
+        response = await grok.search(query)
+        response = "🐦" + response
+        await reply_to_message(discord_message, response)
 
 
 async def create_image(discord_message: discord.Message, prompt: str) -> None:
