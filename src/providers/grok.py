@@ -36,34 +36,46 @@ async def search(query: str) -> str:
     """
     logger.info(f"[GROK/TWITTER] Starting Twitter/X search with query: {query}")
 
-    response = await acompletion(
-        model="openrouter/x-ai/grok-4.1-fast",
-        messages=[
-            {
-                "role": "system",
-                "content": "Please respond very concisely. Your response will be sent to a Discord server so you only have about 1800 characters in total. Include relevant tweet URLs as citations."
-            },
-            {
-                "role": "user",
-                "content": query
-            }
-        ],
-        tools=[X_SEARCH_TOOL]
-    )
+    try:
+        response = await acompletion(
+            model="openrouter/x-ai/grok-4.1-fast",
+            messages=[
+                {
+                    "role": "system",
+                    "content": "Please respond very concisely. Your response will be sent to a Discord server so you only have about 1800 characters in total. Include relevant tweet URLs as citations."
+                },
+                {
+                    "role": "user",
+                    "content": query
+                }
+            ],
+            tools=[X_SEARCH_TOOL]
+        )
 
-    logger.info(f"[GROK/TWITTER] Received response from model: {response.model}")
+        logger.info(f"[GROK/TWITTER] Received response from model: {getattr(response, 'model', 'unknown')}")
+        logger.info(f"[GROK/TWITTER] Full response object: {response}")
 
-    content = response.choices[0].message.content or ""
+        # Check if response has tool_calls (Grok may be trying to call x_search rather than executing it)
+        message = response.choices[0].message
+        if hasattr(message, 'tool_calls') and message.tool_calls:
+            logger.info(f"[GROK/TWITTER] Response contains tool_calls: {message.tool_calls}")
 
-    # Handle citations if present (Grok returns these in the response)
-    citations = getattr(response, "citations", None)
-    if citations:
-        logger.info(f"[GROK/TWITTER] Response includes {len(citations)} citations")
-        content += "\n\n**Sources:**\n"
-        for url in citations[:5]:  # Limit to 5 citations
-            content += f"- <{url}>\n"
-    else:
-        logger.info("[GROK/TWITTER] No citations in response")
+        content = message.content or ""
+        logger.info(f"[GROK/TWITTER] Message content: {content[:200] if content else '(empty)'}")
 
-    logger.info(f"[GROK/TWITTER] Returning response of {len(content)} chars")
-    return content[:1800]
+        # Handle citations if present (Grok returns these in the response)
+        citations = getattr(response, "citations", None)
+        if citations:
+            logger.info(f"[GROK/TWITTER] Response includes {len(citations)} citations")
+            content += "\n\n**Sources:**\n"
+            for url in citations[:5]:  # Limit to 5 citations
+                content += f"- <{url}>\n"
+        else:
+            logger.info("[GROK/TWITTER] No citations in response")
+
+        logger.info(f"[GROK/TWITTER] Returning response of {len(content)} chars")
+        return content[:1800]
+
+    except Exception as e:
+        logger.error(f"[GROK/TWITTER] Error during search: {type(e).__name__}: {e}")
+        return f"Sorry, Twitter search failed: {e}"

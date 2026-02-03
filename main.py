@@ -274,7 +274,9 @@ async def websearch(discord_message: discord.Message, prompt: str) -> None:
 
 
 async def twitter_search(discord_message: discord.Message, query: str) -> None:
+    logger.info(f"[TWITTER_SEARCH] Handler called with query: {query}")
     response = await grok.search(query)
+    logger.info(f"[TWITTER_SEARCH] Got response of {len(response)} chars")
     response = "🐦" + response
     await reply_to_message(discord_message, response)
 
