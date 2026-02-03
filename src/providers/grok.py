@@ -1,16 +1,52 @@
 import logging
+import os
+import re
 
-from litellm import acompletion
+from xai_sdk import Client
+from xai_sdk.chat import user
+from xai_sdk.tools import x_search
 
 logger = logging.getLogger(__name__)
 
 
+def _format_for_discord(content: str, citations: list | None) -> str:
+    """
+    Format response for Discord:
+    - Convert @username to <https://x.com/username>
+    - Wrap URLs in angle brackets to prevent previews
+    - Add top citations
+    - Truncate to ~1800 chars
+    """
+    # Convert @mentions to x.com links (but not email-like patterns)
+    # Match @username that's not preceded by alphanumeric (to avoid emails)
+    content = re.sub(
+        r'(?<![a-zA-Z0-9])@([a-zA-Z0-9_]+)',
+        r'<https://x.com/\1>',
+        content
+    )
+
+    # Wrap any remaining bare URLs in angle brackets
+    # Match http(s) URLs not already wrapped in < >
+    content = re.sub(
+        r'(?<![<])(https?://[^\s\)>\]]+)',
+        r'<\1>',
+        content
+    )
+
+    # Add top citations if available
+    if citations and len(citations) > 0:
+        content += "\n\n**Sources:**\n"
+        for url in citations[:5]:
+            content += f"- <{url}>\n"
+
+    return content[:1800]
+
+
 async def search(query: str) -> str:
     """
-    Search Twitter/X via Grok's built-in Twitter access.
+    Search Twitter/X via xAI SDK with server-side x_search tool.
 
-    Grok has native access to Twitter/X data - we just ask it naturally
-    without defining any tools. It will search and return relevant tweets.
+    Uses Grok's native Twitter access to search for real-time posts.
 
     Args:
         query: The search query for Twitter
@@ -20,33 +56,58 @@ async def search(query: str) -> str:
     """
     logger.info(f"[GROK/TWITTER] Starting Twitter/X search with query: {query}")
 
+    api_key = os.getenv("XAI_API_KEY")
+    if not api_key:
+        logger.error("[GROK/TWITTER] XAI_API_KEY not set")
+        return "Twitter search not configured (missing XAI_API_KEY)"
+
     try:
-        response = await acompletion(
-            model="openrouter/x-ai/grok-4.1-fast",
-            messages=[
-                {
-                    "role": "system",
-                    "content": "You have access to real-time Twitter/X data. Search Twitter and respond very concisely - your response will be sent to a Discord server so you only have about 1800 characters. Include usernames and paraphrase key tweets. Format as a brief summary with bullet points for individual tweets."
-                },
-                {
-                    "role": "user",
-                    "content": f"Search Twitter/X for: {query}"
-                }
-            ]
-            # No tools needed - Grok has built-in Twitter access
+        client = Client(api_key=api_key)
+
+        chat = client.chat.create(
+            model="grok-4-1-fast",
+            tools=[x_search()],
         )
 
-        logger.info(f"[GROK/TWITTER] Received response from model: {getattr(response, 'model', 'unknown')}")
+        # Add the user query with instructions for concise output
+        chat.append(user(
+            f"Search Twitter/X for: {query}\n\n"
+            "Be very concise - max 1500 characters. "
+            "List key tweets with @usernames and brief summaries. "
+            "Focus on the most recent and relevant posts."
+        ))
 
-        content = response.choices[0].message.content or ""
-        logger.info(f"[GROK/TWITTER] Message content: {content[:200] if content else '(empty)'}...")
+        # Collect the full response (non-streaming collection)
+        full_content = ""
+        tool_calls_made = []
+        response = None
 
-        if not content:
+        for response, chunk in chat.stream():
+            # Track tool calls for logging
+            for tool_call in chunk.tool_calls:
+                tool_calls_made.append(f"{tool_call.function.name}")
+
+            # Collect content
+            if chunk.content:
+                full_content += chunk.content
+
+        logger.info(f"[GROK/TWITTER] Tools used: {tool_calls_made}")
+        logger.info(f"[GROK/TWITTER] Raw content length: {len(full_content)} chars")
+
+        if not full_content:
             logger.warning("[GROK/TWITTER] Empty response from Grok")
             return "No Twitter results found."
 
-        logger.info(f"[GROK/TWITTER] Returning response of {len(content)} chars")
-        return content[:1800]
+        # Get citations from final response
+        citations = response.citations if response else None
+        if citations:
+            logger.info(f"[GROK/TWITTER] Got {len(citations)} citations")
+
+        # Format for Discord
+        formatted = _format_for_discord(full_content, citations)
+        logger.info(f"[GROK/TWITTER] Returning formatted response of {len(formatted)} chars")
+
+        return formatted
 
     except Exception as e:
         logger.error(f"[GROK/TWITTER] Error during search: {type(e).__name__}: {e}")
