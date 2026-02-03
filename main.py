@@ -279,7 +279,6 @@ async def twitter_search(discord_message: discord.Message, query: str) -> None:
         response = "🐦" + response
         await reply_to_message(discord_message, response)
 
-
 async def create_image(discord_message: discord.Message, prompt: str) -> None:
     logger.info(f"Creating image with prompt: {prompt}")
 
