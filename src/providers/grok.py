@@ -1,4 +1,8 @@
+import logging
+
 from litellm import acompletion
+
+logger = logging.getLogger(__name__)
 
 # Grok x_search tool definition - passed to Grok so it executes the search server-side
 X_SEARCH_TOOL = {
@@ -30,6 +34,8 @@ async def search(query: str) -> str:
     Returns:
         Formatted response with content and citations (max ~1800 chars)
     """
+    logger.info(f"[GROK/TWITTER] Starting Twitter/X search with query: {query}")
+
     response = await acompletion(
         model="openrouter/x-ai/grok-4.1-fast",
         messages=[
@@ -45,13 +51,19 @@ async def search(query: str) -> str:
         tools=[X_SEARCH_TOOL]
     )
 
+    logger.info(f"[GROK/TWITTER] Received response from model: {response.model}")
+
     content = response.choices[0].message.content or ""
 
     # Handle citations if present (Grok returns these in the response)
     citations = getattr(response, "citations", None)
     if citations:
+        logger.info(f"[GROK/TWITTER] Response includes {len(citations)} citations")
         content += "\n\n**Sources:**\n"
         for url in citations[:5]:  # Limit to 5 citations
             content += f"- <{url}>\n"
+    else:
+        logger.info("[GROK/TWITTER] No citations in response")
 
+    logger.info(f"[GROK/TWITTER] Returning response of {len(content)} chars")
     return content[:1800]
