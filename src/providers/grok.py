@@ -18,8 +18,8 @@ def _format_for_discord(content: str, citations: list | None) -> str:
     - Add top citations
     - Truncate to ~1800 chars
     """
-    # Collapse multiple newlines into max 2 (one blank line)
-    content = re.sub(r'\n{3,}', '\n\n', content)
+    # Collapse any 2+ newlines into single newline (no blank lines)
+    content = re.sub(r'\n{2,}', '\n', content)
 
     # Remove trailing whitespace on each line
     content = re.sub(r'[ \t]+\n', '\n', content)
