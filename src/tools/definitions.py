@@ -160,3 +160,22 @@ catch_up_tool = {
         }
     }
 }
+
+# Tool for searching Twitter/X - conditionally added based on ENABLE_TWITTER_SEARCH
+twitter_search_tool = {
+    "type": "function",
+    "function": {
+        "name": "twitter_search",
+        "description": "Searches Twitter/X for real-time posts, discussions, and breaking news. Use this when users ask about trending topics, what people are saying about something on Twitter/X, breaking news, or real-time social media discussions.",
+        "parameters": {
+            "type": "object",
+            "properties": {
+                "query": {
+                    "type": "string",
+                    "description": "The search query for Twitter/X"
+                }
+            },
+            "required": ["query"]
+        }
+    }
+}

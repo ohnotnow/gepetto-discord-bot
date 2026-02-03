@@ -11,6 +11,8 @@ It has a couple of extra options to do common things.  Eg:
 @Gepetto weather forecast for London today?
 @Gepetto catch me up
 @Gepetto what did I miss?
+@Gepetto what are people saying about the Super Bowl on Twitter?
+@Gepetto search Twitter for breaking news about AI
 ```
 The youtube one depends on their being subtitles/transcripts attached to the video.  The summarise command is a little limited (currently hard-coded) in scope due to token limits on the text you can send to the cheaper OpenAI models.
 
@@ -63,6 +65,7 @@ The script uses the following environment variables (* indicates required):
 | URL_HISTORY_EXTRACTION_HOUR | Hour (0-23) when URL extraction runs | 4 | "4" (4 AM) |
 | ENABLE_CATCH_UP | Enable the "catch me up" tool so bot can respond to requests | False | "true" |
 | ENABLE_CATCH_UP_TRACKING | Enable activity tracking (only one bot instance should do this) | False | "true" |
+| ENABLE_TWITTER_SEARCH | Enable Twitter/X search via Grok (requires OPENROUTER_API_KEY) | False | "true" |
 
 ## Running the Script
 

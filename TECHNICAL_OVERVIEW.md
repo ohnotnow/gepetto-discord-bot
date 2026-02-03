@@ -24,6 +24,7 @@ src/
 │   ├── base.py      # BaseModel with LiteLLM integration
 │   ├── gpt.py       # OpenAI (minimal, just sets flag)
 │   ├── claude.py    # Anthropic
+│   ├── grok.py      # Grok (Twitter/X search via x_search)
 │   ├── groq.py      # Groq
 │   ├── openrouter.py
 │   ├── perplexity.py  # Web search
@@ -210,6 +211,7 @@ When `ENABLE_CATCH_UP_TRACKING=true`:
 | Privacy | "delete my info" / "forget me" | `memory_store.delete_user_data()` |
 | URL history search | LLM tool call `search_url_history` | `url_store.search()` |
 | Catch me up | LLM tool call `catch_up` | `handle_catch_up()` |
+| Twitter search | LLM tool call `twitter_search` | `grok.search()` |
 
 ## Scheduled Tasks
 
@@ -278,6 +280,7 @@ uv run pytest              # Run tests
 | `EMBEDDING_MODEL` | No | Model name (default: text-embedding-3-small) |
 | `ENABLE_CATCH_UP` | No | Enable catch-up tool for responding to requests |
 | `ENABLE_CATCH_UP_TRACKING` | No | Enable activity tracking (only one bot instance) |
+| `ENABLE_TWITTER_SEARCH` | No | Enable Twitter/X search via Grok (requires OPENROUTER_API_KEY) |
 | `SPELLCHECK_MODEL` | No | Model for spell check (e.g., "groq/llama-3.1-8b-instant") |
 
 ## Design Notes

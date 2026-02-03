@@ -13,12 +13,12 @@ import pytz
 from discord.ext import commands, tasks
 
 # Providers
-from src.providers import claude, gpt, groq, openrouter, perplexity
+from src.providers import claude, gpt, grok, groq, openrouter, perplexity
 from src.providers import split_for_discord
 
 # Tools
 from src.tools import calculator, ToolDispatcher, ToolResult
-from src.tools.definitions import tool_list, search_url_history_tool, catch_up_tool
+from src.tools.definitions import tool_list, search_url_history_tool, catch_up_tool, twitter_search_tool
 
 # Media
 from src.media import images, replicate, sora
@@ -131,12 +131,17 @@ elif ENABLE_URL_HISTORY:
 ENABLE_CATCH_UP = os.getenv("ENABLE_CATCH_UP", "false").lower() == "true"
 ENABLE_CATCH_UP_TRACKING = os.getenv("ENABLE_CATCH_UP_TRACKING", "false").lower() == "true"
 
+# Twitter/X search feature (uses Grok via OpenRouter)
+ENABLE_TWITTER_SEARCH = os.getenv("ENABLE_TWITTER_SEARCH", "false").lower() == "true"
+
 # Build the active tool list based on feature flags
 active_tool_list = tool_list.copy()
 if ENABLE_URL_HISTORY:
     active_tool_list.append(search_url_history_tool)
 if ENABLE_CATCH_UP:
     active_tool_list.append(catch_up_tool)
+if ENABLE_TWITTER_SEARCH:
+    active_tool_list.append(twitter_search_tool)
 
 location = os.getenv('BOT_LOCATION', 'dunno')
 chat_image_hour = int(os.getenv('CHAT_IMAGE_HOUR', 18))
@@ -266,6 +271,13 @@ async def websearch(discord_message: discord.Message, prompt: str) -> None:
     # response = await gepetto_websearch.websearch(prompt)
     response = "🌍" + response
     await reply_to_message(discord_message, response)
+
+
+async def twitter_search(discord_message: discord.Message, query: str) -> None:
+    response = await grok.search(query)
+    response = "🐦" + response
+    await reply_to_message(discord_message, response)
+
 
 async def create_image(discord_message: discord.Message, prompt: str) -> None:
     logger.info(f"Creating image with prompt: {prompt}")
@@ -407,6 +419,8 @@ if ENABLE_URL_HISTORY:
     tool_dispatcher.register('search_url_history', lambda msg, **args: search_url_history(msg, args.get('query', '')))
 if ENABLE_CATCH_UP:
     tool_dispatcher.register('catch_up', lambda msg, **args: handle_catch_up(msg))
+if ENABLE_TWITTER_SEARCH:
+    tool_dispatcher.register('twitter_search', lambda msg, **args: twitter_search(msg, args.get('query', '')))
 
 # Parse channel IDs for catch-up feature (same channels as URL history)
 catch_up_channel_ids = set()
