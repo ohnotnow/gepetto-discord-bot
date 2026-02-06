@@ -75,4 +75,4 @@ CATCH_UP_MAX_HOURS = 48  # Maximum lookback window
 CATCH_UP_MAX_MESSAGES = 500  # Per channel limit
 
 # Semantic search
-SEMANTIC_SEARCH_MIN_SIMILARITY = 0.5  # Cosine similarity threshold
+SEMANTIC_SEARCH_MIN_SIMILARITY = 0.3  # Cosine similarity threshold for text-embedding-3-small
