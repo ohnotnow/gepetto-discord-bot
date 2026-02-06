@@ -460,6 +460,78 @@ class TestUrlStoreSimilaritySearch:
         results = store.search_by_similarity('server1', [1.0, 0.0, 0.0], min_similarity=0.5)
         assert len(results) == 0  # Should be filtered out (similarity ~0)
 
+    def test_search_by_similarity_filters_by_posted_after(self, temp_dir):
+        """search_by_similarity() should only return entries posted after the given date."""
+        store = UrlStore(os.path.join(temp_dir, 'test.db'))
+        now = datetime.now()
+
+        # Old entry (60 days ago)
+        store.save(
+            server_id='server1',
+            channel_id='channel1',
+            url='https://example.com/old',
+            summary='Old article',
+            keywords='old',
+            posted_by_id='user1',
+            posted_by_name='User1',
+            posted_at=now - timedelta(days=60),
+            embedding=[0.9, 0.1, 0.0]
+        )
+        # Recent entry (2 days ago)
+        store.save(
+            server_id='server1',
+            channel_id='channel1',
+            url='https://example.com/recent',
+            summary='Recent article',
+            keywords='recent',
+            posted_by_id='user1',
+            posted_by_name='User1',
+            posted_at=now - timedelta(days=2),
+            embedding=[0.8, 0.2, 0.0]
+        )
+
+        # Search with posted_after=7 days ago should only find the recent one
+        results = store.search_by_similarity(
+            'server1', [1.0, 0.0, 0.0],
+            min_similarity=0, posted_after=now - timedelta(days=7)
+        )
+        assert len(results) == 1
+        assert results[0].url == 'https://example.com/recent'
+
+    def test_search_by_similarity_posted_after_none_returns_all(self, temp_dir):
+        """search_by_similarity() with posted_after=None should return all matching entries."""
+        store = UrlStore(os.path.join(temp_dir, 'test.db'))
+        now = datetime.now()
+
+        store.save(
+            server_id='server1',
+            channel_id='channel1',
+            url='https://example.com/old',
+            summary='Old article',
+            keywords='old',
+            posted_by_id='user1',
+            posted_by_name='User1',
+            posted_at=now - timedelta(days=60),
+            embedding=[0.9, 0.1, 0.0]
+        )
+        store.save(
+            server_id='server1',
+            channel_id='channel1',
+            url='https://example.com/recent',
+            summary='Recent article',
+            keywords='recent',
+            posted_by_id='user1',
+            posted_by_name='User1',
+            posted_at=now - timedelta(days=2),
+            embedding=[0.8, 0.2, 0.0]
+        )
+
+        # No posted_after filter should return both
+        results = store.search_by_similarity(
+            'server1', [1.0, 0.0, 0.0], min_similarity=0, posted_after=None
+        )
+        assert len(results) == 2
+
     def test_search_by_similarity_returns_results_above_threshold(self, temp_dir):
         """search_by_similarity() should return results above the threshold."""
         store = UrlStore(os.path.join(temp_dir, 'test.db'))

@@ -140,6 +140,11 @@ search_url_history_tool = {
                 "query": {
                     "type": "string",
                     "description": "Search terms to find matching URLs - describe what the user is looking for."
+                },
+                "recency": {
+                    "type": "string",
+                    "enum": ["this_week", "this_month", "this_year", "all_time"],
+                    "description": "How recent the user expects the link to be. Use 'this_week' for 'just the other day'/'yesterday'/'a few days ago', 'this_month' for 'recently'/'not long ago', 'this_year' for 'a while back', 'all_time' if no time indication given."
                 }
             },
             "required": ["query"]

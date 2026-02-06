@@ -320,7 +320,8 @@ class UrlStore:
         server_id: str,
         query_vector: List[float],
         limit: int = 5,
-        min_similarity: Optional[float] = None
+        min_similarity: Optional[float] = None,
+        posted_after: Optional[datetime] = None
     ) -> List[UrlEntry]:
         """
         Search URLs by cosine similarity to query embedding.
@@ -330,6 +331,7 @@ class UrlStore:
             query_vector: The embedding vector of the search query
             limit: Maximum results to return
             min_similarity: Minimum similarity threshold (defaults to SEMANTIC_SEARCH_MIN_SIMILARITY)
+            posted_after: Only include entries posted after this datetime
 
         Returns:
             List of UrlEntry sorted by similarity (highest first), filtered by threshold
@@ -339,16 +341,20 @@ class UrlStore:
         threshold = min_similarity if min_similarity is not None else SEMANTIC_SEARCH_MIN_SIMILARITY
 
         # Get all entries with embeddings for this server
+        query = """
+            SELECT id, server_id, channel_id, url, summary, keywords,
+                   posted_by_id, posted_by_name, posted_at, created_at, embedding
+            FROM url_history
+            WHERE server_id = ? AND embedding IS NOT NULL
+        """
+        params: list = [server_id]
+
+        if posted_after is not None:
+            query += " AND posted_at >= ?"
+            params.append(posted_after.isoformat())
+
         with self._get_connection() as conn:
-            cursor = conn.execute(
-                """
-                SELECT id, server_id, channel_id, url, summary, keywords,
-                       posted_by_id, posted_by_name, posted_at, created_at, embedding
-                FROM url_history
-                WHERE server_id = ? AND embedding IS NOT NULL
-                """,
-                (server_id,)
-            )
+            cursor = conn.execute(query, params)
             rows = cursor.fetchall()
 
         # Calculate similarity for each entry, filtering by threshold

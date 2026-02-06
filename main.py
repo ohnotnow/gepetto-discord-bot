@@ -48,6 +48,7 @@ from src.utils.constants import (
     NIGHT_START_HOUR, NIGHT_END_HOUR, DAY_START_HOUR, DAY_END_HOUR,
     UK_HOLIDAYS, ABUSIVE_RESPONSES,
     CATCH_UP_MAX_HOURS, CATCH_UP_MAX_MESSAGES,
+    URL_SEARCH_RECENCY_DAYS, URL_SEARCH_RECENCY_TIERS,
 )
 from src.utils.helpers import (
     format_date_with_suffix,
@@ -367,17 +368,27 @@ async def extract_recipe_from_webpage(discord_message: discord.Message, prompt: 
     await summarise_webpage_content(discord_message, recipe_prompt, url)
 
 
-async def search_url_history(discord_message: discord.Message, query: str) -> None:
-    """Search the URL history for matching entries."""
-    logger.info(f"Searching URL history for '{query}'")
+async def search_url_history(discord_message: discord.Message, query: str, recency: str = "all_time") -> None:
+    """Search the URL history for matching entries, with progressive time widening."""
+    logger.info(f"Searching URL history for '{query}' (recency={recency})")
     guild_id = str(discord_message.guild.id) if discord_message.guild else server_id
 
-    # Semantic search using embeddings
+    # Determine the starting recency tier and progressive widening order
+    start_index = URL_SEARCH_RECENCY_TIERS.index(recency) if recency in URL_SEARCH_RECENCY_TIERS else len(URL_SEARCH_RECENCY_TIERS) - 1
+    tiers_to_try = URL_SEARCH_RECENCY_TIERS[start_index:]
+
+    results = []
     try:
         query_response = await embeddings_model.embed(query)
         query_vector = query_response.vector
-        results = url_store.search_by_similarity(guild_id, query_vector, limit=5)
-        logger.info(f"Semantic search returned {len(results)} results")
+
+        for tier in tiers_to_try:
+            days = URL_SEARCH_RECENCY_DAYS[tier]
+            posted_after = datetime.now() - timedelta(days=days) if days else None
+            results = url_store.search_by_similarity(guild_id, query_vector, limit=5, posted_after=posted_after)
+            logger.info(f"Semantic search (tier={tier}) returned {len(results)} results")
+            if results:
+                break
     except Exception as e:
         logger.warning(f"Semantic search failed: {e}")
         results = []
@@ -393,6 +404,7 @@ async def search_url_history(discord_message: discord.Message, query: str) -> No
         return
 
     # Build context for LLM to summarise
+    today = datetime.now().strftime("%d %b %Y")
     result_parts = []
     for entry in results:
         posted_date = entry.posted_at.strftime("%d %b %Y")
@@ -407,7 +419,7 @@ async def search_url_history(discord_message: discord.Message, query: str) -> No
         },
         {
             'role': 'user',
-            'content': f'The user searched for: "{query}"\n\nHere are the matching results:\n\n{results_context}\n\nGive a brief, helpful response highlighting the most relevant result(s). Keep it short — a sentence or two per result, plus the link wrapped in angle brackets.'
+            'content': f'Today is {today}. The user searched for: "{query}"\n\nHere are the matching results:\n\n{results_context}\n\nGive a brief, helpful response highlighting the most relevant result(s). Keep it short — a sentence or two per result, plus the link wrapped in angle brackets. Use relative time references like "posted 3 days ago" or "from last month" rather than raw dates where possible.'
         }
     ]
 
@@ -436,7 +448,7 @@ tool_dispatcher.register('get_sentry_issue_summary', lambda msg, **args: summari
 tool_dispatcher.register('summarise_webpage_content', lambda msg, **args: summarise_webpage_content(msg, args.get('prompt', ''), args.get('url', '')))
 tool_dispatcher.register('web_search', lambda msg, **args: websearch(msg, args.get('prompt', '')))
 if ENABLE_URL_HISTORY:
-    tool_dispatcher.register('search_url_history', lambda msg, **args: search_url_history(msg, args.get('query', '')))
+    tool_dispatcher.register('search_url_history', lambda msg, **args: search_url_history(msg, args.get('query', ''), args.get('recency', 'all_time')))
 if ENABLE_CATCH_UP:
     tool_dispatcher.register('catch_up', lambda msg, **args: handle_catch_up(msg))
 if ENABLE_TWITTER_SEARCH:

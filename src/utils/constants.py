@@ -76,3 +76,14 @@ CATCH_UP_MAX_MESSAGES = 500  # Per channel limit
 
 # Semantic search
 SEMANTIC_SEARCH_MIN_SIMILARITY = 0.3  # Cosine similarity threshold for text-embedding-3-small
+
+# URL search recency tiers (days to look back, None = all time)
+URL_SEARCH_RECENCY_DAYS = {
+    "this_week": 7,
+    "this_month": 30,
+    "this_year": 365,
+    "all_time": None,
+}
+
+# Progressive widening order for recency search
+URL_SEARCH_RECENCY_TIERS = ["this_week", "this_month", "this_year", "all_time"]
