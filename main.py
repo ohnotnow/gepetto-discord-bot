@@ -392,15 +392,35 @@ async def search_url_history(discord_message: discord.Message, query: str) -> No
         )
         return
 
-    # Format results
-    response_parts = [f"Found {len(results)} matching URL(s):"]
+    # Build context for LLM to summarise
+    result_parts = []
     for entry in results:
         posted_date = entry.posted_at.strftime("%d %b %Y")
-        response_parts.append(f"\n<{entry.url}> : {entry.summary}\n> Posted by {entry.posted_by_name} on {posted_date}")
+        result_parts.append(f"URL: <{entry.url}>\nSummary: {entry.summary}\nPosted by: {entry.posted_by_name} on {posted_date}")
 
-    response_text = "\n".join(response_parts)
-    if len(response_text) > DISCORD_MESSAGE_LIMIT:
-        response_text = response_text[:DISCORD_MESSAGE_LIMIT - 3] + "..."
+    results_context = "\n\n---\n\n".join(result_parts)
+
+    summary_messages = [
+        {
+            'role': 'system',
+            'content': 'You help users find URLs that were previously shared. Be concise and conversational. IMPORTANT: Always wrap URLs in angle brackets like <https://example.com> to suppress Discord link previews.'
+        },
+        {
+            'role': 'user',
+            'content': f'The user searched for: "{query}"\n\nHere are the matching results:\n\n{results_context}\n\nGive a brief, helpful response highlighting the most relevant result(s). Keep it short — a sentence or two per result, plus the link wrapped in angle brackets.'
+        }
+    ]
+
+    try:
+        llm_response = await chatbot.chat(summary_messages, temperature=0.3, tools=[])
+        response_text = llm_response.message.strip()[:DISCORD_MESSAGE_LIMIT]
+        # Safety net: wrap any bare URLs that the LLM didn't angle-bracket
+        response_text = re.sub(r'(?<![<])(https?://\S+)(?![>])', r'<\1>', response_text)
+    except Exception as e:
+        logger.warning(f"LLM summarisation of URL results failed: {e}")
+        response_text = f"Found {len(results)} matching URL(s):\n"
+        for entry in results:
+            response_text += f"\n<{entry.url}>"
 
     await discord_message.reply(
         f"{discord_message.author.mention} {response_text}",
