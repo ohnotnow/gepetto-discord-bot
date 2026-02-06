@@ -564,6 +564,9 @@ async def on_message(message):
             if lq.startswith("!urls"):
                 await extract_url_history()
                 return
+            if lq.startswith("!reindex"):
+                await reindex_url_history(message)
+                return
             if '--reasoning' in lq:
                 # Try in-memory state first (current session), fall back to database
                 reasoning = bot_state.previous_image_reasoning
@@ -1014,20 +1017,20 @@ async def extract_url_history():
                             logger.info(f"Could not get content for {url}")
                             continue
 
-                        # Generate a very short summary and keywords using LLM
+                        # Generate summary and keywords using LLM
                         summary_messages = [
                             {
                                 'role': 'system',
-                                'content': 'You extract brief summaries and keywords from text. Respond in JSON format only.'
+                                'content': 'You summarise webpage content and extract keywords. Respond in JSON format only.'
                             },
                             {
                                 'role': 'user',
                                 'content': f'''Analyse this webpage content and provide:
-1. A very brief summary (1-2 sentences, max 200 characters)
-2. 3-5 keywords for search
+1. A thorough summary (3-4 paragraphs) covering the main topic, key points, arguments, and any notable details or conclusions
+2. 5-8 keywords and phrases for search (include synonyms and related terms)
 
 Respond ONLY with valid JSON in this exact format:
-{{"summary": "brief summary here", "keywords": "keyword1, keyword2, keyword3"}}
+{{"summary": "summary here", "keywords": "keyword1, keyword2, keyword3"}}
 
 Content:
 {page_text[:3000]}'''
@@ -1045,8 +1048,8 @@ Content:
                                 if response_text.startswith('json'):
                                     response_text = response_text[4:]
                             result = json.loads(response_text)
-                            url_summary = result.get('summary', '')[:250]
-                            keywords = result.get('keywords', '')[:200]
+                            url_summary = result.get('summary', '')[:2000]
+                            keywords = result.get('keywords', '')[:500]
                         except json.JSONDecodeError:
                             logger.warning(f"Could not parse LLM response for {url}: {response_text[:100]}")
                             continue
@@ -1054,7 +1057,8 @@ Content:
                         # Generate embedding for semantic search
                         embedding = None
                         try:
-                            embed_response = await embeddings_model.embed(url_summary)
+                            embed_text = f"{url_summary}\n\nKeywords: {keywords}"
+                            embed_response = await embeddings_model.embed(embed_text)
                             embedding = embed_response.vector
                             logger.info(f"Generated embedding ({len(embedding)} dims) for {url[:50]}")
                         except Exception as embed_error:
@@ -1086,6 +1090,73 @@ Content:
             continue
 
     logger.info(f"URL extraction complete: {urls_total} found, {urls_filtered} filtered, {urls_duplicate} duplicates, {urls_processed} processed, {urls_saved} saved")
+
+
+async def reindex_url_history(discord_message: discord.Message) -> None:
+    """Re-summarise and re-embed all existing URL history entries."""
+    reindex_server_id = os.getenv("DISCORD_SERVER_ID")
+    entries = url_store.get_all(reindex_server_id)
+    logger.info(f"Reindexing {len(entries)} URL history entries")
+    await discord_message.reply(f"Reindexing {len(entries)} URL entries...", mention_author=False)
+
+    updated = 0
+    failed = 0
+    for entry in entries:
+        try:
+            # Fetch page content fresh
+            page_text = await summary.get_text(entry.url)
+            if not page_text or "Sorry" in page_text[:50]:
+                logger.info(f"  [SKIP] Could not get content for {entry.url[:60]}")
+                failed += 1
+                continue
+
+            # Generate new summary and keywords
+            summary_messages = [
+                {
+                    'role': 'system',
+                    'content': 'You summarise webpage content and extract keywords. Respond in JSON format only.'
+                },
+                {
+                    'role': 'user',
+                    'content': f'''Analyse this webpage content and provide:
+1. A thorough summary (3-4 paragraphs) covering the main topic, key points, arguments, and any notable details or conclusions
+2. 5-8 keywords and phrases for search (include synonyms and related terms)
+
+Respond ONLY with valid JSON in this exact format:
+{{"summary": "summary here", "keywords": "keyword1, keyword2, keyword3"}}
+
+Content:
+{page_text[:3000]}'''
+                }
+            ]
+
+            response = await chatbot.chat(summary_messages, temperature=0.3, tools=[])
+            response_text = response.message.strip()
+
+            # Parse JSON response
+            if response_text.startswith('```'):
+                response_text = response_text.split('```')[1]
+                if response_text.startswith('json'):
+                    response_text = response_text[4:]
+            result = json.loads(response_text)
+            new_summary = result.get('summary', '')[:2000]
+            new_keywords = result.get('keywords', '')[:500]
+
+            # Generate new embedding
+            embed_text = f"{new_summary}\n\nKeywords: {new_keywords}"
+            embed_response = await embeddings_model.embed(embed_text)
+
+            # Update the entry
+            url_store.update(entry.id, new_summary, new_keywords, embed_response.vector)
+            updated += 1
+            logger.info(f"  [OK] Reindexed {entry.url[:60]}")
+
+        except Exception as e:
+            logger.warning(f"  [FAIL] {entry.url[:60]}: {e}")
+            failed += 1
+
+    logger.info(f"Reindex complete: {updated} updated, {failed} failed")
+    await discord_message.reply(f"Reindex complete: {updated} updated, {failed} failed.", mention_author=False)
 
 
 @tasks.loop(time=time(hour=3, tzinfo=pytz.timezone('Europe/London')))

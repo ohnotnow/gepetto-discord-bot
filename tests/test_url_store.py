@@ -514,3 +514,65 @@ class TestUrlStoreSimilaritySearch:
         # Query without explicit threshold - should use default (0.5)
         results = store.search_by_similarity('server1', [1.0, 0.0, 0.0])
         assert len(results) == 0  # Should be filtered by default threshold
+
+    def test_update_changes_summary_keywords_and_embedding(self, temp_dir):
+        """update() should modify an existing entry's summary, keywords, and embedding."""
+        store = UrlStore(os.path.join(temp_dir, 'test.db'))
+
+        store.save(
+            server_id='server1',
+            channel_id='channel1',
+            url='https://example.com/page1',
+            summary='Old summary',
+            keywords='old, keywords',
+            posted_by_id='user1',
+            posted_by_name='User1',
+            posted_at=datetime.now(),
+            embedding=[1.0, 0.0, 0.0]
+        )
+
+        entries = store.get_all('server1')
+        assert len(entries) == 1
+
+        store.update(entries[0].id, 'New detailed summary', 'new, better, keywords', [0.0, 1.0, 0.0])
+
+        updated = store.get_all('server1')
+        assert len(updated) == 1
+        assert updated[0].summary == 'New detailed summary'
+        assert updated[0].keywords == 'new, better, keywords'
+        assert updated[0].embedding == [0.0, 1.0, 0.0]
+        assert updated[0].url == 'https://example.com/page1'  # URL unchanged
+
+    def test_get_all_returns_all_entries(self, temp_dir):
+        """get_all() should return all entries for a server."""
+        store = UrlStore(os.path.join(temp_dir, 'test.db'))
+
+        for i in range(3):
+            store.save(
+                server_id='server1',
+                channel_id='channel1',
+                url=f'https://example.com/page{i}',
+                summary=f'Summary {i}',
+                keywords=f'keyword{i}',
+                posted_by_id='user1',
+                posted_by_name='User1',
+                posted_at=datetime.now()
+            )
+
+        # Different server
+        store.save(
+            server_id='server2',
+            channel_id='channel1',
+            url='https://example.com/other',
+            summary='Other server',
+            keywords='other',
+            posted_by_id='user1',
+            posted_by_name='User1',
+            posted_at=datetime.now()
+        )
+
+        results = store.get_all('server1')
+        assert len(results) == 3
+
+        results2 = store.get_all('server2')
+        assert len(results2) == 1

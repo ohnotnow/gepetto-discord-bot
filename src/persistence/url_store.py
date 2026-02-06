@@ -229,6 +229,36 @@ class UrlStore:
 
         return [self._row_to_entry(row) for row in rows]
 
+    def update(self, entry_id: int, summary: str, keywords: str, embedding: Optional[List[float]] = None) -> None:
+        """Update the summary, keywords, and embedding for an existing entry."""
+        embedding_json = json.dumps(embedding) if embedding is not None else None
+        with self._get_connection() as conn:
+            conn.execute(
+                """
+                UPDATE url_history
+                SET summary = ?, keywords = ?, embedding = ?
+                WHERE id = ?
+                """,
+                (summary, keywords, embedding_json, entry_id)
+            )
+            conn.commit()
+
+    def get_all(self, server_id: str) -> List[UrlEntry]:
+        """Get all URL entries for a server."""
+        with self._get_connection() as conn:
+            cursor = conn.execute(
+                """
+                SELECT id, server_id, channel_id, url, summary, keywords,
+                       posted_by_id, posted_by_name, posted_at, created_at, embedding
+                FROM url_history
+                WHERE server_id = ?
+                ORDER BY id ASC
+                """,
+                (server_id,)
+            )
+            rows = cursor.fetchall()
+        return [self._row_to_entry(row) for row in rows]
+
     def get_recent(self, server_id: str, limit: int = 20) -> List[UrlEntry]:
         """Get the most recent URLs for a server."""
         with self._get_connection() as conn:
