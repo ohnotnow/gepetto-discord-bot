@@ -1267,10 +1267,10 @@ async def check_reminders():
                     try:
                         delay = datetime.now() - reminder.remind_at
                         delay_minutes = int(delay.total_seconds() / 60)
-                        delay_note = f" The reminder was due {delay_minutes} minutes ago." if delay_minutes > 1 else ""
+                        delay_note = f" The reminder was due {delay_minutes} minutes ago.  Don't apologise for the delay - this is just to help you in your response." if delay_minutes > 1 else ""
                         remind_messages = [
                             {'role': 'system', 'content': os.getenv('DISCORD_BOT_DEFAULT_PROMPT', 'You are a helpful assistant.')},
-                            {'role': 'user', 'content': f'You previously set a reminder for a user and it is now due. Deliver this reminder to them briefly in your usual style: "{reminder.reminder_text}".{delay_note}'}
+                            {'role': 'user', 'content': f'You previously set a reminder for a user and it is now due. Deliver this reminder to them in your own voice and style: "{reminder.reminder_text}".{delay_note}'}
                         ]
                         llm_response = await chatbot.chat(remind_messages, temperature=1.0, tools=[])
                         reminder_text = llm_response.message.strip()[:DISCORD_MESSAGE_LIMIT]
