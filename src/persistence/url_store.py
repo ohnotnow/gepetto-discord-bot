@@ -14,7 +14,6 @@ from src.utils.constants import SEMANTIC_SEARCH_MIN_SIMILARITY
 
 logger = logging.getLogger(__name__)
 
-DEFAULT_DB_PATH = './data/gepetto.db'
 MAX_ENTRIES_PER_SERVER = 500
 
 
@@ -59,7 +58,7 @@ def rerank(results: List[UrlEntry], query: str) -> List[UrlEntry]:
 class UrlStore:
     """SQLite-based storage for URL history, keyed by server_id."""
 
-    def __init__(self, db_path: str = DEFAULT_DB_PATH):
+    def __init__(self, db_path: str = './data/gepetto.db'):
         """
         Initialize the store, creating DB and table if needed.
 

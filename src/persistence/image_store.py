@@ -12,7 +12,6 @@ from typing import List, Optional
 
 logger = logging.getLogger(__name__)
 
-DEFAULT_DB_PATH = './data/gepetto.db'
 MAX_ENTRIES_PER_SERVER = 10
 
 
@@ -36,7 +35,7 @@ class ImageEntry:
 class ImageStore:
     """SQLite-based storage for image generation history, keyed by server_id."""
 
-    def __init__(self, db_path: str = DEFAULT_DB_PATH):
+    def __init__(self, db_path: str = './data/gepetto.db'):
         """
         Initialize the store, creating DB and table if needed.
 

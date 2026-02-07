@@ -159,3 +159,86 @@ class TestReminderStore:
         assert due[0].channel_id == 'ch1'
         assert due[0].reminder_text == 'Test'
         assert due[0].reminded_at is None
+        assert due[0].created_by is None
+
+    def test_save_stores_created_by(self, temp_dir):
+        """save() should store the created_by bot name."""
+        store = ReminderStore(os.path.join(temp_dir, 'test.db'))
+        past = datetime.now() - timedelta(minutes=5)
+
+        store.save('server1', 'user1', 'User1', 'ch1', 'Test', past, created_by='Gepetto')
+
+        due = store.get_due_reminders('server1')
+        assert len(due) == 1
+        assert due[0].created_by == 'Gepetto'
+
+    def test_save_without_created_by_defaults_to_none(self, temp_dir):
+        """save() without created_by should store None (backwards compatible)."""
+        store = ReminderStore(os.path.join(temp_dir, 'test.db'))
+        past = datetime.now() - timedelta(minutes=5)
+
+        store.save('server1', 'user1', 'User1', 'ch1', 'Test', past)
+
+        due = store.get_due_reminders('server1')
+        assert len(due) == 1
+        assert due[0].created_by is None
+
+    def test_get_due_reminders_filters_by_bot_name(self, temp_dir):
+        """get_due_reminders() with bot_name should only return that bot's reminders."""
+        store = ReminderStore(os.path.join(temp_dir, 'test.db'))
+        past = datetime.now() - timedelta(minutes=5)
+
+        store.save('server1', 'user1', 'User1', 'ch1', 'From Gepetto', past, created_by='Gepetto')
+        store.save('server1', 'user1', 'User1', 'ch1', 'From Marvin', past, created_by='Marvin')
+
+        gepetto_due = store.get_due_reminders('server1', bot_name='Gepetto')
+        marvin_due = store.get_due_reminders('server1', bot_name='Marvin')
+
+        assert len(gepetto_due) == 1
+        assert gepetto_due[0].reminder_text == 'From Gepetto'
+        assert len(marvin_due) == 1
+        assert marvin_due[0].reminder_text == 'From Marvin'
+
+    def test_get_due_reminders_without_bot_name_returns_all(self, temp_dir):
+        """get_due_reminders() without bot_name should return all due reminders."""
+        store = ReminderStore(os.path.join(temp_dir, 'test.db'))
+        past = datetime.now() - timedelta(minutes=5)
+
+        store.save('server1', 'user1', 'User1', 'ch1', 'From Gepetto', past, created_by='Gepetto')
+        store.save('server1', 'user1', 'User1', 'ch1', 'From Marvin', past, created_by='Marvin')
+
+        due = store.get_due_reminders('server1')
+        assert len(due) == 2
+
+    def test_migration_adds_created_by_column(self, temp_dir):
+        """ReminderStore should add created_by column to existing tables."""
+        import sqlite3
+        db_path = os.path.join(temp_dir, 'test.db')
+
+        # Create table WITHOUT created_by (simulating old schema)
+        conn = sqlite3.connect(db_path)
+        conn.execute("""
+            CREATE TABLE reminders (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                server_id TEXT NOT NULL,
+                user_id TEXT NOT NULL,
+                user_name TEXT NOT NULL,
+                channel_id TEXT NOT NULL,
+                reminder_text TEXT NOT NULL,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                remind_at TIMESTAMP NOT NULL,
+                reminded_at TIMESTAMP
+            )
+        """)
+        conn.commit()
+        conn.close()
+
+        # ReminderStore init should migrate
+        store = ReminderStore(db_path)
+
+        # Verify column exists by inserting with created_by
+        past = datetime.now() - timedelta(minutes=5)
+        store.save('server1', 'user1', 'User1', 'ch1', 'Test', past, created_by='Gepetto')
+        due = store.get_due_reminders('server1')
+        assert due[0].created_by == 'Gepetto'
+

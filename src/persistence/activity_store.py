@@ -11,8 +11,6 @@ from typing import Optional
 
 logger = logging.getLogger(__name__)
 
-DEFAULT_DB_PATH = './data/gepetto.db'
-
 
 @dataclass
 class UserActivity:
@@ -27,7 +25,7 @@ class UserActivity:
 class ActivityStore:
     """SQLite-based storage for user activity, keyed by server_id and user_id."""
 
-    def __init__(self, db_path: str = DEFAULT_DB_PATH):
+    def __init__(self, db_path: str = './data/gepetto.db'):
         """
         Initialize the store, creating DB and table if needed.
 

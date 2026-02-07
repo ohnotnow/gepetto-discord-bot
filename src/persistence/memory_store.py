@@ -12,8 +12,6 @@ from typing import List, Optional
 
 logger = logging.getLogger(__name__)
 
-DEFAULT_DB_PATH = './data/gepetto.db'
-
 
 @dataclass
 class Memory:
@@ -43,7 +41,7 @@ class UserBio:
 class MemoryStore:
     """SQLite-based storage for user memories and bios, keyed by server_id + user_id."""
 
-    def __init__(self, db_path: str = DEFAULT_DB_PATH):
+    def __init__(self, db_path: str = './data/gepetto.db'):
         """
         Initialize the store, creating DB and tables if needed.
 

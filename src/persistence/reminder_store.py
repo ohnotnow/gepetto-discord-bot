@@ -11,8 +11,6 @@ from typing import List, Optional
 
 logger = logging.getLogger(__name__)
 
-DEFAULT_DB_PATH = './data/gepetto.db'
-
 
 @dataclass
 class Reminder:
@@ -26,12 +24,13 @@ class Reminder:
     created_at: datetime
     remind_at: datetime
     reminded_at: Optional[datetime]
+    created_by: Optional[str] = None
 
 
 class ReminderStore:
     """SQLite-based storage for user reminders."""
 
-    def __init__(self, db_path: str = DEFAULT_DB_PATH):
+    def __init__(self, db_path: str = './data/gepetto.db'):
         parent = os.path.dirname(db_path)
         if parent and not os.path.exists(parent):
             os.makedirs(parent)
@@ -52,13 +51,22 @@ class ReminderStore:
                     reminder_text TEXT NOT NULL,
                     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
                     remind_at TIMESTAMP NOT NULL,
-                    reminded_at TIMESTAMP
+                    reminded_at TIMESTAMP,
+                    created_by TEXT
                 )
             """)
             conn.execute("""
                 CREATE INDEX IF NOT EXISTS idx_reminders_due
                 ON reminders(remind_at) WHERE reminded_at IS NULL
             """)
+
+            # Migration: add created_by column if it doesn't exist
+            cursor = conn.execute("PRAGMA table_info(reminders)")
+            columns = [row[1] for row in cursor.fetchall()]
+            if 'created_by' not in columns:
+                conn.execute("ALTER TABLE reminders ADD COLUMN created_by TEXT")
+                logger.info("Added created_by column to reminders table")
+
             conn.commit()
 
     def _get_connection(self) -> sqlite3.Connection:
@@ -66,31 +74,39 @@ class ReminderStore:
         return sqlite3.connect(self.db_path)
 
     def save(self, server_id: str, user_id: str, user_name: str,
-             channel_id: str, reminder_text: str, remind_at: datetime) -> int:
+             channel_id: str, reminder_text: str, remind_at: datetime,
+             created_by: Optional[str] = None) -> int:
         """Insert a reminder and return its id."""
         with self._get_connection() as conn:
             cursor = conn.execute(
                 """
-                INSERT INTO reminders (server_id, user_id, user_name, channel_id, reminder_text, remind_at)
-                VALUES (?, ?, ?, ?, ?, ?)
+                INSERT INTO reminders (server_id, user_id, user_name, channel_id, reminder_text, remind_at, created_by)
+                VALUES (?, ?, ?, ?, ?, ?, ?)
                 """,
-                (server_id, user_id, user_name, channel_id, reminder_text, remind_at)
+                (server_id, user_id, user_name, channel_id, reminder_text, remind_at, created_by)
             )
             conn.commit()
             return cursor.lastrowid or 0
 
-    def get_due_reminders(self, server_id: str) -> List[Reminder]:
-        """Get reminders that are due and haven't been sent yet."""
+    def get_due_reminders(self, server_id: str, bot_name: Optional[str] = None) -> List[Reminder]:
+        """Get reminders that are due and haven't been sent yet.
+
+        If bot_name is provided, only returns reminders created by that bot.
+        """
+        query = """
+            SELECT id, server_id, user_id, user_name, channel_id,
+                   reminder_text, created_at, remind_at, reminded_at, created_by
+            FROM reminders
+            WHERE server_id = ? AND remind_at <= ? AND reminded_at IS NULL
+        """
+        params: list = [server_id, datetime.now()]
+
+        if bot_name:
+            query += " AND created_by = ?"
+            params.append(bot_name)
+
         with self._get_connection() as conn:
-            cursor = conn.execute(
-                """
-                SELECT id, server_id, user_id, user_name, channel_id,
-                       reminder_text, created_at, remind_at, reminded_at
-                FROM reminders
-                WHERE server_id = ? AND remind_at <= ? AND reminded_at IS NULL
-                """,
-                (server_id, datetime.now())
-            )
+            cursor = conn.execute(query, params)
             rows = cursor.fetchall()
 
         return [self._row_to_reminder(row) for row in rows]
@@ -122,7 +138,7 @@ class ReminderStore:
             cursor = conn.execute(
                 """
                 SELECT id, server_id, user_id, user_name, channel_id,
-                       reminder_text, created_at, remind_at, reminded_at
+                       reminder_text, created_at, remind_at, reminded_at, created_by
                 FROM reminders
                 WHERE server_id = ? AND user_id = ? AND reminded_at IS NULL
                 ORDER BY remind_at ASC
@@ -156,7 +172,7 @@ class ReminderStore:
 
     def _row_to_reminder(self, row: tuple) -> Reminder:
         """Convert a database row to a Reminder dataclass."""
-        id_, server_id, user_id, user_name, channel_id, reminder_text, created_at, remind_at, reminded_at = row
+        id_, server_id, user_id, user_name, channel_id, reminder_text, created_at, remind_at, reminded_at, created_by = row
 
         if isinstance(created_at, str):
             created_at = datetime.fromisoformat(created_at)
@@ -175,4 +191,5 @@ class ReminderStore:
             created_at=created_at,
             remind_at=remind_at,
             reminded_at=reminded_at,
+            created_by=created_by,
         )

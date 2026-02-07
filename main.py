@@ -486,6 +486,7 @@ def process_set_reminder(discord_message: discord.Message, reminder_text: str, r
         channel_id=str(discord_message.channel.id),
         reminder_text=reminder_text,
         remind_at=remind_at_dt,
+        created_by=chatbot.name,
     )
 
     formatted_time = remind_at_dt.strftime("%-d %B %Y at %H:%M")
@@ -1266,7 +1267,7 @@ async def check_reminders():
     """Periodic task to check for due reminders and send them."""
     logger.info("Checking for due reminders")
     try:
-        due = reminder_store.get_due_reminders(server_id)
+        due = reminder_store.get_due_reminders(server_id, bot_name=chatbot.name)
         for reminder in due:
             try:
                 channel = bot.get_channel(int(reminder.channel_id))
