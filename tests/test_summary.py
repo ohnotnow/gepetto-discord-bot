@@ -1,7 +1,10 @@
-"""Tests for summary module URL filtering."""
+"""Tests for summary module URL filtering and Gemini summarisation."""
 
+import asyncio
+import os
 import pytest
-from src.content.summary import is_summarisable_url
+from unittest.mock import MagicMock, patch
+from src.content.summary import is_summarisable_url, is_youtube_url, summarise_with_gemini
 
 
 class TestIsSummarisableUrl:
@@ -61,3 +64,60 @@ class TestIsSummarisableUrl:
         """YouTube URLs should be summarisable (handled specially by get_text)."""
         assert is_summarisable_url("https://www.youtube.com/watch?v=abc123") is True
         assert is_summarisable_url("https://youtu.be/abc123") is True
+
+
+class TestIsYoutubeUrl:
+    def test_standard_youtube_url(self):
+        assert is_youtube_url("https://www.youtube.com/watch?v=abc123") is True
+
+    def test_short_youtube_url(self):
+        assert is_youtube_url("https://youtu.be/abc123") is True
+
+    def test_non_youtube_url(self):
+        assert is_youtube_url("https://example.com/article") is False
+
+    def test_youtube_in_path_but_not_domain(self):
+        assert is_youtube_url("https://example.com/youtube.com/video") is False
+
+
+class TestSummariseWithGemini:
+    def test_returns_none_when_no_api_key(self):
+        with patch.dict(os.environ, {}, clear=True):
+            result = asyncio.run(summarise_with_gemini("https://example.com", "summarise this"))
+            assert result is None
+
+    def test_returns_summary_on_success(self):
+        mock_response = MagicMock()
+        mock_response.choices = [MagicMock()]
+        mock_response.choices[0].message.content = "This is a summary."
+        with patch.dict(os.environ, {"OPENROUTER_API_KEY": "test-key"}):
+            with patch("src.content.summary.acompletion", return_value=mock_response):
+                result = asyncio.run(summarise_with_gemini("https://example.com", "summarise this"))
+                assert result == "This is a summary."
+
+    def test_returns_none_on_exception(self):
+        with patch.dict(os.environ, {"OPENROUTER_API_KEY": "test-key"}):
+            with patch("src.content.summary.acompletion", side_effect=Exception("API error")):
+                result = asyncio.run(summarise_with_gemini("https://example.com", "summarise this"))
+                assert result is None
+
+    def test_returns_none_on_empty_response(self):
+        mock_response = MagicMock()
+        mock_response.choices = [MagicMock()]
+        mock_response.choices[0].message.content = ""
+        with patch.dict(os.environ, {"OPENROUTER_API_KEY": "test-key"}):
+            with patch("src.content.summary.acompletion", return_value=mock_response):
+                result = asyncio.run(summarise_with_gemini("https://example.com", "summarise this"))
+                assert result is None
+
+    def test_passes_prompt_to_gemini(self):
+        mock_response = MagicMock()
+        mock_response.choices = [MagicMock()]
+        mock_response.choices[0].message.content = "A summary."
+        with patch.dict(os.environ, {"OPENROUTER_API_KEY": "test-key"}):
+            with patch("src.content.summary.acompletion", return_value=mock_response) as mock_call:
+                asyncio.run(summarise_with_gemini("https://example.com", "give me the key points"))
+                call_args = mock_call.call_args
+                user_msg = call_args.kwargs["messages"][1]["content"]
+                assert "give me the key points" in user_msg
+                assert "https://example.com" in user_msg

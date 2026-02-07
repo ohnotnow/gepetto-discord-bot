@@ -1,3 +1,4 @@
+import os
 import re
 import io
 import requests
@@ -7,8 +8,11 @@ from trafilatura import fetch_url, extract
 from trafilatura.settings import DEFAULT_CONFIG
 from copy import deepcopy
 import logging
+from litellm import acompletion
 from src.utils.constants import MIN_TEXT_LENGTH_FOR_SUMMARY
 logger = logging.getLogger('discord')  # Get the discord logger
+
+GEMINI_SCRAPER_MODEL = os.getenv("GEMINI_SCRAPER_MODEL", "openrouter/google/gemini-3-flash-preview")
 
 # File extensions that cannot be summarised
 UNSUMMARISABLE_EXTENSIONS = frozenset([
@@ -32,6 +36,11 @@ MEDIA_HOSTING_DOMAINS = frozenset([
     'pbs.twimg.com',
     'media.discordapp.net', 'cdn.discordapp.com',
 ])
+
+
+def is_youtube_url(url: str) -> bool:
+    """Check if a URL is a YouTube video URL."""
+    return '//www.youtube.com/' in url or '//youtu.be/' in url
 
 
 def is_summarisable_url(url: str) -> bool:
@@ -105,7 +114,7 @@ def extract_video_id_and_trailing_text(input_string):
 
 async def get_text(url: str) -> str:
     page_text = ""
-    if '//www.youtube.com/' in url:
+    if is_youtube_url(url):
         video_id, trailing_text = extract_video_id_and_trailing_text(url.strip("<>"))
         try:
             ytt_api = YouTubeTranscriptApi()
@@ -151,3 +160,46 @@ async def get_text(url: str) -> str:
         return None
 
     return page_text
+
+
+async def summarise_with_gemini(url: str, prompt: str) -> str | None:
+    """Use Gemini's urlContext to fetch and summarise a URL directly.
+
+    Returns the summary text, or None if unavailable or on failure.
+    """
+    api_key = os.getenv("OPENROUTER_API_KEY")
+    if not api_key:
+        logger.info("OPENROUTER_API_KEY not set, skipping Gemini URL summarisation")
+        return None
+
+    try:
+        tools = [{"urlContext": {}}]
+        messages = [
+            {
+                "role": "system",
+                "content": (
+                    "You are a helpful assistant who specialises in providing concise, "
+                    "short summaries of web pages for Discord users. Keep your summary "
+                    "brief and to the point."
+                ),
+            },
+            {
+                "role": "user",
+                "content": f"{prompt} :: Please summarise this URL: {url}" if prompt else f"Please summarise this URL: {url}",
+            },
+        ]
+        response = await acompletion(
+            model=GEMINI_SCRAPER_MODEL,
+            messages=messages,
+            tools=tools,
+            temperature=1.0,
+        )
+        result = response.choices[0].message.content
+        if result and len(result.strip()) > 0:
+            logger.info(f"Gemini URL summarisation succeeded for {url}")
+            return result.strip()
+        logger.info("Gemini returned empty response for URL summarisation")
+        return None
+    except Exception as e:
+        logger.warning(f"Gemini URL summarisation failed for {url}: {e}")
+        return None

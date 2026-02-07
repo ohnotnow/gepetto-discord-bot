@@ -343,6 +343,16 @@ async def summarise_webpage_content(discord_message: discord.Message, prompt: st
         await summarise_sentry_issue(discord_message, url)
         return
     logger.info(f"Summarising webpage content for '{url}'")
+    prompt = prompt.replace("👀", "").strip().strip("<>")
+
+    # Try Gemini shortcut for non-YouTube URLs
+    if not summary.is_youtube_url(url):
+        gemini_result = await summary.summarise_with_gemini(url, prompt)
+        if gemini_result:
+            await reply_to_message(discord_message, gemini_result)
+            return
+
+    # Fallback: extract text then summarise with default LLM
     original_text = await summary.get_text(url)
     words = original_text.split()
     if len(words) > MAX_WORDS_TRUNCATION:
@@ -351,9 +361,6 @@ async def summarise_webpage_content(discord_message: discord.Message, prompt: st
         was_truncated = True
     else:
         was_truncated = False
-    prompt = prompt.replace("👀", "")
-    prompt = prompt.strip()
-    prompt = prompt.strip("<>")
     messages = [
         {
             'role': 'system',
