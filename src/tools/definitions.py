@@ -166,6 +166,29 @@ catch_up_tool = {
     }
 }
 
+# Tool for setting reminders - conditionally added based on ENABLE_REMINDERS
+set_reminder_tool = {
+    "type": "function",
+    "function": {
+        "name": "set_reminder",
+        "description": "Sets a reminder for the user. The user will be pinged when the reminder is due. Calculate the remind_at datetime from the current date/time (shown in the system prompt) and the user's request. The bot operates in Europe/London timezone. Use ISO 8601 format (YYYY-MM-DDTHH:MM:SS).",
+        "parameters": {
+            "type": "object",
+            "properties": {
+                "reminder_text": {
+                    "type": "string",
+                    "description": "What to remind the user about."
+                },
+                "remind_at": {
+                    "type": "string",
+                    "description": "When to send the reminder, in ISO 8601 format (YYYY-MM-DDTHH:MM:SS), Europe/London timezone."
+                }
+            },
+            "required": ["reminder_text", "remind_at"]
+        }
+    }
+}
+
 # Tool for searching Twitter/X - conditionally added based on ENABLE_TWITTER_SEARCH
 twitter_search_tool = {
     "type": "function",

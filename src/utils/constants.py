@@ -87,3 +87,7 @@ URL_SEARCH_RECENCY_DAYS = {
 
 # Progressive widening order for recency search
 URL_SEARCH_RECENCY_TIERS = ["this_week", "this_month", "this_year", "all_time"]
+
+# Reminders
+MAX_REMINDERS_PER_USER = 10
+REMINDER_PRUNE_DAYS = 30

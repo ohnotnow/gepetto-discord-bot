@@ -18,7 +18,7 @@ from src.providers import split_for_discord
 
 # Tools
 from src.tools import calculator, ToolDispatcher, ToolResult
-from src.tools.definitions import tool_list, search_url_history_tool, catch_up_tool, twitter_search_tool
+from src.tools.definitions import tool_list, search_url_history_tool, catch_up_tool, twitter_search_tool, set_reminder_tool
 
 # Media
 from src.media import images, replicate, sora
@@ -31,7 +31,7 @@ from src.tasks import birthdays
 from src.tasks import memories as memory_tasks
 
 # Persistence
-from src.persistence import ImageStore, MemoryStore, UrlStore, ActivityStore
+from src.persistence import ImageStore, MemoryStore, UrlStore, ActivityStore, ReminderStore
 from src.persistence.url_store import rerank
 
 # Embeddings
@@ -49,6 +49,7 @@ from src.utils.constants import (
     UK_HOLIDAYS, ABUSIVE_RESPONSES,
     CATCH_UP_MAX_HOURS, CATCH_UP_MAX_MESSAGES,
     URL_SEARCH_RECENCY_DAYS, URL_SEARCH_RECENCY_TIERS,
+    MAX_REMINDERS_PER_USER, REMINDER_PRUNE_DAYS,
 )
 from src.utils.helpers import (
     format_date_with_suffix,
@@ -99,6 +100,11 @@ image_store = ImageStore()
 memory_store = MemoryStore()
 url_store = UrlStore()
 activity_store = ActivityStore()
+reminder_store = ReminderStore()
+
+# Reminders feature
+ENABLE_REMINDERS = os.getenv("ENABLE_REMINDERS", "false").lower() == "true"
+REMINDER_FREQUENCY = int(os.getenv("REMINDER_FREQUENCY", "5"))
 
 # User memory feature
 ENABLE_USER_MEMORY = os.getenv("ENABLE_USER_MEMORY", "false").lower() == "true"
@@ -143,6 +149,8 @@ if ENABLE_CATCH_UP:
     active_tool_list.append(catch_up_tool)
 if ENABLE_TWITTER_SEARCH:
     active_tool_list.append(twitter_search_tool)
+if ENABLE_REMINDERS:
+    active_tool_list.append(set_reminder_tool)
 
 location = os.getenv('BOT_LOCATION', 'dunno')
 chat_image_hour = int(os.getenv('CHAT_IMAGE_HOUR', 18))
@@ -265,6 +273,10 @@ async def on_ready():
         logger.info(f"Starting extract_url_history task at hour {url_history_extraction_hour}")
         if not extract_url_history.is_running():
             extract_url_history.start()
+    if ENABLE_REMINDERS:
+        logger.info(f"Starting check_reminders task (every {REMINDER_FREQUENCY} minutes)")
+        if not check_reminders.is_running():
+            check_reminders.start()
     logger.info(f"Using model type : {type(chatbot)}")
 
 async def websearch(discord_message: discord.Message, prompt: str) -> None:
@@ -440,6 +452,55 @@ async def search_url_history(discord_message: discord.Message, query: str, recen
     )
 
 
+async def set_reminder(discord_message: discord.Message, reminder_text: str, remind_at: str) -> None:
+    """Handle a set_reminder tool call from the LLM."""
+    guild_id = str(discord_message.guild.id) if discord_message.guild else server_id
+    user_id = str(discord_message.author.id)
+
+    # Check per-user limit
+    pending = reminder_store.count_pending_for_user(guild_id, user_id)
+    if pending >= MAX_REMINDERS_PER_USER:
+        await discord_message.reply(
+            f"{discord_message.author.mention} You already have {pending} pending reminders (max {MAX_REMINDERS_PER_USER}). "
+            "Wait for some to fire or ask me to cancel one.",
+            mention_author=True
+        )
+        return
+
+    # Parse the datetime
+    try:
+        remind_at_dt = datetime.fromisoformat(remind_at)
+    except ValueError:
+        await discord_message.reply(
+            f"{discord_message.author.mention} I couldn't understand that time. Please try again.",
+            mention_author=True
+        )
+        return
+
+    # Reject times in the past
+    if remind_at_dt <= datetime.now():
+        await discord_message.reply(
+            f"{discord_message.author.mention} That time is in the past! I can't remind you retroactively.",
+            mention_author=True
+        )
+        return
+
+    reminder_id = reminder_store.save(
+        server_id=guild_id,
+        user_id=user_id,
+        user_name=discord_message.author.name,
+        channel_id=str(discord_message.channel.id),
+        reminder_text=reminder_text,
+        remind_at=remind_at_dt,
+    )
+
+    formatted_time = remind_at_dt.strftime("%-d %B %Y at %H:%M")
+    await discord_message.reply(
+        f"{discord_message.author.mention} Got it! I'll remind you on {formatted_time}: \"{reminder_text}\"",
+        mention_author=True
+    )
+
+
 # Tool dispatcher setup
 tool_dispatcher = ToolDispatcher()
 tool_dispatcher.register('calculate', lambda msg, **args: calculate(msg, args.get('expression', '')))
@@ -453,6 +514,8 @@ if ENABLE_CATCH_UP:
     tool_dispatcher.register('catch_up', lambda msg, **args: handle_catch_up(msg))
 if ENABLE_TWITTER_SEARCH:
     tool_dispatcher.register('twitter_search', lambda msg, **args: twitter_search(msg, args.get('query', '')))
+if ENABLE_REMINDERS:
+    tool_dispatcher.register('set_reminder', lambda msg, **args: set_reminder(msg, args.get('reminder_text', ''), args.get('remind_at', '')))
 
 # Parse channel IDs for catch-up feature (same channels as URL history)
 catch_up_channel_ids = set()
@@ -1189,6 +1252,29 @@ Content:
 
     logger.info(f"Reindex complete: {updated} updated, {failed} failed")
     await discord_message.reply(f"Reindex complete: {updated} updated, {failed} failed.", mention_author=False)
+
+
+@tasks.loop(minutes=REMINDER_FREQUENCY)
+async def check_reminders():
+    """Periodic task to check for due reminders and send them."""
+    logger.info("Checking for due reminders")
+    try:
+        due = reminder_store.get_due_reminders(server_id)
+        for reminder in due:
+            try:
+                channel = bot.get_channel(int(reminder.channel_id))
+                if channel:
+                    await channel.send(f"<@{reminder.user_id}> Reminder: {reminder.reminder_text}")
+                reminder_store.mark_reminded(reminder.id)
+            except Exception as e:
+                logger.error(f"Error sending reminder {reminder.id}: {e}")
+
+        # Prune old sent reminders
+        pruned = reminder_store.prune(days=REMINDER_PRUNE_DAYS)
+        if pruned:
+            logger.info(f"Pruned {pruned} old reminders")
+    except Exception as e:
+        logger.error(f"Error checking reminders: {e}")
 
 
 @tasks.loop(time=time(hour=3, tzinfo=pytz.timezone('Europe/London')))
