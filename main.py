@@ -482,7 +482,7 @@ def process_set_reminder(discord_message: discord.Message, reminder_text: str, r
     )
 
     formatted_time = remind_at_dt.strftime("%-d %B %Y at %H:%M")
-    return f"Reminder saved. Will remind on {formatted_time}: \"{reminder_text}\""
+    return f"Reminder saved. Will remind on {formatted_time}: \"{reminder_text}\". Note: reminders are checked every {REMINDER_FREQUENCY} minutes, so the actual reminder may be up to {REMINDER_FREQUENCY} minutes late."
 
 
 async def handle_set_reminder(discord_message: discord.Message, tool_call, arguments: dict, messages: list, temperature: float) -> None:
@@ -1265,9 +1265,12 @@ async def check_reminders():
                 channel = bot.get_channel(int(reminder.channel_id))
                 if channel:
                     try:
+                        delay = datetime.now() - reminder.remind_at
+                        delay_minutes = int(delay.total_seconds() / 60)
+                        delay_note = f" The reminder was due {delay_minutes} minutes ago." if delay_minutes > 1 else ""
                         remind_messages = [
                             {'role': 'system', 'content': os.getenv('DISCORD_BOT_DEFAULT_PROMPT', 'You are a helpful assistant.')},
-                            {'role': 'user', 'content': f'You previously set a reminder for a user and it is now due. Deliver this reminder to them briefly in your usual style: "{reminder.reminder_text}"'}
+                            {'role': 'user', 'content': f'You previously set a reminder for a user and it is now due. Deliver this reminder to them briefly in your usual style: "{reminder.reminder_text}".{delay_note}'}
                         ]
                         llm_response = await chatbot.chat(remind_messages, temperature=1.0, tools=[])
                         reminder_text = llm_response.message.strip()[:DISCORD_MESSAGE_LIMIT]
