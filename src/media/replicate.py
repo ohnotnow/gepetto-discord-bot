@@ -90,6 +90,17 @@ DEFAULT_CONFIG = (
 )
 
 
+def _extract_url(output) -> str:
+    """Extract a URL string from Replicate output.
+
+    Replicate's SDK returns FileOutput objects instead of plain URLs.
+    This normalises the output so the rest of the codebase always gets a string.
+    """
+    if isinstance(output, list):
+        return str(output[0])
+    return str(output)
+
+
 class ImageModel:
     """A simple image generation model wrapper."""
 
@@ -112,9 +123,7 @@ class ImageModel:
         input_params = {"prompt": prompt, **self._params}
         print(f"Using image model: {self.name} with cost: {self._cost}")
         output = await replicate_client.async_run(self.name, input=input_params)
-        if isinstance(output, list):
-            return output[0]
-        return output
+        return _extract_url(output)
 
 
 def _select_random_model() -> str:
@@ -169,10 +178,6 @@ async def generate_video(prompt, model="wan-video/wan-2.2-t2v-fast"):
         input=input
     )
     cost = 0.05
-    if isinstance(output, list):
-        video_url = output[0]
-    else:
-        video_url = output
-
+    video_url = _extract_url(output)
     model_name = model.split(":")[0]
     return video_url, model_name, cost

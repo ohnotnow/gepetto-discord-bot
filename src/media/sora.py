@@ -1,9 +1,9 @@
-import json
-import requests
-import replicate
-import random
 import os
-from openai import OpenAI
+
+import replicate
+
+from src.media.replicate import _extract_url
+
 
 async def generate_video(prompt, model="openai/sora-2", seconds=4):
     input = {
@@ -16,10 +16,6 @@ async def generate_video(prompt, model="openai/sora-2", seconds=4):
         input=input
     )
     cost = seconds * 0.10
-
-    if isinstance(output, list):
-        video_url = output[0]
-    else:
-        video_url = output
+    video_url = _extract_url(output)
 
     return video_url, model, cost
