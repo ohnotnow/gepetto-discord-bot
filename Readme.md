@@ -13,10 +13,14 @@ It has a couple of extra options to do common things.  Eg:
 @Gepetto what did I miss?
 @Gepetto what are people saying about the Super Bowl on Twitter?
 @Gepetto search Twitter for breaking news about AI
+@Gepetto remind me in 2 hours to check the deploy
+@Gepetto set a reminder for 5pm to call Dave
 ```
 The youtube one depends on their being subtitles/transcripts attached to the video.  The summarise command is a little limited (currently hard-coded) in scope due to token limits on the text you can send to the cheaper OpenAI models.
 
 The "catch me up" feature tracks when users last sent a message and summarises what happened in monitored channels since then (up to 48 hours). The LLM decides when to trigger this based on natural language, so variations like "fill me in", "what's been going on?", or "bring me up to speed" will also work.
+
+The reminders feature lets users ask the bot to remind them about something using natural language. The LLM works out the time and sets a reminder which is checked periodically. Reminders are delivered in the bot's own voice and personality. Users can have up to 10 pending reminders at a time.
 
 It has a few 'timed' features too :
 
@@ -66,6 +70,8 @@ The script uses the following environment variables (* indicates required):
 | ENABLE_CATCH_UP | Enable the "catch me up" tool so bot can respond to requests | False | "true" |
 | ENABLE_CATCH_UP_TRACKING | Enable activity tracking (only one bot instance should do this) | False | "true" |
 | ENABLE_TWITTER_SEARCH | Enable Twitter/X search via Grok (requires OPENROUTER_API_KEY) | False | "true" |
+| ENABLE_REMINDERS | Enable the reminders feature | False | "true" |
+| REMINDER_FREQUENCY | How often (in minutes) to check for due reminders | 5 | "5" |
 
 ## Running the Script
 
