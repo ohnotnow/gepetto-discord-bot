@@ -452,40 +452,27 @@ async def search_url_history(discord_message: discord.Message, query: str, recen
     )
 
 
-async def set_reminder(discord_message: discord.Message, reminder_text: str, remind_at: str) -> None:
-    """Handle a set_reminder tool call from the LLM."""
+def process_set_reminder(discord_message: discord.Message, reminder_text: str, remind_at: str) -> str:
+    """Process a set_reminder tool call. Returns a result string for the LLM to relay."""
     guild_id = str(discord_message.guild.id) if discord_message.guild else server_id
     user_id = str(discord_message.author.id)
 
     # Check per-user limit
     pending = reminder_store.count_pending_for_user(guild_id, user_id)
     if pending >= MAX_REMINDERS_PER_USER:
-        await discord_message.reply(
-            f"{discord_message.author.mention} You already have {pending} pending reminders (max {MAX_REMINDERS_PER_USER}). "
-            "Wait for some to fire or ask me to cancel one.",
-            mention_author=True
-        )
-        return
+        return f"Error: User already has {pending} pending reminders (max {MAX_REMINDERS_PER_USER}). They need to wait for some to fire or cancel one."
 
     # Parse the datetime
     try:
         remind_at_dt = datetime.fromisoformat(remind_at)
     except ValueError:
-        await discord_message.reply(
-            f"{discord_message.author.mention} I couldn't understand that time. Please try again.",
-            mention_author=True
-        )
-        return
+        return "Error: Could not parse the remind_at datetime. It must be ISO 8601 format."
 
     # Reject times in the past
     if remind_at_dt <= datetime.now():
-        await discord_message.reply(
-            f"{discord_message.author.mention} That time is in the past! I can't remind you retroactively.",
-            mention_author=True
-        )
-        return
+        return "Error: The specified time is in the past."
 
-    reminder_id = reminder_store.save(
+    reminder_store.save(
         server_id=guild_id,
         user_id=user_id,
         user_name=discord_message.author.name,
@@ -495,10 +482,24 @@ async def set_reminder(discord_message: discord.Message, reminder_text: str, rem
     )
 
     formatted_time = remind_at_dt.strftime("%-d %B %Y at %H:%M")
-    await discord_message.reply(
-        f"{discord_message.author.mention} Got it! I'll remind you on {formatted_time}: \"{reminder_text}\"",
-        mention_author=True
-    )
+    return f"Reminder saved. Will remind on {formatted_time}: \"{reminder_text}\""
+
+
+async def handle_set_reminder(discord_message: discord.Message, tool_call, arguments: dict, messages: list, temperature: float) -> None:
+    """Handle set_reminder tool call: save the reminder, then let the LLM confirm in its own voice."""
+    tool_result = process_set_reminder(discord_message, arguments.get('reminder_text', ''), arguments.get('remind_at', ''))
+    messages.append({
+        'role': 'assistant',
+        'content': None,
+        'tool_calls': [{
+            'id': tool_call.id,
+            'type': 'function',
+            'function': {'name': 'set_reminder', 'arguments': tool_call.function.arguments}
+        }]
+    })
+    messages.append({'role': 'tool', 'tool_call_id': tool_call.id, 'content': tool_result})
+    followup = await chatbot.chat(messages, temperature=temperature, tools=[])
+    await reply_to_message(discord_message, followup.message + '\n' + followup.usage_short)
 
 
 # Tool dispatcher setup
@@ -514,9 +515,6 @@ if ENABLE_CATCH_UP:
     tool_dispatcher.register('catch_up', lambda msg, **args: handle_catch_up(msg))
 if ENABLE_TWITTER_SEARCH:
     tool_dispatcher.register('twitter_search', lambda msg, **args: twitter_search(msg, args.get('query', '')))
-if ENABLE_REMINDERS:
-    tool_dispatcher.register('set_reminder', lambda msg, **args: set_reminder(msg, args.get('reminder_text', ''), args.get('remind_at', '')))
-
 # Parse channel IDs for catch-up feature (same channels as URL history)
 catch_up_channel_ids = set()
 if ENABLE_CATCH_UP and URL_HISTORY_CHANNELS:
@@ -736,6 +734,8 @@ async def on_message(message):
                         await extract_recipe_from_webpage(message, arguments.get('prompt', ''), arguments.get('url', ''))
                 elif fname == 'create_image':
                     await create_image(message, arguments.get('prompt', ''))
+                elif fname == 'set_reminder':
+                    await handle_set_reminder(message, tool_call, arguments, messages, temperature)
                 else:
                     logger.info(f'Unknown tool call: {fname}')
                     await message.reply(f'{message.author.mention} I am a silly sausage and don\'t know how to do that.', mention_author=True)
@@ -1264,7 +1264,17 @@ async def check_reminders():
             try:
                 channel = bot.get_channel(int(reminder.channel_id))
                 if channel:
-                    await channel.send(f"<@{reminder.user_id}> Reminder: {reminder.reminder_text}")
+                    try:
+                        remind_messages = [
+                            {'role': 'system', 'content': os.getenv('DISCORD_BOT_DEFAULT_PROMPT', 'You are a helpful assistant.')},
+                            {'role': 'user', 'content': f'You previously set a reminder for a user and it is now due. Deliver this reminder to them briefly in your usual style: "{reminder.reminder_text}"'}
+                        ]
+                        llm_response = await chatbot.chat(remind_messages, temperature=1.0, tools=[])
+                        reminder_text = llm_response.message.strip()[:DISCORD_MESSAGE_LIMIT]
+                    except Exception as e:
+                        logger.warning(f"LLM reminder delivery failed, using fallback: {e}")
+                        reminder_text = f"Reminder: {reminder.reminder_text}"
+                    await channel.send(f"<@{reminder.user_id}> {reminder_text}")
                 reminder_store.mark_reminded(reminder.id)
             except Exception as e:
                 logger.error(f"Error sending reminder {reminder.id}: {e}")
