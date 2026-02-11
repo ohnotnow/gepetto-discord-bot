@@ -314,3 +314,37 @@ class TestMemoryStore:
 
         memories = store.get_user_memories('s1', 'u1')
         assert memories[0].category == 'health_temporary'
+
+    # Individual memory deletion tests
+
+    def test_delete_memory_by_id(self, temp_dir):
+        """delete_memory() should delete a specific memory and leave others."""
+        store = MemoryStore(os.path.join(temp_dir, 'test.db'))
+        id1 = store.save_memory('s1', 'u1', 'user1', 'memory1')
+        id2 = store.save_memory('s1', 'u1', 'user1', 'memory2')
+
+        result = store.delete_memory('s1', 'u1', id1)
+
+        assert result is True
+        memories = store.get_user_memories('s1', 'u1')
+        assert len(memories) == 1
+        assert memories[0].id == id2
+
+    def test_delete_memory_wrong_user(self, temp_dir):
+        """delete_memory() should not delete another user's memory."""
+        store = MemoryStore(os.path.join(temp_dir, 'test.db'))
+        mem_id = store.save_memory('s1', 'u1', 'user1', 'user1 memory')
+
+        result = store.delete_memory('s1', 'u2', mem_id)
+
+        assert result is False
+        memories = store.get_user_memories('s1', 'u1')
+        assert len(memories) == 1
+
+    def test_delete_memory_nonexistent(self, temp_dir):
+        """delete_memory() should return False for nonexistent ID."""
+        store = MemoryStore(os.path.join(temp_dir, 'test.db'))
+
+        result = store.delete_memory('s1', 'u1', 9999)
+
+        assert result is False

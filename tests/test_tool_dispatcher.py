@@ -113,3 +113,17 @@ class TestToolDispatcherAsync:
         assert result.handled is True
         assert result.followup_data == "special_result"
         assert received_context == {"extra": "context"}
+
+
+class TestManageMemoriesTool:
+    """Tests for manage_memories tool definition."""
+
+    def test_tool_definition_structure(self):
+        """manage_memories tool should have correct structure."""
+        from src.tools.definitions import manage_memories_tool
+        func = manage_memories_tool['function']
+        assert func['name'] == 'manage_memories'
+        assert 'action' in func['parameters']['properties']
+        assert func['parameters']['properties']['action']['enum'] == ['list', 'delete_one', 'delete_all']
+        assert 'memory_id' in func['parameters']['properties']
+        assert func['parameters']['required'] == ['action']

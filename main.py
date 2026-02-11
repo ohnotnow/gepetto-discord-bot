@@ -18,7 +18,7 @@ from src.providers import split_for_discord
 
 # Tools
 from src.tools import calculator, ToolDispatcher, ToolResult
-from src.tools.definitions import tool_list, search_url_history_tool, catch_up_tool, twitter_search_tool, set_reminder_tool
+from src.tools.definitions import tool_list, search_url_history_tool, catch_up_tool, twitter_search_tool, set_reminder_tool, manage_memories_tool
 
 # Media
 from src.media import images, replicate, sora
@@ -151,6 +151,8 @@ if ENABLE_TWITTER_SEARCH:
     active_tool_list.append(twitter_search_tool)
 if ENABLE_REMINDERS:
     active_tool_list.append(set_reminder_tool)
+if ENABLE_USER_MEMORY:
+    active_tool_list.append(manage_memories_tool)
 
 location = os.getenv('BOT_LOCATION', 'dunno')
 chat_image_hour = int(os.getenv('CHAT_IMAGE_HOUR', 18))
@@ -510,6 +512,73 @@ async def handle_set_reminder(discord_message: discord.Message, tool_call, argum
     await reply_to_message(discord_message, followup.message + '\n' + followup.usage_short)
 
 
+def process_manage_memories(discord_message: discord.Message, action: str, memory_id: int = None) -> str:
+    """Process a manage_memories tool call. Returns a result string for the LLM to relay."""
+    guild_id = str(discord_message.guild.id) if discord_message.guild else server_id
+    user_id = str(discord_message.author.id)
+
+    if action == "list":
+        memories = memory_store.get_user_memories(guild_id, user_id)
+        bio = memory_store.get_user_bio(guild_id, user_id)
+
+        if not memories and not bio:
+            return "No memories or bio stored for this user."
+
+        parts = []
+        if bio:
+            parts.append(f"Bio: {bio.bio}")
+
+        if memories:
+            display_memories = memories[:25]
+            for mem in display_memories:
+                created = mem.created_at.strftime("%d %b %Y") if mem.created_at else "unknown"
+                parts.append(f"ID {mem.id}: [{mem.category}] {mem.memory} (saved {created})")
+            if len(memories) > 25:
+                parts.append(f"... and {len(memories) - 25} more memories not shown.")
+
+        return f"Found {len(memories)} memories.\n" + "\n".join(parts)
+
+    elif action == "delete_one":
+        if memory_id is None:
+            return "Error: memory_id is required for delete_one action."
+        deleted = memory_store.delete_memory(guild_id, user_id, memory_id)
+        if deleted:
+            return f"Memory {memory_id} has been deleted."
+        else:
+            return f"Memory {memory_id} not found (it may not exist or may belong to another user)."
+
+    elif action == "delete_all":
+        result = memory_store.delete_user_data(guild_id, user_id)
+        memories_deleted = result.get('memories', 0)
+        bio_deleted = result.get('bio_deleted', False)
+        if memories_deleted > 0 or bio_deleted:
+            return f"Deleted {memories_deleted} memories" + (" and bio" if bio_deleted else "") + ". All data wiped."
+        else:
+            return "No stored data found for this user. Nothing to delete."
+
+    return "Error: Unknown action."
+
+
+async def handle_manage_memories(discord_message: discord.Message, tool_call, arguments: dict, messages: list, temperature: float) -> None:
+    """Handle manage_memories tool call: perform action, then let the LLM relay in its own voice."""
+    memory_id = arguments.get('memory_id')
+    if memory_id is not None:
+        memory_id = int(memory_id)
+    tool_result = process_manage_memories(discord_message, arguments.get('action', ''), memory_id)
+    messages.append({
+        'role': 'assistant',
+        'content': None,
+        'tool_calls': [{
+            'id': tool_call.id,
+            'type': 'function',
+            'function': {'name': 'manage_memories', 'arguments': tool_call.function.arguments}
+        }]
+    })
+    messages.append({'role': 'tool', 'tool_call_id': tool_call.id, 'content': tool_result})
+    followup = await chatbot.chat(messages, temperature=temperature, tools=[])
+    await reply_to_message(discord_message, followup.message + '\n' + followup.usage_short)
+
+
 # Tool dispatcher setup
 tool_dispatcher = ToolDispatcher()
 tool_dispatcher.register('calculate', lambda msg, **args: calculate(msg, args.get('expression', '')))
@@ -618,28 +687,6 @@ async def on_message(message):
     try:
         lq = question.lower().strip()
 
-        # Privacy control - check for data deletion requests
-        if ENABLE_USER_MEMORY:
-            privacy_phrases = ['delete my info', 'forget me', 'delete my data', 'forget about me']
-            if any(phrase in lq for phrase in privacy_phrases):
-                user_id = str(message.author.id)
-                result = memory_store.delete_user_data(server_id, user_id)
-
-                memories_deleted = result.get('memories', 0)
-                bio_deleted = result.get('bio_deleted', False)
-
-                if memories_deleted > 0 or bio_deleted:
-                    await message.channel.send(
-                        f"Done! I've deleted {memories_deleted} memories"
-                        + (" and your bio" if bio_deleted else "")
-                        + " for you. Fresh start!"
-                    )
-                else:
-                    await message.channel.send(
-                        "I didn't have any stored information about you, but you're all clear!"
-                    )
-                return  # Don't process as normal message
-
         async with message.channel.typing():
             if "--no-logs" in lq:
                 context = []
@@ -744,6 +791,8 @@ async def on_message(message):
                     await create_image(message, arguments.get('prompt', ''))
                 elif fname == 'set_reminder':
                     await handle_set_reminder(message, tool_call, arguments, messages, temperature)
+                elif fname == 'manage_memories':
+                    await handle_manage_memories(message, tool_call, arguments, messages, temperature)
                 else:
                     logger.info(f'Unknown tool call: {fname}')
                     await message.reply(f'{message.author.mention} I am a silly sausage and don\'t know how to do that.', mention_author=True)

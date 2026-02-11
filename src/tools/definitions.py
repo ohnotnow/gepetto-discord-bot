@@ -207,3 +207,27 @@ twitter_search_tool = {
         }
     }
 }
+
+# Tool for managing user memories - conditionally added based on ENABLE_USER_MEMORY
+manage_memories_tool = {
+    "type": "function",
+    "function": {
+        "name": "manage_memories",
+        "description": "Manages the bot's stored memories about the requesting user. Use this when a user asks what you know or remember about them, asks to see their stored data, or asks you to forget or delete specific or all memories. Actions: 'list' shows all stored memories with their IDs, 'delete_one' deletes a specific memory by ID, 'delete_all' deletes all memories and bio data.",
+        "parameters": {
+            "type": "object",
+            "properties": {
+                "action": {
+                    "type": "string",
+                    "enum": ["list", "delete_one", "delete_all"],
+                    "description": "The action to perform: 'list' to show all memories, 'delete_one' to delete a specific memory by ID, 'delete_all' to wipe all stored data."
+                },
+                "memory_id": {
+                    "type": "integer",
+                    "description": "The ID of the memory to delete. Required when action is 'delete_one'."
+                }
+            },
+            "required": ["action"]
+        }
+    }
+}
