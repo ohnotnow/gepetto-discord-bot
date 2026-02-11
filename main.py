@@ -536,7 +536,7 @@ def process_manage_memories(discord_message: discord.Message, action: str, memor
             if len(memories) > 25:
                 parts.append(f"... and {len(memories) - 25} more memories not shown.")
 
-        return f"Found {len(memories)} memories.\n" + "\n".join(parts)
+        return f"Found {len(memories)} memories. IMPORTANT: Always include the memory ID numbers when presenting these to the user, so they can ask to delete specific ones.\n" + "\n".join(parts)
 
     elif action == "delete_one":
         if memory_id is None:
