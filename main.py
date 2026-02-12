@@ -156,6 +156,8 @@ if ENABLE_USER_MEMORY:
 
 location = os.getenv('BOT_LOCATION', 'dunno')
 chat_image_hour = int(os.getenv('CHAT_IMAGE_HOUR', 18))
+IMAGE_MODEL = os.getenv("IMAGE_MODEL", None) or None
+CHAT_IMAGE_MODEL = os.getenv("CHAT_IMAGE_MODEL", None) or IMAGE_MODEL
 
 # Create instance of bot
 intents = discord.Intents.default()
@@ -303,7 +305,7 @@ async def create_image(discord_message: discord.Message, prompt: str) -> None:
         await discord_message.reply(f'Due to budget cuts, I can only generate {MAX_DAILY_IMAGES} images per day.', mention_author=True)
         return
 
-    model = replicate.get_image_model("openai/gpt-image-1.5")
+    model = replicate.get_image_model(IMAGE_MODEL)
     image_url = await model.generate(prompt)
 
     filename = f"{sanitize_filename(prompt)}_{datetime.now().strftime('%Y_%m_%d')}.png"
@@ -937,7 +939,7 @@ async def make_chat_image():
         # Generate the image
         full_prompt = llm_chat_prompt + f"\n{images.get_extra_guidelines()}"
         logger.info("Calling replicate to generate image")
-        model = replicate.get_image_model()  # random model based on env config
+        model = replicate.get_image_model(CHAT_IMAGE_MODEL)
         image_url = await model.generate(full_prompt)
         logger.info(f"Image URL: {image_url} - model: {model.short_name} - cost: {model.cost}")
 

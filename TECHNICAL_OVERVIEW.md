@@ -84,8 +84,8 @@ Model string format: `{provider}/{model}` (e.g., "openai/gpt-4o-mini")
 
 Factory pattern in `replicate.py`:
 - `get_image_model(name)` returns `ImageModel` instance
-- `MODEL_CONFIGS` dict maps model prefixes to (default_model, cost, params)
-- Random model selection based on env flags (`ENABLE_NANO_BANANA_PRO`, `ENABLE_GPT_IMAGE`)
+- `MODEL_CONFIGS` dict maps model prefixes to (default_model, cost, params, in_pool)
+- Random model selection from models with `in_pool=True`
 
 ### Tool Dispatch
 

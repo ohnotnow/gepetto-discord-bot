@@ -73,6 +73,4 @@ See README.md for full environment variable list.
 
 2. **Broad exception handling** - Some try/except blocks are intentionally broad due to varied LLM response formats.
 
-3. **Hardcoded image model** - `create_image()` hardcodes the model to "best affordable option" rather than using the parameter.
-
-4. **Config as code for Replicate** - Model configs in `replicate.py` use a dict pattern rather than if/elif chains.
+3. **Config as code for Replicate** - Model configs in `replicate.py` use a dict pattern rather than if/elif chains.
