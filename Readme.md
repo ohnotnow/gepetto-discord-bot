@@ -37,7 +37,9 @@ The script uses the following environment variables (* indicates required):
 | * DISCORD_SERVER_ID | Discord server identification | "not_set" | "123456789012345678" |
 | * DISCORD_BOT_TOKEN | Discord bot authentication | "not_set" | "your-discord-bot-token" |
 | * DISCORD_BOT_CHANNEL_ID | Setting the Discord channel ID for bot interactions | "Invalid" | "123456789012345678" |
-| DISCORD_BOT_DEFAULT_PROMPT | Setting the default system prompt for the bot | - | "You are a helpful AI assistant..." |
+| DISCORD_BOT_PERSONA | The bot's persona/character prompt | - | "You are a helpful AI assistant..." |
+| DISCORD_BOT_ALTERNATE_PERSONA | Optional alternate persona (used randomly) | - | "You are a spooky storyteller..." |
+| DISCORD_BOT_RESPONSE_STYLE | Universal response formatting rules appended to every persona | - | "Never use asterisk actions. Keep responses concise." |
 | * BOT_PROVIDER | Selecting the AI model provider to use with litellm | - | "openai" |
 | * BOT_MODEL | Setting the default model for the bot | - | "o4-mini" |
 | BOT_LOCATION | Bot's location setting | "dunno" | "London" |

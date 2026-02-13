@@ -61,6 +61,47 @@ from src.utils.helpers import (
 
 AVATAR_PATH = "avatar.png"
 
+DEFAULT_PERSONA = 'You are a helpful AI assistant called "{name}" who specialises in providing answers to questions. You should ONLY respond with the answer, no other text.'
+
+
+def _get_env_with_fallback(new_name, old_name, default=None):
+    """Get an env var by its new name, falling back to the deprecated name with a warning."""
+    value = os.getenv(new_name)
+    if value:
+        return value
+    old_value = os.getenv(old_name)
+    if old_value:
+        logging.getLogger(__name__).warning(
+            f"Using deprecated env var '{old_name}' - please update to '{new_name}'. "
+            "See the project README for the new variable names."
+        )
+        return old_value
+    return default
+
+
+def get_system_prompt(system_prompt=None, bot_name="Assistant"):
+    """Build the full system prompt by combining persona + response style.
+
+    Priority: explicit system_prompt > alternate persona (random chance) > default persona.
+    DISCORD_BOT_RESPONSE_STYLE is always appended when set.
+    """
+    if system_prompt is not None:
+        persona = system_prompt
+    elif random.random() < ALTERNATE_PROMPT_PROBABILITY and _get_env_with_fallback(
+        'DISCORD_BOT_ALTERNATE_PERSONA', 'DISCORD_BOT_ALTERNATE_PROMPT'
+    ):
+        persona = _get_env_with_fallback('DISCORD_BOT_ALTERNATE_PERSONA', 'DISCORD_BOT_ALTERNATE_PROMPT')
+    else:
+        persona = _get_env_with_fallback(
+            'DISCORD_BOT_PERSONA', 'DISCORD_BOT_DEFAULT_PROMPT',
+            default=DEFAULT_PERSONA.format(name=bot_name)
+        )
+
+    response_style = os.getenv('DISCORD_BOT_RESPONSE_STYLE', '')
+    if response_style:
+        return f"{persona}\n\n{response_style}"
+    return persona
+
 MARVIN_SPELLCHECK_PROMPT = '''You are Marvin, the Paranoid Android from The Hitchhiker's Guide to the Galaxy,
 reluctantly serving as a spell checker.
 
@@ -218,16 +259,7 @@ def build_messages(question, extended_messages, system_prompt=None, user_hints=N
 
     formatted_date = format_date_with_suffix()
 
-    # Determine the prompt to use (fixed logic - was previously buggy)
-    if system_prompt is not None:
-        default_prompt = system_prompt
-    elif random.random() < ALTERNATE_PROMPT_PROBABILITY and os.getenv('DISCORD_BOT_ALTERNATE_PROMPT'):
-        default_prompt = os.getenv('DISCORD_BOT_ALTERNATE_PROMPT')
-    else:
-        default_prompt = os.getenv(
-            'DISCORD_BOT_DEFAULT_PROMPT',
-            f'You are a helpful AI assistant called "{chatbot.name}" who specialises in providing answers to questions. You should ONLY respond with the answer, no other text.'
-        )
+    default_prompt = get_system_prompt(system_prompt, bot_name=chatbot.name)
 
     # Add user context hints if provided
     if user_hints:
@@ -833,7 +865,7 @@ async def random_chat():
     context = await get_history_as_openai_messages(channel, include_bot_messages=False, since_hours=0.5)
     context.append({
         'role': 'system',
-        'content': os.getenv('DISCORD_BOT_DEFAULT_PROMPT')
+        'content': get_system_prompt(bot_name=chatbot.name)
     })
     if len(context) < MIN_MESSAGES_FOR_RANDOM_CHAT:
         logger.info("Not joining in with chat because it is too quiet")
@@ -1328,7 +1360,7 @@ async def check_reminders():
                         delay_minutes = int(delay.total_seconds() / 60)
                         delay_note = f" The reminder was due {delay_minutes} minutes ago.  Don't apologise for the delay - this is just to help you in your response." if delay_minutes > 1 else ""
                         remind_messages = [
-                            {'role': 'system', 'content': os.getenv('DISCORD_BOT_DEFAULT_PROMPT', 'You are a helpful assistant.')},
+                            {'role': 'system', 'content': get_system_prompt(bot_name=chatbot.name)},
                             {'role': 'user', 'content': f'You previously set a reminder for a user and it is now due. Deliver this reminder to them in your own voice and style: "{reminder.reminder_text}".{delay_note}'}
                         ]
                         llm_response = await chatbot.chat(remind_messages, temperature=1.0, tools=[])
