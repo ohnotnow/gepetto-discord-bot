@@ -89,11 +89,12 @@ class BaseModel:
         except:
             cost = 0
         tokens = response.usage.total_tokens
+        completion_tokens = response.usage.completion_tokens
         message = str(response.choices[0].message.content)
         tool_calls = response.choices[0].message.tool_calls
         # check if we have model 'reasoning'
         reasoning_content = getattr(response.choices[0].message, "reasoning_content", None)
-        return ChatResponse(message, tokens, cost, model, tool_calls=tool_calls, reasoning_content=reasoning_content, duration=duration)
+        return ChatResponse(message, tokens, cost, model, tool_calls=tool_calls, reasoning_content=reasoning_content, duration=duration, completion_tokens=completion_tokens)
 
     def model_supports_tools(self, model: str) -> bool:
         models_with_tools = ["openai", "anthropic", "gemini", "google"]
