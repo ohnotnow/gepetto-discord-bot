@@ -637,19 +637,17 @@ async def handle_catch_up(message: ChatMessage) -> None:
     # Cap at CATCH_UP_MAX_HOURS
     since = max(last_activity.last_message_at, datetime.now() - timedelta(hours=CATCH_UP_MAX_HOURS))
 
-    # Fetch messages from all text channels since then
-    # Uses raw escape hatch for guild.text_channels (platform-specific, will be abstracted in future)
-    raw_msg = message.raw
+    # Fetch messages from all readable channels since then
+    readable_channels = await platform.get_readable_channels(guild_id)
     all_messages = []
-    for raw_channel in raw_msg.guild.text_channels:
-        if not raw_channel.permissions_for(raw_msg.guild.me).read_message_history:
-            continue
+    for ch in readable_channels:
         try:
-            async for msg in raw_channel.history(after=since, limit=CATCH_UP_MAX_MESSAGES):
-                if not msg.author.bot:
-                    all_messages.append((raw_channel.name, msg))
+            msgs = await ch.history(limit=CATCH_UP_MAX_MESSAGES, after=since)
+            for msg in msgs:
+                if not msg.author_is_bot:
+                    all_messages.append((ch.name, msg))
         except Exception as e:
-            logger.warning(f"Could not fetch history from channel {raw_channel.name}: {e}")
+            logger.warning(f"Could not fetch history from channel {ch.name}: {e}")
 
     if not all_messages:
         await message.reply("Nothing much happened while you were away!")
@@ -662,7 +660,7 @@ async def handle_catch_up(message: ChatMessage) -> None:
     chat_lines = []
     for channel_name, msg in all_messages:
         timestamp = msg.created_at.strftime("%H:%M")
-        chat_lines.append(f"[#{channel_name} {timestamp}] {msg.author.name}: {msg.content[:300]}")
+        chat_lines.append(f"[#{channel_name} {timestamp}] {msg.author_name}: {msg.content[:300]}")
 
     chat_text = "\n".join(chat_lines[-100:])  # Last 100 messages max
 
@@ -1380,4 +1378,8 @@ chatbot = get_chatbot()
 if os.getenv("BOT_NAME", None):
     chatbot.name = os.getenv("BOT_NAME")
 bot_guard = BotGuard()
-platform.run(os.getenv("DISCORD_BOT_TOKEN", 'not_set'))
+backend = os.getenv("BOT_BACKEND", "discord")
+if backend == "matrix":
+    platform.run(os.getenv("MATRIX_PASSWORD", ""))
+else:
+    platform.run(os.getenv("DISCORD_BOT_TOKEN", "not_set"))

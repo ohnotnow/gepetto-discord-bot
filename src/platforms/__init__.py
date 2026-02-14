@@ -7,6 +7,7 @@ def get_platform():
         from .discord_adapter import DiscordPlatform
         return DiscordPlatform()
     elif backend == "matrix":
-        raise NotImplementedError("Matrix support coming soon")
+        from .matrix_adapter import MatrixPlatform
+        return MatrixPlatform()
     else:
         raise ValueError(f"Unknown BOT_BACKEND: {backend}")

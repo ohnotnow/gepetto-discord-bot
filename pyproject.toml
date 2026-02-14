@@ -17,6 +17,7 @@ dependencies = [
     "litellm>=1.66.3",
     "mathparse",
     "xai-sdk>=1.6.1",
+    "matrix-nio>=0.25.2",
 ]
 
 [project.optional-dependencies]

@@ -91,6 +91,17 @@ class DiscordPlatform:
         bot_member = guild.me if guild else None
         return DiscordChannel(channel, bot_member)
 
+    async def get_readable_channels(self, server_id: str) -> list[DiscordChannel]:
+        guild = self._bot.get_guild(int(server_id))
+        if guild is None:
+            return []
+        bot_member = guild.me
+        channels = []
+        for channel in guild.text_channels:
+            if channel.permissions_for(bot_member).read_message_history:
+                channels.append(DiscordChannel(channel, bot_member))
+        return channels
+
     async def fetch_user_mention(self, user_id: str) -> str:
         user = await self._bot.fetch_user(int(user_id))
         return user.mention

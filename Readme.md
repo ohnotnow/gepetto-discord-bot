@@ -34,7 +34,12 @@ The script uses the following environment variables (* indicates required):
 
 | Environment Variable | Purpose | Default | Example |
 |---------------------|---------|---------|---------|
-| BOT_BACKEND | Platform backend to use | "discord" | "discord" |
+| BOT_BACKEND | Platform backend to use | "discord" | "discord" or "matrix" |
+| MATRIX_HOMESERVER | Matrix homeserver URL (required for matrix backend) | - | "https://matrix.example.com" |
+| MATRIX_USER_ID | Matrix bot user ID (required for matrix backend) | - | "@bot:example.com" |
+| MATRIX_PASSWORD | Matrix login password | - | "your-matrix-password" |
+| MATRIX_ACCESS_TOKEN | Matrix access token (alternative to password) | - | "syt_..." |
+| MATRIX_ROOM_ID | Primary Matrix room for scheduled tasks | - | "!roomid:example.com" |
 | * DISCORD_SERVER_ID | Discord server identification | "not_set" | "123456789012345678" |
 | * DISCORD_BOT_TOKEN | Discord bot authentication | "not_set" | "your-discord-bot-token" |
 | * DISCORD_BOT_CHANNEL_ID | Setting the Discord channel ID for bot interactions | "Invalid" | "123456789012345678" |

@@ -88,11 +88,12 @@ class TestGetPlatform:
         from src.platforms.discord_adapter import DiscordPlatform
         assert isinstance(platform, DiscordPlatform)
 
-    @patch.dict(os.environ, {"BOT_BACKEND": "matrix"})
-    def test_matrix_backend_raises_not_implemented(self):
+    @patch.dict(os.environ, {"BOT_BACKEND": "matrix", "MATRIX_HOMESERVER": "https://matrix.example.com", "MATRIX_USER_ID": "@bot:example.com"})
+    def test_matrix_backend_returns_matrix_platform(self):
         from src.platforms import get_platform
-        with pytest.raises(NotImplementedError, match="Matrix support coming soon"):
-            get_platform()
+        from src.platforms.matrix_adapter import MatrixPlatform
+        platform = get_platform()
+        assert isinstance(platform, MatrixPlatform)
 
     @patch.dict(os.environ, {"BOT_BACKEND": "nonsense"})
     def test_unknown_backend_raises_value_error(self):
