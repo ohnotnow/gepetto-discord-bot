@@ -20,6 +20,10 @@ A Discord bot ("Gepetto") that uses LLMs via LiteLLM to chat, generate images, s
 
 ```
 src/
+├── platforms/       # Platform abstraction layer (Discord, future Matrix)
+│   ├── __init__.py  # Factory: get_platform() based on BOT_BACKEND
+│   ├── base.py      # ChatMessage dataclass, Channel/Platform protocols
+│   └── discord_adapter.py  # Discord implementation wrapping discord.py
 ├── providers/       # LLM provider wrappers (all inherit from BaseModel)
 │   ├── base.py      # BaseModel with LiteLLM integration
 │   ├── gpt.py       # OpenAI (minimal, just sets flag)
@@ -64,6 +68,16 @@ tests/               # pytest-based tests
 ```
 
 ## Architecture
+
+### Platform Layer
+
+The bot runs on a platform abstraction that decouples business logic from Discord-specific code. Set `BOT_BACKEND` to choose the platform (currently only `discord`; `matrix` planned).
+
+- **ChatMessage** - Platform-agnostic message dataclass. Contains author info, content, channel/server IDs, and a `raw` escape hatch for the original platform message.
+- **Channel** - Protocol for channel operations: send, send_file, history, typing, permissions.
+- **Platform** - Protocol for bot lifecycle: event registration, scheduling, channel access, running.
+
+Only `src/platforms/discord_adapter.py` imports discord.py. All other code works with the protocol types.
 
 ### LLM Provider System
 
@@ -259,6 +273,7 @@ uv run pytest              # Run tests
 
 | Variable | Required | Purpose |
 |----------|----------|---------|
+| `BOT_BACKEND` | No | Platform backend: "discord" (default) or "matrix" (future) |
 | `DISCORD_BOT_TOKEN` | Yes | Discord authentication |
 | `DISCORD_SERVER_ID` | Yes | Server to operate in |
 | `DISCORD_BOT_CHANNEL_ID` | Yes | Channel for scheduled tasks |

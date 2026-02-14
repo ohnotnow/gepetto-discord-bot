@@ -26,6 +26,9 @@ uv run pytest tests/test_helpers.py::test_function_name -v  # Run single test
 
 ## Architecture
 
+### Platform Layer (`src/platforms/`)
+The bot uses a platform abstraction layer. `BOT_BACKEND` env var selects the platform (default: `discord`). All business logic uses `ChatMessage`, `Channel`, and `Platform` protocols — `import discord` should only appear in `src/platforms/discord_adapter.py` and test files.
+
 ### LLM Providers (`src/providers/`)
 All providers inherit from `BaseModel` in `base.py` which wraps LiteLLM:
 ```python
@@ -58,6 +61,7 @@ Global state is encapsulated in `BotState` dataclass in `main.py` - tracks previ
 
 ## Key Environment Variables
 
+- `BOT_BACKEND` - Platform selection (default: "discord")
 - `DISCORD_BOT_TOKEN`, `DISCORD_SERVER_ID`, `DISCORD_BOT_CHANNEL_ID` - Discord config
 - `BOT_PROVIDER`, `BOT_MODEL` - LLM selection (e.g., "openai", "gpt-4o")
 - `REPLICATE_API_KEY` - For image generation

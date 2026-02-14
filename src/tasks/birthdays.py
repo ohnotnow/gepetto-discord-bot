@@ -11,7 +11,7 @@ def get_today_formatted():
     month_name = today.strftime("%B")
     return f"the {day}{suffix} of {month_name}"
 
-async def get_birthday_message(bot, chatbot):
+async def get_birthday_message(platform, chatbot):
     birthdays = os.getenv('DISCORD_BOT_BIRTHDAYS', "").split(",")
     # each birthday will be formatted as "discord_username:dd/mm"
     if len(birthdays) == 0:
@@ -20,11 +20,11 @@ async def get_birthday_message(bot, chatbot):
     date_string = get_today_formatted()
     for birthday in birthdays:
         if today_string in birthday:
-            channel = bot.get_channel(int(os.getenv('DISCORD_BOT_CHANNEL_ID', 'Invalid').strip()))
-            birthday_user_id = birthday.split(":")[0]
-            user = await bot.fetch_user(birthday_user_id)
-            if user is None:
+            channel = platform.get_channel(os.getenv('DISCORD_BOT_CHANNEL_ID', 'Invalid').strip())
+            if channel is None:
                 return
+            birthday_user_id = birthday.split(":")[0]
+            mention = await platform.fetch_user_mention(birthday_user_id)
             messages = [
                 {
                     'role': 'system',
@@ -45,4 +45,4 @@ async def get_birthday_message(bot, chatbot):
             message = message.replace("Sure! ", '')
             message = message.replace("Here's a random fact for you: ", '')
             message = message.replace("Certainly! ", '')
-            await channel.send(f"Happy birthday {user.mention}! {message}")
+            await channel.send(f"Happy birthday {mention}! {message}")

@@ -34,6 +34,7 @@ The script uses the following environment variables (* indicates required):
 
 | Environment Variable | Purpose | Default | Example |
 |---------------------|---------|---------|---------|
+| BOT_BACKEND | Platform backend to use | "discord" | "discord" |
 | * DISCORD_SERVER_ID | Discord server identification | "not_set" | "123456789012345678" |
 | * DISCORD_BOT_TOKEN | Discord bot authentication | "not_set" | "your-discord-bot-token" |
 | * DISCORD_BOT_CHANNEL_ID | Setting the Discord channel ID for bot interactions | "Invalid" | "123456789012345678" |

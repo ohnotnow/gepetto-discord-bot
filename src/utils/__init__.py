@@ -10,8 +10,8 @@ from .constants import (
 )
 from .helpers import (
     format_date_with_suffix, format_date_only, get_date_suffix,
-    get_bot_channel, fetch_chat_history, is_quiet_chat_day,
-    generate_quiet_chat_message, download_media_to_discord_file,
+    fetch_chat_history, is_quiet_chat_day,
+    generate_quiet_chat_message,
     load_previous_themes, save_previous_themes, sanitize_filename
 )
 
@@ -27,7 +27,7 @@ __all__ = [
     'UK_HOLIDAYS', 'ABUSIVE_RESPONSES',
     # Helpers
     'format_date_with_suffix', 'format_date_only', 'get_date_suffix',
-    'get_bot_channel', 'fetch_chat_history', 'is_quiet_chat_day',
-    'generate_quiet_chat_message', 'download_media_to_discord_file',
+    'fetch_chat_history', 'is_quiet_chat_day',
+    'generate_quiet_chat_message',
     'load_previous_themes', 'save_previous_themes', 'sanitize_filename',
 ]

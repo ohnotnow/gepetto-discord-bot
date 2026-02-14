@@ -8,9 +8,11 @@ import traceback
 from dataclasses import dataclass, field
 from datetime import datetime, timedelta, timezone, time
 
-import discord
 import pytz
-from discord.ext import commands, tasks
+
+# Platform
+from src.platforms import get_platform
+from src.platforms.base import ChatMessage
 
 # Providers
 from src.providers import claude, gpt, grok, groq, openrouter, perplexity
@@ -53,8 +55,8 @@ from src.utils.constants import (
 )
 from src.utils.helpers import (
     format_date_with_suffix,
-    get_bot_channel, fetch_chat_history, is_quiet_chat_day,
-    generate_quiet_chat_message, download_media_to_discord_file,
+    fetch_chat_history, is_quiet_chat_day,
+    generate_quiet_chat_message,
     sanitize_filename, remove_emoji, remove_nsfw_words, clean_response_text
 )
 
@@ -200,11 +202,8 @@ chat_image_hour = int(os.getenv('CHAT_IMAGE_HOUR', 18))
 IMAGE_MODEL = os.getenv("IMAGE_MODEL", None) or None
 CHAT_IMAGE_MODEL = os.getenv("CHAT_IMAGE_MODEL", None) or IMAGE_MODEL
 
-# Create instance of bot
-intents = discord.Intents.default()
-intents.members = True
-intents.message_content = True
-bot = commands.Bot(command_prefix='!', intents=intents)
+# Create platform instance
+platform = get_platform()
 
 def get_chatbot():
     chatbot = None
@@ -224,19 +223,16 @@ async def get_history_as_openai_messages(channel, include_bot_messages=True, lim
     messages = []
     total_length = 0
     after_time = datetime.now() - timedelta(hours=HISTORY_HOURS)
-    async for msg in channel.history(limit=limit, after=after_time):
-        # bail out if the message was by a bot and we don't want bot messages included
-        if (not include_bot_messages) and (msg.author.bot):
+    history_msgs = await channel.history(limit=limit, after=after_time)
+    for msg in history_msgs:
+        if (not include_bot_messages) and msg.author_is_bot:
             continue
-        # The role is 'assistant' if the author is the bot, 'user' otherwise
-        role = 'assistant' if msg.author == bot.user else 'user'
-        username = "" if msg.author == bot.user else msg.author.name
+        role = 'assistant' if msg.author_id == platform.bot_user_id else 'user'
         content = remove_emoji(msg.content)
         if include_timestamps:
-            message_content = f"At {msg.created_at.astimezone(timezone.utc).astimezone()} '{msg.author.name}' said: {content}"
+            message_content = f"At {msg.created_at.astimezone(timezone.utc).astimezone()} '{msg.author_name}' said: {content}"
         else:
-            message_content = f"'{msg.author.name}' said: {content}"
-        # message_content = f"User '{username}' said : {content}"
+            message_content = f"'{msg.author_name}' said: {content}"
         message_content = re.sub(r'\[tokens used.+Estimated cost.+]', '', message_content, flags=re.MULTILINE)
         message_content = remove_nsfw_words(message_content)
         message_length = len(message_content)
@@ -277,88 +273,88 @@ def build_messages(question, extended_messages, system_prompt=None, user_hints=N
     return extended_messages
 
 
-async def reply_to_message(message, response):
+async def reply_to_message(message: ChatMessage, response):
     chunks = split_for_discord(response)
     for i, chunk in enumerate(chunks):
         if i == 0:
-            await message.reply(f'{message.author.mention} {chunk}')
+            await message.reply(f'{message.author_mention} {chunk}')
         else:
             await message.reply(f'{chunk}')
         await asyncio.sleep(0.1)
 
-@bot.event
-async def on_ready():
+async def handle_ready():
     logger.info(f"Starting discord bot - date time in python is {datetime.now()}")
+    uk_tz = pytz.timezone('Europe/London')
     if os.getenv("DISCORD_BOT_BIRTHDAYS", None):
         logger.info("Starting say_happy_birthday task")
-        say_happy_birthday.start()
+        platform.schedule_daily("birthday", say_happy_birthday, hour=11, tz=uk_tz)
     if os.getenv("CHAT_IMAGE_ENABLED", False):
         logger.info(f"Starting make_chat_image task with hour {chat_image_hour}")
-        make_chat_image.start()
+        platform.schedule_daily("chat_image", make_chat_image, hour=chat_image_hour, tz=uk_tz)
     if os.getenv("CHAT_VIDEO_ENABLED", False):
         logger.info(f"Starting make_chat_video task")
-        make_chat_video.start()
+        platform.schedule_daily("chat_video", make_chat_video, hour=chat_image_hour, minute=15, tz=uk_tz)
     if os.getenv("FEATURE_HORROR_CHAT", False):
         logger.info("Starting horror_chat task")
-        horror_chat.start()
+        platform.schedule_interval("horror", horror_chat, minutes=60)
     if ENABLE_USER_MEMORY_EXTRACTION:
         logger.info(f"Starting extract_user_memories task at hour {memory_extraction_hour}")
-        if not extract_user_memories.is_running():
-            extract_user_memories.start()
+        platform.schedule_daily("memories", extract_user_memories, hour=memory_extraction_hour, tz=uk_tz)
     if ENABLE_URL_HISTORY_EXTRACTION:
         logger.info(f"Starting extract_url_history task at hour {url_history_extraction_hour}")
-        if not extract_url_history.is_running():
-            extract_url_history.start()
+        platform.schedule_daily("url_history", extract_url_history, hour=url_history_extraction_hour, tz=uk_tz)
     if ENABLE_REMINDERS:
         logger.info(f"Starting check_reminders task (every {REMINDER_FREQUENCY} minutes)")
-        if not check_reminders.is_running():
-            check_reminders.start()
+        platform.schedule_interval("reminders", check_reminders, minutes=REMINDER_FREQUENCY)
+    platform.start_schedules()
     logger.info(f"Using model type : {type(chatbot)}")
 
-async def websearch(discord_message: discord.Message, prompt: str) -> None:
+platform.on_ready(handle_ready)
+
+async def websearch(message: ChatMessage, prompt: str) -> None:
     response = await perplexity.search(prompt)
-    # response = await gepetto_websearch.websearch(prompt)
     response = "🌍" + response
-    await reply_to_message(discord_message, response)
+    await reply_to_message(message, response)
 
 
-async def twitter_search(discord_message: discord.Message, query: str) -> None:
-    async with discord_message.channel.typing():
+async def twitter_search(message: ChatMessage, query: str) -> None:
+    channel = platform.get_channel(message.channel_id)
+    async with channel.typing():
         response = await grok.search(query)
         response = "🐦" + response
-        await reply_to_message(discord_message, response)
+        await reply_to_message(message, response)
 
-async def create_image(discord_message: discord.Message, prompt: str) -> None:
+async def create_image(message: ChatMessage, prompt: str) -> None:
     logger.info(f"Creating image with prompt: {prompt}")
 
     bot_state.daily_image_count += 1
     if bot_state.daily_image_count > MAX_DAILY_IMAGES:
         logger.info("Not creating image because daily image count is too high")
-        await discord_message.reply(f'Due to budget cuts, I can only generate {MAX_DAILY_IMAGES} images per day.', mention_author=True)
+        await message.reply(f'Due to budget cuts, I can only generate {MAX_DAILY_IMAGES} images per day.', mention_author=True)
         return
 
     model = replicate.get_image_model(IMAGE_MODEL)
     image_url = await model.generate(prompt)
 
     filename = f"{sanitize_filename(prompt)}_{datetime.now().strftime('%Y_%m_%d')}.png"
-    discord_file = download_media_to_discord_file(image_url, filename)
+    channel = platform.get_channel(message.channel_id)
 
     logger.info("Sending image to discord")
-    await discord_message.reply(f'{discord_message.author.mention}\n_[Estimated cost: US${model.cost}] | Model: {model.short_name}_', file=discord_file)
+    await channel.send_file(f'{message.author_mention}\n_[Estimated cost: US${model.cost}] | Model: {model.short_name}_', image_url, filename)
 
-async def calculate(discord_message: discord.Message, expression: str) -> None:
+async def calculate(message: ChatMessage, expression: str) -> None:
     logger.info(f"Calculating {expression}")
     result = calculator.calculate(expression)
-    await discord_message.reply(f'{discord_message.author.mention} {result}', mention_author=True)
+    await message.reply(f'{message.author_mention} {result}', mention_author=True)
 
-async def get_weather_forecast(discord_message: discord.Message, prompt: str) -> None:
+async def get_weather_forecast(message: ChatMessage, prompt: str) -> None:
     logger.info(f"Getting weather forecast for '{prompt}'")
     forecast = await weather.get_friendly_forecast_openweathermap(prompt, chatbot)
-    await discord_message.reply(f'{discord_message.author.mention} {forecast}', mention_author=True)
+    await message.reply(f'{message.author_mention} {forecast}', mention_author=True)
 
-async def summarise_sentry_issue(discord_message: discord.Message, url: str) -> None:
+async def summarise_sentry_issue(message: ChatMessage, url: str) -> None:
     issue_details, llm_prompt = await sentry.process_sentry_issue(url)
-    await discord_message.reply(f'{discord_message.author.mention} {issue_details}', mention_author=True)
+    await message.reply(f'{message.author_mention} {issue_details}', mention_author=True)
     messages = [
         {
             'role': 'system',
@@ -370,13 +366,13 @@ async def summarise_sentry_issue(discord_message: discord.Message, url: str) -> 
         },
     ]
     response = await chatbot.chat(messages, temperature=1.0)
-    message = response.message.strip()[:DISCORD_MESSAGE_LIMIT] + "\n" + response.usage
-    await discord_message.reply(f'{discord_message.author.mention} {message}', mention_author=True)
+    reply_text = response.message.strip()[:DISCORD_MESSAGE_LIMIT] + "\n" + response.usage
+    await message.reply(f'{message.author_mention} {reply_text}', mention_author=True)
 
 
-async def summarise_webpage_content(discord_message: discord.Message, prompt: str, url: str) -> None:
+async def summarise_webpage_content(message: ChatMessage, prompt: str, url: str) -> None:
     if 'sentry.io' in url:
-        await summarise_sentry_issue(discord_message, url)
+        await summarise_sentry_issue(message, url)
         return
     logger.info(f"Summarising webpage content for '{url}'")
     prompt = prompt.replace("👀", "").strip().strip("<>")
@@ -385,7 +381,7 @@ async def summarise_webpage_content(discord_message: discord.Message, prompt: st
     if not summary.is_youtube_url(url):
         gemini_result = await summary.summarise_with_gemini(url, prompt)
         if gemini_result:
-            await reply_to_message(discord_message, gemini_result)
+            await reply_to_message(message, gemini_result)
             return
 
     # Fallback: extract text then summarise with default LLM
@@ -408,25 +404,24 @@ async def summarise_webpage_content(discord_message: discord.Message, prompt: st
         },
     ]
     response = await chatbot.chat(messages, temperature=1.0)
-    # chunk the response.message into 1800 character chunks
-    await reply_to_message(discord_message, response.message)
+    await reply_to_message(message, response.message)
     if was_truncated:
-        await discord_message.reply(f"[Note: The summary is based on a truncated version of the original text as it was too long.]", mention_author=True)
+        await message.reply(f"[Note: The summary is based on a truncated version of the original text as it was too long.]", mention_author=True)
 
 
-async def extract_recipe_from_webpage(discord_message: discord.Message, prompt: str, url: str) -> None:
+async def extract_recipe_from_webpage(message: ChatMessage, prompt: str, url: str) -> None:
     recipe_prompt = """
     Can you give me the ingredients (with UK quantities and weights) and the method for a recipe. Please list the
     ingredients in order and the method in order.  If there are any ingredients which are unlikely to be found in a normal UK
     supermarket, then please list the original but suggest a UK alternative. Please don't include any preamble or commentary.
     """
-    await summarise_webpage_content(discord_message, recipe_prompt, url)
+    await summarise_webpage_content(message, recipe_prompt, url)
 
 
-async def search_url_history(discord_message: discord.Message, query: str, recency: str = "all_time") -> None:
+async def search_url_history(message: ChatMessage, query: str, recency: str = "all_time") -> None:
     """Search the URL history for matching entries, with progressive time widening."""
     logger.info(f"Searching URL history for '{query}' (recency={recency})")
-    guild_id = str(discord_message.guild.id) if discord_message.guild else server_id
+    guild_id = message.server_id or server_id
 
     # Determine the starting recency tier and progressive widening order
     start_index = URL_SEARCH_RECENCY_TIERS.index(recency) if recency in URL_SEARCH_RECENCY_TIERS else len(URL_SEARCH_RECENCY_TIERS) - 1
@@ -452,8 +447,8 @@ async def search_url_history(discord_message: discord.Message, query: str, recen
     results = rerank(results, query)
 
     if not results:
-        await discord_message.reply(
-            f"{discord_message.author.mention} I couldn't find any URLs matching that query.",
+        await message.reply(
+            f"{message.author_mention} I couldn't find any URLs matching that query.",
             mention_author=True
         )
         return
@@ -489,16 +484,16 @@ async def search_url_history(discord_message: discord.Message, query: str, recen
         for entry in results:
             response_text += f"\n<{entry.url}>"
 
-    await discord_message.reply(
-        f"{discord_message.author.mention} {response_text}",
+    await message.reply(
+        f"{message.author_mention} {response_text}",
         mention_author=True
     )
 
 
-def process_set_reminder(discord_message: discord.Message, reminder_text: str, remind_at: str) -> str:
+def process_set_reminder(message: ChatMessage, reminder_text: str, remind_at: str) -> str:
     """Process a set_reminder tool call. Returns a result string for the LLM to relay."""
-    guild_id = str(discord_message.guild.id) if discord_message.guild else server_id
-    user_id = str(discord_message.author.id)
+    guild_id = message.server_id or server_id
+    user_id = message.author_id
 
     # Check per-user limit
     pending = reminder_store.count_pending_for_user(guild_id, user_id)
@@ -518,8 +513,8 @@ def process_set_reminder(discord_message: discord.Message, reminder_text: str, r
     reminder_store.save(
         server_id=guild_id,
         user_id=user_id,
-        user_name=discord_message.author.name,
-        channel_id=str(discord_message.channel.id),
+        user_name=message.author_name,
+        channel_id=message.channel_id,
         reminder_text=reminder_text,
         remind_at=remind_at_dt,
         created_by=chatbot.name,
@@ -529,9 +524,9 @@ def process_set_reminder(discord_message: discord.Message, reminder_text: str, r
     return f"Reminder saved. Will remind on {formatted_time}: \"{reminder_text}\". Note: reminders are checked every {REMINDER_FREQUENCY} minutes, so the actual reminder may be up to {REMINDER_FREQUENCY} minutes late."
 
 
-async def handle_set_reminder(discord_message: discord.Message, tool_call, arguments: dict, messages: list, temperature: float) -> None:
+async def handle_set_reminder(message: ChatMessage, tool_call, arguments: dict, messages: list, temperature: float) -> None:
     """Handle set_reminder tool call: save the reminder, then let the LLM confirm in its own voice."""
-    tool_result = process_set_reminder(discord_message, arguments.get('reminder_text', ''), arguments.get('remind_at', ''))
+    tool_result = process_set_reminder(message, arguments.get('reminder_text', ''), arguments.get('remind_at', ''))
     messages.append({
         'role': 'assistant',
         'content': None,
@@ -543,13 +538,13 @@ async def handle_set_reminder(discord_message: discord.Message, tool_call, argum
     })
     messages.append({'role': 'tool', 'tool_call_id': tool_call.id, 'content': tool_result})
     followup = await chatbot.chat(messages, temperature=temperature, tools=[])
-    await reply_to_message(discord_message, followup.message + '\n' + followup.usage_short)
+    await reply_to_message(message, followup.message + '\n' + followup.usage_short)
 
 
-def process_manage_memories(discord_message: discord.Message, action: str, memory_id: int = None) -> str:
+def process_manage_memories(message: ChatMessage, action: str, memory_id: int = None) -> str:
     """Process a manage_memories tool call. Returns a result string for the LLM to relay."""
-    guild_id = str(discord_message.guild.id) if discord_message.guild else server_id
-    user_id = str(discord_message.author.id)
+    guild_id = message.server_id or server_id
+    user_id = message.author_id
 
     if action == "list":
         memories = memory_store.get_user_memories(guild_id, user_id)
@@ -593,12 +588,12 @@ def process_manage_memories(discord_message: discord.Message, action: str, memor
     return "Error: Unknown action."
 
 
-async def handle_manage_memories(discord_message: discord.Message, tool_call, arguments: dict, messages: list, temperature: float) -> None:
+async def handle_manage_memories(message: ChatMessage, tool_call, arguments: dict, messages: list, temperature: float) -> None:
     """Handle manage_memories tool call: perform action, then let the LLM relay in its own voice."""
     memory_id = arguments.get('memory_id')
     if memory_id is not None:
         memory_id = int(memory_id)
-    tool_result = process_manage_memories(discord_message, arguments.get('action', ''), memory_id)
+    tool_result = process_manage_memories(message, arguments.get('action', ''), memory_id)
     messages.append({
         'role': 'assistant',
         'content': None,
@@ -610,7 +605,7 @@ async def handle_manage_memories(discord_message: discord.Message, tool_call, ar
     })
     messages.append({'role': 'tool', 'tool_call_id': tool_call.id, 'content': tool_result})
     followup = await chatbot.chat(messages, temperature=temperature, tools=[])
-    await reply_to_message(discord_message, followup.message + '\n' + followup.usage_short)
+    await reply_to_message(message, followup.message + '\n' + followup.usage_short)
 
 
 # Tool dispatcher setup
@@ -628,10 +623,10 @@ if ENABLE_TWITTER_SEARCH:
     tool_dispatcher.register('twitter_search', lambda msg, **args: twitter_search(msg, args.get('query', '')))
 
 
-async def handle_catch_up(message: discord.Message) -> None:
+async def handle_catch_up(message: ChatMessage) -> None:
     """Handle 'catch me up' requests by summarising missed messages."""
-    user_id = str(message.author.id)
-    guild_id = str(message.guild.id) if message.guild else server_id
+    user_id = message.author_id
+    guild_id = message.server_id or server_id
 
     last_activity = activity_store.get_last_activity(guild_id, user_id)
 
@@ -643,16 +638,18 @@ async def handle_catch_up(message: discord.Message) -> None:
     since = max(last_activity.last_message_at, datetime.now() - timedelta(hours=CATCH_UP_MAX_HOURS))
 
     # Fetch messages from all text channels since then
+    # Uses raw escape hatch for guild.text_channels (platform-specific, will be abstracted in future)
+    raw_msg = message.raw
     all_messages = []
-    for channel in message.guild.text_channels:
-        if not channel.permissions_for(message.guild.me).read_message_history:
+    for raw_channel in raw_msg.guild.text_channels:
+        if not raw_channel.permissions_for(raw_msg.guild.me).read_message_history:
             continue
         try:
-            async for msg in channel.history(after=since, limit=CATCH_UP_MAX_MESSAGES):
+            async for msg in raw_channel.history(after=since, limit=CATCH_UP_MAX_MESSAGES):
                 if not msg.author.bot:
-                    all_messages.append((channel.name, msg))
+                    all_messages.append((raw_channel.name, msg))
         except Exception as e:
-            logger.warning(f"Could not fetch history from channel {channel.name}: {e}")
+            logger.warning(f"Could not fetch history from channel {raw_channel.name}: {e}")
 
     if not all_messages:
         await message.reply("Nothing much happened while you were away!")
@@ -675,55 +672,58 @@ Messages come from multiple channels (shown as #channel-name). Cover the FULL ti
 Mention key topics, any decisions made, interesting links shared, and who was involved.
 Keep your personality - if the chat was mundane, say so dismissively. If it was dramatic, be appropriately sardonic."""
 
-    messages = [
+    llm_messages = [
         {'role': 'system', 'content': catch_up_prompt},
-        {'role': 'user', 'content': f"Summarise this chat for {message.author.name}:\n\n{chat_text}"}
+        {'role': 'user', 'content': f"Summarise this chat for {message.author_name}:\n\n{chat_text}"}
     ]
 
-    async with message.channel.typing():
-        response = await chatbot.chat(messages, temperature=0.8, tools=[])
+    channel = platform.get_channel(message.channel_id)
+    async with channel.typing():
+        response = await chatbot.chat(llm_messages, temperature=0.8, tools=[])
         summary_text = response.message.strip()[:DISCORD_MESSAGE_LIMIT]
         await message.reply(summary_text)
 
 
-@bot.event
-async def on_message(message):
+async def handle_message(message: ChatMessage):
     # Track activity in monitored channels (before bot mention check)
-    if ENABLE_CATCH_UP_TRACKING and message.guild and str(message.guild.id) == server_id:
-        if not message.author.bot:
+    if ENABLE_CATCH_UP_TRACKING and message.server_id == server_id:
+        if not message.author_is_bot:
             activity_store.record_activity(
                 server_id,
-                str(message.author.id),
-                message.author.name,
-                str(message.channel.id),
+                message.author_id,
+                message.author_name,
+                message.channel_id,
                 datetime.now()
             )
 
-    message_blocked, abusive_reply = bot_guard.should_block(message, bot, server_id, chatbot)
+    message_blocked, abusive_reply = bot_guard.should_block(message, platform.bot_user_id, server_id, chatbot)
     if message_blocked:
         if abusive_reply:
-            logger.info("Blocked message from: " + message.author.name + " and abusing them")
-            await message.channel.send(f"{random.choice(ABUSIVE_RESPONSES)}.")
+            logger.info("Blocked message from: " + message.author_name + " and abusing them")
+            channel = platform.get_channel(message.channel_id)
+            await channel.send(f"{random.choice(ABUSIVE_RESPONSES)}.")
         return
 
     question = message.content.split(' ', 1)[1][:500].replace('\r', ' ').replace('\n', ' ')
     logger.info(f'Question: {question}')
     if not any(char.isalpha() for char in question):
-        await message.channel.send(f'{message.author.mention} {random.choice(ABUSIVE_RESPONSES)}.')
+        channel = platform.get_channel(message.channel_id)
+        await channel.send(f'{message.author_mention} {random.choice(ABUSIVE_RESPONSES)}.')
         return
 
     temperature = 1.0
 
     try:
         lq = question.lower().strip()
+        channel = platform.get_channel(message.channel_id)
 
-        async with message.channel.typing():
+        async with channel.typing():
             if "--no-logs" in lq:
                 context = []
                 question = question.replace("--no-logs", "")
             else:
                 if chatbot.uses_logs:
-                    context = await get_history_as_openai_messages(message.channel)
+                    context = await get_history_as_openai_messages(channel)
                 else:
                     context = []
             if '--serious' in lq:
@@ -731,7 +731,7 @@ async def on_message(message):
                 system_prompt = "You should respond in a very serious, professional and formal manner.  The user is a professional and simply wants a clear answer to their question."
             else:
                 system_prompt = None
-            if message.author.bot:
+            if message.author_is_bot:
                 question = question + ". Please be very concise, curt and to the point.  The user in this case is a discord bot."
             if lq.startswith("!image"):
                 await make_chat_image()
@@ -759,13 +759,13 @@ async def on_message(message):
                         prompt = latest.prompt
 
                 await message.reply(
-                    f'{message.author.mention} **Reasoning:** {reasoning}\n**Themes:** {themes}\n**Image Prompt:** {prompt}'[:DISCORD_MESSAGE_LIMIT],
+                    f'{message.author_mention} **Reasoning:** {reasoning}\n**Themes:** {themes}\n**Image Prompt:** {prompt}'[:DISCORD_MESSAGE_LIMIT],
                     mention_author=True
                 )
                 return
 
             # Add user context to the question so LLM knows who is asking
-            user_context = f"[User: {message.author.name}] "
+            user_context = f"[User: {message.author_name}] "
             question_with_context = user_context + question
 
             if 'spell' in lq:
@@ -790,7 +790,7 @@ async def on_message(message):
             if ENABLE_USER_MEMORY:
                 user_hints = memory_store.get_context_for_user(
                     server_id=server_id,
-                    user_id=str(message.author.id)
+                    user_id=message.author_id
                 )
 
             messages = build_messages(question_with_context, context, system_prompt=system_prompt, user_hints=user_hints)
@@ -814,7 +814,7 @@ async def on_message(message):
                         original_usage = response.usage
                         response = await chatbot.chat(messages, temperature=temperature, tools=[])
                         response = response.message.strip()[:DISCORD_MESSAGE_LIMIT] + "\n" + response.usage + "\n" + original_usage
-                        await message.reply(f'{message.author.mention} {response}')
+                        await message.reply(f'{message.author_mention} {response}')
                     else:
                         await extract_recipe_from_webpage(message, arguments.get('prompt', ''), arguments.get('url', ''))
                 elif fname == 'create_image':
@@ -825,7 +825,7 @@ async def on_message(message):
                     await handle_manage_memories(message, tool_call, arguments, messages, temperature)
                 else:
                     logger.info(f'Unknown tool call: {fname}')
-                    await message.reply(f'{message.author.mention} I am a silly sausage and don\'t know how to do that.', mention_author=True)
+                    await message.reply(f'{message.author_mention} I am a silly sausage and don\'t know how to do that.', mention_author=True)
                 return
             else:
                 response_text = clean_response_text(response.message)
@@ -834,15 +834,15 @@ async def on_message(message):
             await reply_to_message(message, response)
     except Exception as e:
         logger.error(f'Error generating response: {traceback.format_exc()}')
-        await message.reply(f'{message.author.mention} I tried, but my attempt was as doomed as Liz Truss.  Please try again later.', mention_author=True)
+        await message.reply(f'{message.author_mention} I tried, but my attempt was as doomed as Liz Truss.  Please try again later.', mention_author=True)
+
+platform.on_message(handle_message)
 
 
-@tasks.loop(time=time(hour=11, tzinfo=pytz.timezone('Europe/London')))
 async def say_happy_birthday():
     logger.info("In say_happy_birthday")
-    await birthdays.get_birthday_message(bot, chatbot)
+    await birthdays.get_birthday_message(platform, chatbot)
 
-@tasks.loop(minutes=60)
 async def random_chat():
     logger.info("In random_chat")
     if not os.getenv("FEATURE_RANDOM_CHAT", False):
@@ -857,7 +857,7 @@ async def random_chat():
     if now >= start or now <= end:
         logger.info("Not joining in with chat because it is night time")
         return
-    channel = bot.get_channel(int(os.getenv('DISCORD_BOT_CHANNEL_ID', 'Invalid').strip()))
+    channel = platform.get_channel(os.getenv('DISCORD_BOT_CHANNEL_ID', 'Invalid').strip())
     context = await get_history_as_openai_messages(channel, include_bot_messages=False, since_hours=0.5)
     context.append({
         'role': 'system',
@@ -869,7 +869,6 @@ async def random_chat():
     response = await chatbot.chat(context, temperature=1.0)
     await channel.send(f"{response.message[:DISCORD_MESSAGE_LIMIT]}\n{response.usage}")
 
-@tasks.loop(minutes=60)
 async def horror_chat():
     # Check cooldown using stored timestamp
     if bot_state.horror_history:
@@ -899,7 +898,7 @@ async def horror_chat():
         logger.info("Not doing horror chat because it is day time")
         return
 
-    channel = bot.get_channel(int(os.getenv('DISCORD_BOT_CHANNEL_ID', 'Invalid').strip()))
+    channel = platform.get_channel(os.getenv('DISCORD_BOT_CHANNEL_ID', 'Invalid').strip())
     system_prompt = "You are an AI bot who lurks in a Discord server for UK adult horror novelists. Your task is to write one or two short sentences that are creepy, scary or unsettling and convey the sense of an out-of-context line from a horror film. You will be given the date and time and you can use that to add a sense of timeliness and season to your response. You should ONLY respond with those sentences, no other text. <example>I'm scared.</example> <example>I think I can hear someone outside. In the dark.</example> <example>There's something in the shadows.</example> <example>I think the bleeding has stopped now. But he deserved it.</example> <example>That's not the first time I've had to bury a body.</example>"
     previous_horror_history_messages = [x['message'] for x in bot_state.horror_history]
     context = [
@@ -922,7 +921,6 @@ async def horror_chat():
     await channel.send(f"{response.message[:DISCORD_MESSAGE_LIMIT]}\n{response.usage_short}")
 
 
-@tasks.loop(time=time(hour=chat_image_hour, tzinfo=pytz.timezone('Europe/London')))
 async def make_chat_image():
     logger.info("In make_chat_image")
 
@@ -930,7 +928,7 @@ async def make_chat_image():
         logger.info("Not making chat image because CHAT_IMAGE_ENABLED is not set")
         return
 
-    channel = get_bot_channel(bot)
+    channel = platform.get_channel(os.getenv('DISCORD_BOT_CHANNEL_ID', 'Invalid').strip())
     async with channel.typing():
         # Fetch and prepare chat history
         history, chat_text = await fetch_chat_history(
@@ -976,11 +974,10 @@ async def make_chat_image():
             await channel.send("Sorry, I tried to make an image but I failed (probably because of naughty words - tsk).")
             return
 
-    # Send to Discord
+    # Send to channel
     today_string = datetime.now().strftime("%Y-%m-%d")
-    discord_file = download_media_to_discord_file(image_url, f'channel_summary_{today_string}.png')
-    message = f'{chatbot.name}\'s chosen themes: _{", ".join(llm_chat_themes)}_\n_Model: {model.short_name}] / Estimated cost: US${model.cost:.3f}_'
-    await channel.send(message[:DISCORD_MESSAGE_LIMIT], file=discord_file)
+    send_message = f'{chatbot.name}\'s chosen themes: _{", ".join(llm_chat_themes)}_\n_Model: {model.short_name}] / Estimated cost: US${model.cost:.3f}_'
+    await channel.send_file(send_message[:DISCORD_MESSAGE_LIMIT], image_url, f'channel_summary_{today_string}.png')
 
     # Save to database for persistence
     image_store.save(
@@ -992,7 +989,6 @@ async def make_chat_image():
     )
 
 
-@tasks.loop(time=time(hour=chat_image_hour, minute=15, tzinfo=pytz.timezone('Europe/London')))
 async def make_chat_video():
     logger.info("In make_chat_video")
 
@@ -1000,7 +996,7 @@ async def make_chat_video():
         logger.info("Not making chat video because CHAT_VIDEO_ENABLED is not set")
         return
 
-    channel = get_bot_channel(bot)
+    channel = platform.get_channel(os.getenv('DISCORD_BOT_CHANNEL_ID', 'Invalid').strip())
 
     # Fetch and prepare chat history
     history, chat_text = await fetch_chat_history(
@@ -1034,13 +1030,11 @@ async def make_chat_video():
             logger.info('We did not get a file from API')
             return
 
-        # Send to Discord
+        # Send to channel
         today_string = datetime.now().strftime("%Y-%m-%d")
-        discord_file = download_media_to_discord_file(video_url, f'channel_summary_{today_string}.mp4')
-        message = f'{response.message}\n_Model: {model_name}] / Estimated cost: US${cost:.3f}_'
-        await channel.send(message, file=discord_file)
+        send_message = f'{response.message}\n_Model: {model_name}] / Estimated cost: US${cost:.3f}_'
+        await channel.send_file(send_message, video_url, f'channel_summary_{today_string}.mp4')
 
-@tasks.loop(time=time(hour=memory_extraction_hour, tzinfo=pytz.timezone('Europe/London')))
 async def extract_user_memories():
     """Daily task to extract memories from chat history."""
     logger.info("In extract_user_memories")
@@ -1050,7 +1044,7 @@ async def extract_user_memories():
         return
 
     try:
-        channel = bot.get_channel(int(os.getenv("DISCORD_BOT_CHANNEL_ID")))
+        channel = platform.get_channel(os.getenv("DISCORD_BOT_CHANNEL_ID", "Invalid").strip())
         if not channel:
             logger.warning("Could not get channel for memory extraction")
             return
@@ -1059,11 +1053,12 @@ async def extract_user_memories():
 
         # Get recent chat history (last 24 hours)
         messages = []
-        async for msg in channel.history(limit=500, after=datetime.now() - timedelta(days=1)):
-            if not msg.author.bot:
+        history_msgs = await channel.history(limit=500, after=datetime.now() - timedelta(days=1))
+        for msg in history_msgs:
+            if not msg.author_is_bot:
                 messages.append({
-                    'author_id': str(msg.author.id),
-                    'author_name': msg.author.display_name,
+                    'author_id': msg.author_id,
+                    'author_name': msg.author_display_name,
                     'content': msg.content
                 })
 
@@ -1121,7 +1116,6 @@ async def extract_user_memories():
         logger.error(f"Error in memory extraction: {e}")
 
 
-@tasks.loop(time=time(hour=url_history_extraction_hour, tzinfo=pytz.timezone('Europe/London')))
 async def extract_url_history():
     """Daily task to extract and summarise URLs from chat history."""
     logger.info("In extract_url_history")
@@ -1153,7 +1147,7 @@ async def extract_url_history():
 
     for channel_id in channel_ids:
         try:
-            channel = bot.get_channel(int(channel_id))
+            channel = platform.get_channel(channel_id)
             if not channel:
                 logger.warning(f"Could not get channel {channel_id} for URL extraction")
                 continue
@@ -1161,14 +1155,15 @@ async def extract_url_history():
             logger.info(f"Scanning channel {channel.name} ({channel_id}) for URLs")
 
             # Get messages from last 24 hours
-            async for msg in channel.history(limit=500, after=datetime.now() - timedelta(days=1)):
-                if msg.author.bot:
+            history_msgs = await channel.history(limit=500, after=datetime.now() - timedelta(days=1))
+            for msg in history_msgs:
+                if msg.author_is_bot:
                     continue
 
                 # Find URLs in message
                 urls_found = url_pattern.findall(msg.content)
                 if urls_found:
-                    logger.info(f"Found {len(urls_found)} URL(s) in message from {msg.author.display_name}")
+                    logger.info(f"Found {len(urls_found)} URL(s) in message from {msg.author_display_name}")
                     for u in urls_found:
                         logger.info(f"  -> {u.rstrip('.,;:!?)')}")
 
@@ -1249,12 +1244,12 @@ Content:
                         # Save to database
                         saved_id = url_store.save(
                             server_id=extraction_server_id,
-                            channel_id=str(channel_id),
+                            channel_id=channel_id,
                             url=url,
                             summary=url_summary,
                             keywords=keywords,
-                            posted_by_id=str(msg.author.id),
-                            posted_by_name=msg.author.display_name,
+                            posted_by_id=msg.author_id,
+                            posted_by_name=msg.author_display_name,
                             posted_at=msg.created_at,
                             embedding=embedding
                         )
@@ -1274,12 +1269,12 @@ Content:
     logger.info(f"URL extraction complete: {urls_total} found, {urls_filtered} filtered, {urls_duplicate} duplicates, {urls_processed} processed, {urls_saved} saved")
 
 
-async def reindex_url_history(discord_message: discord.Message) -> None:
+async def reindex_url_history(message: ChatMessage) -> None:
     """Re-summarise and re-embed all existing URL history entries."""
     reindex_server_id = os.getenv("DISCORD_SERVER_ID")
     entries = url_store.get_all(reindex_server_id)
     logger.info(f"Reindexing {len(entries)} URL history entries")
-    await discord_message.reply(f"Reindexing {len(entries)} URL entries...", mention_author=False)
+    await message.reply(f"Reindexing {len(entries)} URL entries...", mention_author=False)
 
     updated = 0
     failed = 0
@@ -1338,10 +1333,9 @@ Content:
             failed += 1
 
     logger.info(f"Reindex complete: {updated} updated, {failed} failed")
-    await discord_message.reply(f"Reindex complete: {updated} updated, {failed} failed.", mention_author=False)
+    await message.reply(f"Reindex complete: {updated} updated, {failed} failed.", mention_author=False)
 
 
-@tasks.loop(minutes=REMINDER_FREQUENCY)
 async def check_reminders():
     """Periodic task to check for due reminders and send them."""
     logger.info("Checking for due reminders")
@@ -1349,7 +1343,7 @@ async def check_reminders():
         due = reminder_store.get_due_reminders(server_id, bot_name=chatbot.name)
         for reminder in due:
             try:
-                channel = bot.get_channel(int(reminder.channel_id))
+                channel = platform.get_channel(reminder.channel_id)
                 if channel:
                     try:
                         delay = datetime.now() - reminder.remind_at
@@ -1377,7 +1371,6 @@ async def check_reminders():
         logger.error(f"Error checking reminders: {e}")
 
 
-@tasks.loop(time=time(hour=3, tzinfo=pytz.timezone('Europe/London')))
 async def reset_daily_image_count():
     logger.info("In reset_daily_image_count")
     bot_state.daily_image_count = 0
@@ -1387,4 +1380,4 @@ chatbot = get_chatbot()
 if os.getenv("BOT_NAME", None):
     chatbot.name = os.getenv("BOT_NAME")
 bot_guard = BotGuard()
-bot.run(os.getenv("DISCORD_BOT_TOKEN", 'not_set'))
+platform.run(os.getenv("DISCORD_BOT_TOKEN", 'not_set'))

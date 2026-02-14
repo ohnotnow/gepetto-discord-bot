@@ -2,14 +2,10 @@
 Helper functions for the Gepetto Discord bot.
 """
 
-import io
 import logging
 import os
 import re
 from datetime import datetime
-
-import requests
-from discord import File
 
 from .constants import (
     HISTORY_HOURS, HISTORY_MAX_MESSAGES, MIN_MESSAGES_FOR_CHAT_IMAGE, UK_HOLIDAYS
@@ -42,12 +38,6 @@ def format_date_only(dt: datetime = None) -> str:
 
 
 # --- Media generation helpers ---
-
-def get_bot_channel(bot):
-    """Get the configured Discord bot channel."""
-    channel_id = os.getenv('DISCORD_BOT_CHANNEL_ID', 'Invalid').strip()
-    return bot.get_channel(int(channel_id))
-
 
 async def fetch_chat_history(channel, get_history_func, limit=1000, max_messages=None, include_bot_messages=True):
     """
@@ -105,12 +95,6 @@ async def generate_quiet_chat_message(chatbot) -> str:
         'content': f"Today is {date_string}. Could you please write a pithy, acerbic, sarcastic comment about how quiet the chat is in this discord server today? If the date looks like a weekend, or a UK holiday, then take that into account when writing your response. The users are all software developers and love nice food, interesting books, obscure sci-fi, cute cats. They enjoy a somewhat jaded, cynical tone. Please reply with only the sentence as it will be sent directly to Discord as a message."
     }])
     return response.message
-
-
-def download_media_to_discord_file(url: str, filename: str) -> File:
-    """Download media from URL and return as a Discord File object."""
-    response = requests.get(url)
-    return File(io.BytesIO(response.content), filename=filename)
 
 
 def load_previous_themes(filename: str = 'previous_image_themes.txt', max_lines: int = 10) -> str:
