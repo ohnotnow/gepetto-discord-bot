@@ -626,10 +626,6 @@ if ENABLE_CATCH_UP:
     tool_dispatcher.register('catch_up', lambda msg, **args: handle_catch_up(msg))
 if ENABLE_TWITTER_SEARCH:
     tool_dispatcher.register('twitter_search', lambda msg, **args: twitter_search(msg, args.get('query', '')))
-# Parse channel IDs for catch-up feature (same channels as URL history)
-catch_up_channel_ids = set()
-if ENABLE_CATCH_UP and URL_HISTORY_CHANNELS:
-    catch_up_channel_ids = {ch.strip().strip('"\'') for ch in URL_HISTORY_CHANNELS.strip('"\'').split(",") if ch.strip()}
 
 
 async def handle_catch_up(message: discord.Message) -> None:
@@ -646,38 +642,38 @@ async def handle_catch_up(message: discord.Message) -> None:
     # Cap at CATCH_UP_MAX_HOURS
     since = max(last_activity.last_message_at, datetime.now() - timedelta(hours=CATCH_UP_MAX_HOURS))
 
-    # Fetch messages from monitored channels since then
+    # Fetch messages from all text channels since then
     all_messages = []
-    for channel_id in catch_up_channel_ids:
-        channel = bot.get_channel(int(channel_id))
-        if channel:
-            try:
-                async for msg in channel.history(after=since, limit=CATCH_UP_MAX_MESSAGES):
-                    if not msg.author.bot:
-                        all_messages.append(msg)
-            except Exception as e:
-                logger.warning(f"Could not fetch history from channel {channel_id}: {e}")
+    for channel in message.guild.text_channels:
+        if not channel.permissions_for(message.guild.me).read_message_history:
+            continue
+        try:
+            async for msg in channel.history(after=since, limit=CATCH_UP_MAX_MESSAGES):
+                if not msg.author.bot:
+                    all_messages.append((channel.name, msg))
+        except Exception as e:
+            logger.warning(f"Could not fetch history from channel {channel.name}: {e}")
 
     if not all_messages:
         await message.reply("Nothing much happened while you were away!")
         return
 
     # Sort chronologically and format for LLM
-    all_messages.sort(key=lambda m: m.created_at)
+    all_messages.sort(key=lambda m: m[1].created_at)
 
     # Format messages for the summary
     chat_lines = []
-    for msg in all_messages:
+    for channel_name, msg in all_messages:
         timestamp = msg.created_at.strftime("%H:%M")
-        chat_lines.append(f"[{timestamp}] {msg.author.name}: {msg.content[:300]}")
+        chat_lines.append(f"[#{channel_name} {timestamp}] {msg.author.name}: {msg.content[:300]}")
 
     chat_text = "\n".join(chat_lines[-100:])  # Last 100 messages max
 
     # Generate summary with personality
     catch_up_prompt = """Summarise what happened in this Discord chat. Be concise and Discord-friendly (bullet points ok).
+Messages come from multiple channels (shown as #channel-name). Cover the FULL timespan from earliest to most recent messages.
 Mention key topics, any decisions made, interesting links shared, and who was involved.
-Keep your personality - if the chat was mundane, say so dismissively. If it was dramatic, be appropriately sardonic.
-Max 3-4 bullet points unless something genuinely significant happened."""
+Keep your personality - if the chat was mundane, say so dismissively. If it was dramatic, be appropriately sardonic."""
 
     messages = [
         {'role': 'system', 'content': catch_up_prompt},
@@ -694,7 +690,7 @@ Max 3-4 bullet points unless something genuinely significant happened."""
 async def on_message(message):
     # Track activity in monitored channels (before bot mention check)
     if ENABLE_CATCH_UP_TRACKING and message.guild and str(message.guild.id) == server_id:
-        if not message.author.bot and str(message.channel.id) in catch_up_channel_ids:
+        if not message.author.bot:
             activity_store.record_activity(
                 server_id,
                 str(message.author.id),
