@@ -618,24 +618,30 @@ tool_dispatcher.register('web_search', lambda msg, **args: websearch(msg, args.g
 if ENABLE_URL_HISTORY:
     tool_dispatcher.register('search_url_history', lambda msg, **args: search_url_history(msg, args.get('query', ''), args.get('recency', 'all_time')))
 if ENABLE_CATCH_UP:
-    tool_dispatcher.register('catch_up', lambda msg, **args: handle_catch_up(msg))
+    tool_dispatcher.register('catch_up', lambda msg, **args: handle_catch_up(msg, **args))
 if ENABLE_TWITTER_SEARCH:
     tool_dispatcher.register('twitter_search', lambda msg, **args: twitter_search(msg, args.get('query', '')))
 
 
-async def handle_catch_up(message: ChatMessage) -> None:
+async def handle_catch_up(message: ChatMessage, hours: int = None) -> None:
     """Handle 'catch me up' requests by summarising missed messages."""
     user_id = message.author_id
     guild_id = message.server_id or server_id
 
-    last_activity = activity_store.get_last_activity(guild_id, user_id)
+    if hours is not None:
+        # Explicit time range — clamp to max
+        hours = min(int(hours), CATCH_UP_MAX_HOURS)
+        since = datetime.now() - timedelta(hours=hours)
+    else:
+        # Default: since last activity
+        last_activity = activity_store.get_last_activity(guild_id, user_id)
 
-    if not last_activity:
-        await message.reply("I haven't seen you around before - nothing to catch up on!")
-        return
+        if not last_activity:
+            await message.reply("I haven't seen you around before - nothing to catch up on!")
+            return
 
-    # Cap at CATCH_UP_MAX_HOURS
-    since = max(last_activity.last_message_at, datetime.now() - timedelta(hours=CATCH_UP_MAX_HOURS))
+        # Cap at CATCH_UP_MAX_HOURS
+        since = max(last_activity.last_message_at, datetime.now() - timedelta(hours=CATCH_UP_MAX_HOURS))
 
     # Fetch messages from all readable channels since then
     readable_channels = await platform.get_readable_channels(guild_id)

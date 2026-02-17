@@ -71,7 +71,7 @@ MEMORY_MAX_PER_PROMPT = 3  # Maximum memories to include in any prompt
 MIN_TEXT_LENGTH_FOR_SUMMARY = 100  # Minimum chars of extracted text to consider summarisable
 
 # Catch-up feature
-CATCH_UP_MAX_HOURS = 48  # Maximum lookback window
+CATCH_UP_MAX_HOURS = 168  # Maximum lookback window (7 days)
 CATCH_UP_MAX_MESSAGES = 500  # Per channel limit
 
 # Semantic search
