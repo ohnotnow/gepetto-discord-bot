@@ -697,8 +697,8 @@ Keep your personality - if the chat was mundane, say so dismissively. If it was 
     channel = platform.get_channel(message.channel_id)
     async with channel.typing():
         response = await chatbot.chat(llm_messages, temperature=0.8, tools=[])
-        summary_text = wrap_urls_for_discord(response.message.strip())[:DISCORD_MESSAGE_LIMIT]
-        await message.reply(summary_text)
+        summary_text = wrap_urls_for_discord(response.message.strip())
+        await reply_to_message(message, summary_text)
 
 
 async def handle_message(message: ChatMessage):
