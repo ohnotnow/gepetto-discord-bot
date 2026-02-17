@@ -675,18 +675,18 @@ async def handle_catch_up(message: ChatMessage, hours: int = None) -> None:
     message_count = len(chat_lines)
 
     if message_count <= CATCH_UP_BUSY_THRESHOLD:
-        catch_up_prompt = """Summarise what happened in this Discord chat. Be concise and Discord-friendly (bullet points ok).
-Messages come from multiple channels (shown as #channel-name). Cover the FULL timespan from earliest to most recent messages.
-Mention key topics, any decisions made, interesting links shared, and who was involved.
+        catch_up_prompt = """Summarise what happened in this Discord chat. Keep it to ONE Discord message (~1500 characters max).
+Use brief bullet points. Mention key topics, decisions, interesting links, and who was involved.
+Messages come from multiple channels (shown as #channel-name). Cover the full timespan.
 Wrap any URLs in angle brackets like <https://example.com> to prevent Discord previews.
 Keep your personality - if the chat was mundane, say so dismissively. If it was dramatic, be appropriately sardonic."""
     else:
-        catch_up_prompt = f"""Summarise what happened in this Discord chat. There were {message_count} messages so keep it high-level and organised by theme.
-Messages come from multiple channels (shown as #channel-name). Cover the FULL timespan from earliest to most recent messages.
-Be BRIEF on routine chat (meetings, greetings, work complaints, casual banter) — a single sentence per theme is fine.
-Go into more detail ONLY on things that are genuinely unusual, funny, surprising, or that someone would specifically want to know about.
-Mention who was involved and any interesting links shared.
-Wrap any URLs in angle brackets like <https://example.com> to prevent Discord previews.
+        catch_up_prompt = f"""Summarise what happened in this Discord chat. There were {message_count} messages.
+Your ENTIRE summary MUST fit in one Discord message (~1500 characters). This is a hard limit — be ruthless.
+Group by theme, NOT by channel. Use terse bullet points.
+Routine chat (meetings, greetings, banter, work moaning) gets ONE bullet max. Don't quote messages or list every URL.
+Only expand on things that are genuinely unusual, funny, or surprising.
+Mention who was involved. Wrap any URLs in angle brackets like <https://example.com>.
 Keep your personality - if the chat was mundane, say so dismissively. If it was dramatic, be appropriately sardonic."""
 
     llm_messages = [
