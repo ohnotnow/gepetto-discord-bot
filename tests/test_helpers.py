@@ -12,6 +12,7 @@ from src.utils.helpers import (
     remove_emoji,
     remove_nsfw_words,
     clean_response_text,
+    wrap_urls_for_discord,
 )
 
 
@@ -176,3 +177,44 @@ class TestCleanResponseText:
         text = "This is a normal response"
         result = clean_response_text(text)
         assert result == "This is a normal response"
+
+
+class TestWrapUrlsForDiscord:
+    """Tests for wrap_urls_for_discord function."""
+
+    def test_wraps_bare_http_url(self):
+        result = wrap_urls_for_discord("Check https://example.com for info")
+        assert "<https://example.com>" in result
+
+    def test_wraps_bare_https_url(self):
+        result = wrap_urls_for_discord("See http://example.com/page")
+        assert "<http://example.com/page>" in result
+
+    def test_does_not_double_wrap(self):
+        result = wrap_urls_for_discord("Already wrapped <https://example.com> here")
+        assert "<<https://example.com>>" not in result
+        assert "<https://example.com>" in result
+
+    def test_wraps_multiple_urls(self):
+        text = "Links: https://one.com and https://two.com"
+        result = wrap_urls_for_discord(text)
+        assert "<https://one.com>" in result
+        assert "<https://two.com>" in result
+
+    def test_preserves_text_without_urls(self):
+        text = "No URLs here, just plain text."
+        assert wrap_urls_for_discord(text) == text
+
+    def test_handles_url_in_parentheses(self):
+        result = wrap_urls_for_discord("(https://example.com/path)")
+        assert "<https://example.com/path>" in result
+        # Should not include the closing paren in the URL
+        assert "<https://example.com/path)>" not in result
+
+    def test_handles_url_in_square_brackets(self):
+        result = wrap_urls_for_discord("[https://example.com]")
+        assert "<https://example.com>" in result
+
+    def test_handles_url_with_query_params(self):
+        result = wrap_urls_for_discord("https://example.com/page?foo=bar&baz=1")
+        assert "<https://example.com/page?foo=bar&baz=1>" in result

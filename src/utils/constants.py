@@ -73,6 +73,7 @@ MIN_TEXT_LENGTH_FOR_SUMMARY = 100  # Minimum chars of extracted text to consider
 # Catch-up feature
 CATCH_UP_MAX_HOURS = 168  # Maximum lookback window (7 days)
 CATCH_UP_MAX_MESSAGES = 500  # Per channel limit
+CATCH_UP_BUSY_THRESHOLD = 50  # Messages above this = "busy" summary style
 
 # Semantic search
 SEMANTIC_SEARCH_MIN_SIMILARITY = 0.3  # Cosine similarity threshold for text-embedding-3-small

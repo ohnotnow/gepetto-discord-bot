@@ -146,6 +146,11 @@ def remove_nsfw_words(text: str) -> str:
     return re.sub(r"(fuck|prick|asshole|shit|wanker|dick|liz|truss)", "", text, flags=re.IGNORECASE)
 
 
+def wrap_urls_for_discord(text: str) -> str:
+    """Wrap bare URLs in angle brackets to suppress Discord link previews."""
+    return re.sub(r'(?<![<])(https?://[^\s\)>\]]+)', r'<\1>', text)
+
+
 def clean_response_text(text: str) -> str:
     """Clean up LLM response text by removing token/cost info and chat artifacts."""
     # Remove token usage/cost annotations that models sometimes echo

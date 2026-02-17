@@ -6,6 +6,8 @@ from xai_sdk import Client
 from xai_sdk.chat import user
 from xai_sdk.tools import x_search
 
+from src.utils.helpers import wrap_urls_for_discord
+
 logger = logging.getLogger(__name__)
 
 
@@ -36,12 +38,7 @@ def _format_for_discord(content: str, citations: list | None) -> str:
     )
 
     # Wrap any remaining bare URLs in angle brackets
-    # Match http(s) URLs not already wrapped in < >
-    content = re.sub(
-        r'(?<![<])(https?://[^\s\)>\]]+)',
-        r'<\1>',
-        content
-    )
+    content = wrap_urls_for_discord(content)
 
     # Add top citations if available
     if citations and len(citations) > 0:

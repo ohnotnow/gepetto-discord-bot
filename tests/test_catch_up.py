@@ -12,7 +12,7 @@ import pytest
 from datetime import datetime, timedelta
 
 from src.tools.definitions import catch_up_tool
-from src.utils.constants import CATCH_UP_MAX_HOURS, CATCH_UP_MAX_MESSAGES
+from src.utils.constants import CATCH_UP_MAX_HOURS, CATCH_UP_MAX_MESSAGES, CATCH_UP_BUSY_THRESHOLD
 
 
 class TestCatchUpToolDefinition:
@@ -121,3 +121,38 @@ class TestCatchUpTimeWindowLogic:
         since, _ = self.calculate_since(hours="24")
         expected = datetime.now() - timedelta(hours=24)
         assert abs((since - expected).total_seconds()) < 2
+
+
+class TestCatchUpPromptSelection:
+    """
+    Tests for the volume-adaptive prompt selection logic used in handle_catch_up.
+
+    Replicates the branching logic from main.py since we can't import it directly.
+    """
+
+    @staticmethod
+    def select_prompt(message_count: int) -> str:
+        """Replicate the prompt selection logic from handle_catch_up."""
+        if message_count <= CATCH_UP_BUSY_THRESHOLD:
+            return "detailed"
+        else:
+            return "busy"
+
+    def test_quiet_day_gets_detailed_prompt(self):
+        assert self.select_prompt(10) == "detailed"
+
+    def test_exactly_at_threshold_gets_detailed_prompt(self):
+        assert self.select_prompt(CATCH_UP_BUSY_THRESHOLD) == "detailed"
+
+    def test_above_threshold_gets_busy_prompt(self):
+        assert self.select_prompt(CATCH_UP_BUSY_THRESHOLD + 1) == "busy"
+
+    def test_very_busy_day_gets_busy_prompt(self):
+        assert self.select_prompt(500) == "busy"
+
+    def test_single_message_gets_detailed_prompt(self):
+        assert self.select_prompt(1) == "detailed"
+
+    def test_threshold_is_reasonable(self):
+        """Threshold should be between 10 and 200 messages."""
+        assert 10 <= CATCH_UP_BUSY_THRESHOLD <= 200

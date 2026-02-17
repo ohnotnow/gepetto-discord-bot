@@ -49,7 +49,7 @@ from src.utils.constants import (
     MIN_MESSAGES_FOR_RANDOM_CHAT, MIN_MESSAGES_FOR_CHAT_IMAGE,
     NIGHT_START_HOUR, NIGHT_END_HOUR, DAY_START_HOUR, DAY_END_HOUR,
     UK_HOLIDAYS, ABUSIVE_RESPONSES,
-    CATCH_UP_MAX_HOURS, CATCH_UP_MAX_MESSAGES,
+    CATCH_UP_MAX_HOURS, CATCH_UP_MAX_MESSAGES, CATCH_UP_BUSY_THRESHOLD,
     URL_SEARCH_RECENCY_DAYS, URL_SEARCH_RECENCY_TIERS,
     MAX_REMINDERS_PER_USER, REMINDER_PRUNE_DAYS,
 )
@@ -57,7 +57,8 @@ from src.utils.helpers import (
     format_date_with_suffix,
     fetch_chat_history, is_quiet_chat_day,
     generate_quiet_chat_message,
-    sanitize_filename, remove_emoji, remove_nsfw_words, clean_response_text
+    sanitize_filename, remove_emoji, remove_nsfw_words, clean_response_text,
+    wrap_urls_for_discord
 )
 
 
@@ -670,10 +671,22 @@ async def handle_catch_up(message: ChatMessage, hours: int = None) -> None:
 
     chat_text = "\n".join(chat_lines[-100:])  # Last 100 messages max
 
-    # Generate summary with personality
-    catch_up_prompt = """Summarise what happened in this Discord chat. Be concise and Discord-friendly (bullet points ok).
+    # Generate summary with volume-adaptive prompt
+    message_count = len(chat_lines)
+
+    if message_count <= CATCH_UP_BUSY_THRESHOLD:
+        catch_up_prompt = """Summarise what happened in this Discord chat. Be concise and Discord-friendly (bullet points ok).
 Messages come from multiple channels (shown as #channel-name). Cover the FULL timespan from earliest to most recent messages.
 Mention key topics, any decisions made, interesting links shared, and who was involved.
+Wrap any URLs in angle brackets like <https://example.com> to prevent Discord previews.
+Keep your personality - if the chat was mundane, say so dismissively. If it was dramatic, be appropriately sardonic."""
+    else:
+        catch_up_prompt = f"""Summarise what happened in this Discord chat. There were {message_count} messages so keep it high-level and organised by theme.
+Messages come from multiple channels (shown as #channel-name). Cover the FULL timespan from earliest to most recent messages.
+Be BRIEF on routine chat (meetings, greetings, work complaints, casual banter) — a single sentence per theme is fine.
+Go into more detail ONLY on things that are genuinely unusual, funny, surprising, or that someone would specifically want to know about.
+Mention who was involved and any interesting links shared.
+Wrap any URLs in angle brackets like <https://example.com> to prevent Discord previews.
 Keep your personality - if the chat was mundane, say so dismissively. If it was dramatic, be appropriately sardonic."""
 
     llm_messages = [
@@ -684,7 +697,7 @@ Keep your personality - if the chat was mundane, say so dismissively. If it was 
     channel = platform.get_channel(message.channel_id)
     async with channel.typing():
         response = await chatbot.chat(llm_messages, temperature=0.8, tools=[])
-        summary_text = response.message.strip()[:DISCORD_MESSAGE_LIMIT]
+        summary_text = wrap_urls_for_discord(response.message.strip())[:DISCORD_MESSAGE_LIMIT]
         await message.reply(summary_text)
 
 
