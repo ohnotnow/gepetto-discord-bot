@@ -66,7 +66,7 @@ Important:
 async def extract_memories_from_history(
     chatbot,
     messages: List[Dict[str, Any]],
-    existing_bio: Optional[str] = None
+    existing_bios: Optional[Dict[str, str]] = None
 ) -> Dict[str, Any]:
     """
     Analyze chat messages and extract interesting user facts.
@@ -74,7 +74,7 @@ async def extract_memories_from_history(
     Args:
         chatbot: LLM provider instance for extraction
         messages: List of message dicts with 'author_id', 'author_name', 'content'
-        existing_bio: Current bio text to update (if any)
+        existing_bios: Dict of user_id -> bio text for users in the chat
 
     Returns:
         {
@@ -113,8 +113,9 @@ async def extract_memories_from_history(
     chat_text = "\n".join(formatted_messages)
 
     bio_context = ""
-    if existing_bio:
-        bio_context = f"\n\nExisting bio information (update/merge if new info): {existing_bio}"
+    if existing_bios:
+        bio_lines = [f"- {uid}: {bio}" for uid, bio in existing_bios.items()]
+        bio_context = "\n\nExisting bios (only extract NEW facts not already covered):\n" + "\n".join(bio_lines)
 
     llm_messages = [
         {
@@ -179,3 +180,66 @@ def get_expiry_for_category(category: str) -> Optional[datetime]:
     if days is None:
         return None
     return datetime.now() + timedelta(days=days)
+
+
+BIO_SYNTHESIS_PROMPT = '''You are updating a user's bio profile for a Discord bot.
+Given their existing bio (if any) and new facts learned about them, write a concise third-person bio.
+
+Rules:
+- 2-4 sentences of natural prose (NOT a bullet list or semicolon-separated facts)
+- Merge and deduplicate — do not repeat information
+- If new info contradicts old info, prefer the new info
+- Drop anything too generic or speculative
+- Keep it factual and concise
+- Return ONLY the bio text, nothing else'''
+
+
+async def synthesise_bio(
+    chatbot,
+    user_name: str,
+    existing_bio: Optional[str],
+    new_additions: List[str]
+) -> str:
+    """
+    Use the LLM to merge an existing bio with new facts into clean prose.
+
+    Args:
+        chatbot: LLM provider instance
+        user_name: Display name of the user
+        existing_bio: Current bio text, or None if no bio exists yet
+        new_additions: List of new fact strings to incorporate
+
+    Returns:
+        The synthesised bio string. Falls back to simple join on LLM failure.
+    """
+    additions_text = "\n".join(f"- {fact}" for fact in new_additions)
+
+    if existing_bio:
+        user_content = (
+            f"User: {user_name}\n\n"
+            f"Current bio:\n{existing_bio}\n\n"
+            f"New facts to incorporate:\n{additions_text}"
+        )
+    else:
+        user_content = (
+            f"User: {user_name}\n\n"
+            f"Facts to build a bio from:\n{additions_text}"
+        )
+
+    llm_messages = [
+        {'role': 'system', 'content': BIO_SYNTHESIS_PROMPT},
+        {'role': 'user', 'content': user_content}
+    ]
+
+    try:
+        response = await chatbot.chat(
+            messages=llm_messages,
+            temperature=0.3,
+        )
+        return response.message.strip()
+    except Exception as e:
+        logger.error(f"Bio synthesis failed for {user_name}: {e}")
+        # Fallback: simple merge
+        if existing_bio:
+            return f"{existing_bio}; {'; '.join(new_additions)}"
+        return "; ".join(new_additions)

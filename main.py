@@ -1083,8 +1083,16 @@ async def extract_user_memories():
             logger.info("No messages to extract memories from")
             return
 
+        # Collect existing bios for users in the chat so extraction can avoid duplicates
+        user_ids = {msg['author_id'] for msg in messages}
+        existing_bios = {}
+        for uid in user_ids:
+            bio = memory_store.get_user_bio(extraction_server_id, uid)
+            if bio:
+                existing_bios[uid] = bio.bio
+
         # Extract memories
-        result = await memory_tasks.extract_memories_from_history(chatbot, messages)
+        result = await memory_tasks.extract_memories_from_history(chatbot, messages, existing_bios=existing_bios)
 
         # Save memories
         for mem in result.get('memories', []):
@@ -1099,22 +1107,26 @@ async def extract_user_memories():
             )
             logger.info(f"Saved memory for {mem['user_name']}: {mem['memory'][:50]}...")
 
-        # Update bios
+        # Update bios — group additions per user, then synthesise
+        bio_additions_by_user = {}
         for bio_update in result.get('bio_updates', []):
-            existing = memory_store.get_user_bio(extraction_server_id, bio_update['user_id'])
-            if existing:
-                # Merge existing bio with new info
-                new_bio = f"{existing.bio}; {bio_update['bio_addition']}"
-            else:
-                new_bio = bio_update['bio_addition']
+            uid = bio_update['user_id']
+            if uid not in bio_additions_by_user:
+                bio_additions_by_user[uid] = {'name': bio_update['user_name'], 'additions': []}
+            bio_additions_by_user[uid]['additions'].append(bio_update['bio_addition'])
 
+        for uid, info in bio_additions_by_user.items():
+            existing = memory_store.get_user_bio(extraction_server_id, uid)
+            new_bio = await memory_tasks.synthesise_bio(
+                chatbot, info['name'], existing.bio if existing else None, info['additions']
+            )
             memory_store.save_bio(
                 server_id=extraction_server_id,
-                user_id=bio_update['user_id'],
-                user_name=bio_update['user_name'],
+                user_id=uid,
+                user_name=info['name'],
                 bio=new_bio
             )
-            logger.info(f"Updated bio for {bio_update['user_name']}")
+            logger.info(f"Updated bio for {info['name']}")
 
         memories_count = len(result.get('memories', []))
         bio_count = len(result.get('bio_updates', []))
