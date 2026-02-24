@@ -112,6 +112,80 @@ class UrlStore:
         """Get a database connection."""
         return sqlite3.connect(self.db_path)
 
+    @classmethod
+    def backup_sections(cls) -> dict:
+        """Return available backup sections with descriptions."""
+        return {"urls": "URL history with summaries and embeddings"}
+
+    def export_server(self, server_id: str) -> dict:
+        """Export all URL history for a server."""
+        with self._get_connection() as conn:
+            cursor = conn.execute(
+                "SELECT server_id, channel_id, url, summary, keywords, "
+                "posted_by_id, posted_by_name, posted_at, created_at, embedding "
+                "FROM url_history WHERE server_id = ?",
+                (server_id,)
+            )
+            rows = cursor.fetchall()
+
+        def _to_iso(val):
+            if val is None:
+                return None
+            if isinstance(val, str):
+                return datetime.fromisoformat(val).isoformat()
+            return val.isoformat()
+
+        records = []
+        for row in rows:
+            (_, channel_id, url, summary, keywords,
+             posted_by_id, posted_by_name, posted_at, created_at, embedding_json) = row
+
+            embedding = None
+            if embedding_json:
+                try:
+                    embedding = json.loads(embedding_json)
+                except json.JSONDecodeError:
+                    pass
+
+            records.append({
+                "channel_id": channel_id,
+                "url": url,
+                "summary": summary,
+                "keywords": keywords,
+                "posted_by_id": posted_by_id,
+                "posted_by_name": posted_by_name,
+                "posted_at": _to_iso(posted_at),
+                "created_at": _to_iso(created_at),
+                "embedding": embedding,
+            })
+
+        return {"urls": records}
+
+    def import_server(self, server_id: str, data: dict) -> dict:
+        """Import URL history for a server. Skips duplicate URLs via unique constraint."""
+        records = data.get("urls", [])
+        imported = 0
+        skipped = 0
+
+        for record in records:
+            result = self.save(
+                server_id=server_id,
+                channel_id=record["channel_id"],
+                url=record["url"],
+                summary=record["summary"],
+                keywords=record["keywords"],
+                posted_by_id=record["posted_by_id"],
+                posted_by_name=record["posted_by_name"],
+                posted_at=datetime.fromisoformat(record["posted_at"]),
+                embedding=record.get("embedding"),
+            )
+            if result is None:
+                skipped += 1
+            else:
+                imported += 1
+
+        return {"urls": {"imported": imported, "skipped": skipped}}
+
     def url_exists(self, server_id: str, url: str) -> bool:
         """Check if a URL already exists for this server."""
         with self._get_connection() as conn:

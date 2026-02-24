@@ -162,6 +162,19 @@ SQLite-based storage in `./data/gepetto.db`:
 - `get_last_activity()` returns when user was last seen
 - Used by the "catch me up" feature
 
+**ReminderStore** - Scheduled user reminders per server:
+- Stores reminder text, target time, and completion status
+- `get_due_reminders()` finds reminders ready to send
+- `mark_reminded()` marks reminders as delivered
+
+**Backup & Restore** - Each store implements a self-describing backup interface:
+- `backup_sections()` - Returns section names and descriptions
+- `export_server(server_id)` - Exports all data for a server as dicts
+- `import_server(server_id, data)` - Imports data with duplicate detection
+- `get_backup_stores()` in `__init__.py` auto-discovers all stores with backup support
+- CLI script `backup_restore.py` provides export/import/sections commands
+- Supports server ID remapping for migration, gzip compression, and section filtering
+
 ### User Memory System
 
 When `ENABLE_USER_MEMORY=true`:

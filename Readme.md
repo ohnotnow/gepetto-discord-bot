@@ -94,3 +94,32 @@ To run the bot:
 ## Docker Deployment
 
 A `Dockerfile` is included in this repository. This allows you to easily build and run your bot inside a Docker container.  Please see the `run.sh` script for an example of building and running the container.
+
+## Backup & Restore
+
+Export all server-scoped data for migration between bot instances:
+
+```bash
+# List available data sections
+uv run python backup_restore.py sections
+
+# Export all data for a server
+uv run python backup_restore.py export 123456789
+
+# Export with gzip compression
+uv run python backup_restore.py export 123456789 --gzip
+
+# Export only specific sections
+uv run python backup_restore.py export 123456789 --include memories,bios
+
+# Import into a new instance (same server ID)
+uv run python backup_restore.py import 123456789_backup.json
+
+# Import with a different server ID (for migration)
+uv run python backup_restore.py import 123456789_backup.json --server-id 987654321
+
+# Import only specific sections
+uv run python backup_restore.py import 123456789_backup.json --include urls,memories
+```
+
+Available sections: `activity`, `images`, `memories`, `bios`, `reminders`, `urls`. Duplicate records are automatically skipped during import.

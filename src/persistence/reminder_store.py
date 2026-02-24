@@ -73,6 +73,82 @@ class ReminderStore:
         """Get a database connection."""
         return sqlite3.connect(self.db_path)
 
+    @classmethod
+    def backup_sections(cls) -> dict:
+        """Return available backup sections with descriptions."""
+        return {"reminders": "Pending user reminders"}
+
+    def export_server(self, server_id: str) -> dict:
+        """Export pending reminders for a server."""
+        with self._get_connection() as conn:
+            cursor = conn.execute(
+                "SELECT server_id, user_id, user_name, channel_id, "
+                "reminder_text, created_at, remind_at, created_by "
+                "FROM reminders WHERE server_id = ? AND reminded_at IS NULL",
+                (server_id,)
+            )
+            rows = cursor.fetchall()
+
+        def _to_iso(val):
+            if val is None:
+                return None
+            if isinstance(val, str):
+                return datetime.fromisoformat(val).isoformat()
+            return val.isoformat()
+
+        records = []
+        for row in rows:
+            (_, user_id, user_name, channel_id,
+             reminder_text, created_at, remind_at, created_by) = row
+            records.append({
+                "user_id": user_id,
+                "user_name": user_name,
+                "channel_id": channel_id,
+                "reminder_text": reminder_text,
+                "created_at": _to_iso(created_at),
+                "remind_at": _to_iso(remind_at),
+                "created_by": created_by,
+            })
+
+        return {"reminders": records}
+
+    def import_server(self, server_id: str, data: dict) -> dict:
+        """Import reminders for a server. Skips exact (user_id, reminder_text, remind_at) duplicates."""
+        records = data.get("reminders", [])
+        imported = 0
+        skipped = 0
+
+        # Build set of existing for duplicate detection (normalise datetimes)
+        existing = set()
+        with self._get_connection() as conn:
+            cursor = conn.execute(
+                "SELECT user_id, reminder_text, remind_at FROM reminders "
+                "WHERE server_id = ? AND reminded_at IS NULL",
+                (server_id,)
+            )
+            for row in cursor.fetchall():
+                remind_at = datetime.fromisoformat(row[2]) if isinstance(row[2], str) else row[2]
+                existing.add((row[0], row[1], remind_at.isoformat()))
+
+        for record in records:
+            remind_at_iso = datetime.fromisoformat(record["remind_at"]).isoformat()
+            if (record["user_id"], record["reminder_text"], remind_at_iso) in existing:
+                skipped += 1
+                continue
+
+            self.save(
+                server_id=server_id,
+                user_id=record["user_id"],
+                user_name=record["user_name"],
+                channel_id=record["channel_id"],
+                reminder_text=record["reminder_text"],
+                remind_at=datetime.fromisoformat(record["remind_at"]),
+                created_by=record.get("created_by"),
+            )
+            imported += 1
+
+        return {"reminders": {"imported": imported, "skipped": skipped}}
+
     def save(self, server_id: str, user_id: str, user_name: str,
              channel_id: str, reminder_text: str, remind_at: datetime,
              created_by: Optional[str] = None) -> int:

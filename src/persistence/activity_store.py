@@ -90,6 +90,55 @@ class ActivityStore:
             )
             conn.commit()
 
+    @classmethod
+    def backup_sections(cls) -> dict:
+        """Return available backup sections with descriptions."""
+        return {"activity": "User activity timestamps for catch-up tracking"}
+
+    def export_server(self, server_id: str) -> dict:
+        """Export all activity data for a server."""
+        with self._get_connection() as conn:
+            cursor = conn.execute(
+                "SELECT server_id, user_id, user_name, last_message_at, channel_id "
+                "FROM user_activity WHERE server_id = ?",
+                (server_id,)
+            )
+            rows = cursor.fetchall()
+
+        records = []
+        for row in rows:
+            _, user_id, user_name, last_message_at, channel_id = row
+            if isinstance(last_message_at, str):
+                last_message_at = datetime.fromisoformat(last_message_at)
+            records.append({
+                "user_id": user_id,
+                "user_name": user_name,
+                "last_message_at": last_message_at.isoformat(),
+                "channel_id": channel_id,
+            })
+
+        return {"activity": records}
+
+    def import_server(self, server_id: str, data: dict) -> dict:
+        """Import activity data for a server. Uses upsert to handle duplicates."""
+        results = {}
+        records = data.get("activity", [])
+        imported = 0
+        skipped = 0
+
+        for record in records:
+            self.record_activity(
+                server_id=server_id,
+                user_id=record["user_id"],
+                user_name=record["user_name"],
+                channel_id=record["channel_id"],
+                timestamp=datetime.fromisoformat(record["last_message_at"]),
+            )
+            imported += 1
+
+        results["activity"] = {"imported": imported, "skipped": skipped}
+        return results
+
     def get_last_activity(self, server_id: str, user_id: str) -> Optional[UserActivity]:
         """
         Get the last recorded activity for a user.

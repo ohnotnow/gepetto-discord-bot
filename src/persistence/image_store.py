@@ -74,6 +74,70 @@ class ImageStore:
         """Get a database connection."""
         return sqlite3.connect(self.db_path)
 
+    @classmethod
+    def backup_sections(cls) -> dict:
+        """Return available backup sections with descriptions."""
+        return {"images": "Daily chat image history (themes, prompts, reasoning)"}
+
+    def export_server(self, server_id: str) -> dict:
+        """Export all image history for a server."""
+        with self._get_connection() as conn:
+            cursor = conn.execute(
+                "SELECT server_id, themes, reasoning, prompt, image_url, created_at "
+                "FROM image_history WHERE server_id = ? ORDER BY id",
+                (server_id,)
+            )
+            rows = cursor.fetchall()
+
+        records = []
+        for row in rows:
+            _, themes_json, reasoning, prompt, image_url, created_at = row
+            if isinstance(created_at, str):
+                created_at = datetime.fromisoformat(created_at)
+            records.append({
+                "themes": json.loads(themes_json),
+                "reasoning": reasoning,
+                "prompt": prompt,
+                "image_url": image_url,
+                "created_at": created_at.isoformat(),
+            })
+
+        return {"images": records}
+
+    def import_server(self, server_id: str, data: dict) -> dict:
+        """Import image history for a server. Skips exact (themes, prompt) duplicates."""
+        records = data.get("images", [])
+        imported = 0
+        skipped = 0
+
+        # Get existing entries for duplicate detection
+        existing = set()
+        with self._get_connection() as conn:
+            cursor = conn.execute(
+                "SELECT themes, prompt FROM image_history WHERE server_id = ?",
+                (server_id,)
+            )
+            for row in cursor.fetchall():
+                existing.add((row[0], row[1]))
+
+        for record in records:
+            themes_json = json.dumps(record["themes"])
+            if (themes_json, record["prompt"]) in existing:
+                skipped += 1
+                continue
+
+            with self._get_connection() as conn:
+                conn.execute(
+                    "INSERT INTO image_history (server_id, themes, reasoning, prompt, image_url, created_at) "
+                    "VALUES (?, ?, ?, ?, ?, ?)",
+                    (server_id, themes_json, record["reasoning"],
+                     record["prompt"], record.get("image_url"), record["created_at"])
+                )
+                conn.commit()
+            imported += 1
+
+        return {"images": {"imported": imported, "skipped": skipped}}
+
     def save(
         self,
         server_id: str,

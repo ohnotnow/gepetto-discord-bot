@@ -92,6 +92,134 @@ class MemoryStore:
         """Get a database connection."""
         return sqlite3.connect(self.db_path)
 
+    @classmethod
+    def backup_sections(cls) -> dict:
+        """Return available backup sections with descriptions."""
+        return {
+            "memories": "User memories and facts",
+            "bios": "User profile summaries",
+        }
+
+    def export_server(self, server_id: str) -> dict:
+        """Export all memories and bios for a server."""
+        now = datetime.now()
+
+        # Export non-expired memories
+        with self._get_connection() as conn:
+            cursor = conn.execute(
+                "SELECT server_id, user_id, user_name, memory, category, "
+                "created_at, expires_at, last_referenced_at, reference_count "
+                "FROM user_memories WHERE server_id = ? "
+                "AND (expires_at IS NULL OR expires_at > ?)",
+                (server_id, now)
+            )
+            memory_rows = cursor.fetchall()
+
+        def _to_iso(val) -> Optional[str]:
+            if val is None:
+                return None
+            if isinstance(val, str):
+                return datetime.fromisoformat(val).isoformat()
+            return val.isoformat()
+
+        memories = []
+        for row in memory_rows:
+            (_, user_id, user_name, memory, category,
+             created_at, expires_at, last_referenced_at, reference_count) = row
+            memories.append({
+                "user_id": user_id,
+                "user_name": user_name,
+                "memory": memory,
+                "category": category,
+                "created_at": _to_iso(created_at),
+                "expires_at": _to_iso(expires_at),
+                "last_referenced_at": _to_iso(last_referenced_at),
+                "reference_count": reference_count,
+            })
+
+        # Export bios
+        with self._get_connection() as conn:
+            cursor = conn.execute(
+                "SELECT server_id, user_id, user_name, bio, updated_at "
+                "FROM user_bios WHERE server_id = ?",
+                (server_id,)
+            )
+            bio_rows = cursor.fetchall()
+
+        bios = []
+        for row in bio_rows:
+            _, user_id, user_name, bio, updated_at = row
+            if isinstance(updated_at, str):
+                updated_at = datetime.fromisoformat(updated_at)
+            bios.append({
+                "user_id": user_id,
+                "user_name": user_name,
+                "bio": bio,
+                "updated_at": updated_at.isoformat() if updated_at else None,
+            })
+
+        return {"memories": memories, "bios": bios}
+
+    def import_server(self, server_id: str, data: dict) -> dict:
+        """Import memories and bios for a server."""
+        results = {}
+
+        # Import memories
+        records = data.get("memories", [])
+        imported = 0
+        skipped = 0
+
+        # Build set of existing (user_id, memory) for duplicate detection
+        existing = set()
+        with self._get_connection() as conn:
+            cursor = conn.execute(
+                "SELECT user_id, memory FROM user_memories WHERE server_id = ?",
+                (server_id,)
+            )
+            for row in cursor.fetchall():
+                existing.add((row[0], row[1]))
+
+        for record in records:
+            if (record["user_id"], record["memory"]) in existing:
+                skipped += 1
+                continue
+
+            expires_at = datetime.fromisoformat(record["expires_at"]) if record.get("expires_at") else None
+
+            with self._get_connection() as conn:
+                conn.execute(
+                    "INSERT INTO user_memories "
+                    "(server_id, user_id, user_name, memory, category, created_at, "
+                    "expires_at, last_referenced_at, reference_count) "
+                    "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)",
+                    (server_id, record["user_id"], record["user_name"],
+                     record["memory"], record.get("category", "general"),
+                     record.get("created_at"), expires_at,
+                     record.get("last_referenced_at"),
+                     record.get("reference_count", 0))
+                )
+                conn.commit()
+            imported += 1
+
+        results["memories"] = {"imported": imported, "skipped": skipped}
+
+        # Import bios
+        bio_records = data.get("bios", [])
+        bio_imported = 0
+        bio_skipped = 0
+
+        for record in bio_records:
+            self.save_bio(
+                server_id=server_id,
+                user_id=record["user_id"],
+                user_name=record["user_name"],
+                bio=record["bio"],
+            )
+            bio_imported += 1
+
+        results["bios"] = {"imported": bio_imported, "skipped": bio_skipped}
+        return results
+
     def save_memory(
         self,
         server_id: str,
