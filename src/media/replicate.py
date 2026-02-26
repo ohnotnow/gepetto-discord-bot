@@ -77,6 +77,12 @@ MODEL_CONFIGS = {
         {"resolution": "2K", "image_input": [], "aspect_ratio": "4:3", "output_format": "png", "safety_filter_level": "block_only_high"},
         False,
     ),
+    "google/nano-banana-2": (
+        "google/nano-banana-2",
+        0.04,
+        {"resolution": "2K", "image_input": [], "aspect_ratio": "4:3", "output_format": "png", "safety_filter_level": "block_only_high"},
+        False,
+    ),
 }
 
 # Default fallback config (sana model format)
