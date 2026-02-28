@@ -53,16 +53,10 @@ MODEL_CONFIGS = {
         {"resolution": "None", "style_type": "None", "aspect_ratio": "1:1", "magic_prompt_option": "Auto"},
         False,
     ),
-    "bytedance/seedream-3": (
-        "bytedance/seedream-3",
-        0.003,
-        {"size": "regular", "width": 2048, "height": 2048, "aspect_ratio": "16:9", "guidance_scale": 2.5},
-        False,
-    ),
-    "bytedance/seedream-4": (
-        "bytedance/seedream-4",
-        0.003,
-        {"size": "2K", "width": 2048, "height": 2048, "max_images": 1, "image_input": [], "aspect_ratio": "4:3", "sequential_image_generation": "disabled"},
+    "bytedance/seedream-5-lite": (
+        "bytedance/seedream-5-lite",
+        0.03,
+        {"size": "2K", "max_images": 1, "image_input": [], "aspect_ratio": "4:3", "sequential_image_generation": "disabled", "output_format": "png"},
         True,
     ),
     "luma/": (
