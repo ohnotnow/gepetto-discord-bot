@@ -46,11 +46,7 @@ class BaseModel:
             "model": model,
             "messages": messages,
             "temperature": temperature,
-            "reasoning_effort": "low",
         }
-        if self.model.startswith("openai/") and not "oss" in self.model:
-            params["verbosity"] = "low"
-            logger.info(f"OpenAI model with params: {json.dumps(params)}")
 
         if json_mode:
             params["response_format"] = {"type": "json_object"}
