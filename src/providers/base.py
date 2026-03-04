@@ -48,6 +48,9 @@ class BaseModel:
             "temperature": temperature,
         }
 
+        if model.startswith("openai/"):
+            params["verbosity"] ="low"
+
         if json_mode:
             params["response_format"] = {"type": "json_object"}
 
