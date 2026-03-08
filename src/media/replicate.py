@@ -42,10 +42,10 @@ MODEL_CONFIGS = {
         False,
     ),
     "recraft-ai/": (
-        "recraft-ai/recraft-v3",
+        "recraft-ai/recraft-v4",
         0.04,
-        {"size": "1365x1024", "style": "any", "aspect_ratio": "1:1"},
-        False,
+        {"size": "1536x768", "style": "any", "aspect_ratio": "2:1"},
+        True,
     ),
     "ideogram-ai/": (
         "ideogram-ai/ideogram-v3",
