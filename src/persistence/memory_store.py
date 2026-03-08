@@ -4,7 +4,6 @@ SQLite-based persistence for user memories and bios.
 
 import logging
 import os
-import random
 import sqlite3
 from dataclasses import dataclass
 from datetime import datetime, timedelta
@@ -388,14 +387,14 @@ class MemoryStore:
         server_id: str,
         user_id: str,
         cooldown_hours: int = 24,
-        probability: float = 0.3,
-        max_memories: int = 3
+        max_memories: int = 10
     ) -> str:
         """
         Get formatted context string for prompt injection.
 
-        Applies cooldown, probability filtering, and caps.
-        Updates last_referenced_at for included memories.
+        Returns all eligible memories (cooldown-filtered) and bio.
+        The LLM decides which memories to actually reference based on
+        its persona and the conversation context.
         Returns empty string if no relevant context.
         """
         memories = self.get_user_memories(server_id, user_id, include_expired=False)
@@ -405,8 +404,6 @@ class MemoryStore:
 
         for mem in memories:
             if mem.last_referenced_at and mem.last_referenced_at > cooldown_threshold:
-                continue
-            if random.random() > probability:
                 continue
             eligible.append(mem)
             if len(eligible) >= max_memories:

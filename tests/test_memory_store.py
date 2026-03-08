@@ -5,7 +5,7 @@ Tests for src/persistence/memory_store.py
 import os
 import pytest
 from datetime import datetime, timedelta
-from unittest.mock import patch
+
 from src.persistence.memory_store import MemoryStore, Memory, UserBio
 
 
@@ -244,41 +244,30 @@ class TestMemoryStore:
         mem_id = store.save_memory('s1', 'u1', 'user1', 'recent memory')
         store.mark_referenced(mem_id)
 
-        # With probability=1 to ensure inclusion if not cooled down
-        with patch('random.random', return_value=0):
-            context = store.get_context_for_user('s1', 'u1', cooldown_hours=24, probability=1.0)
+        context = store.get_context_for_user('s1', 'u1', cooldown_hours=24)
 
         assert 'recent memory' not in context
 
-    def test_get_context_respects_probability(self, temp_dir):
-        """get_context_for_user() should apply probability filtering."""
+    def test_get_context_includes_all_eligible(self, temp_dir):
+        """get_context_for_user() should include all eligible memories (no random filtering)."""
         store = MemoryStore(os.path.join(temp_dir, 'test.db'))
-        store.save_memory('s1', 'u1', 'user1', 'test memory')
+        store.save_memory('s1', 'u1', 'user1', 'first memory')
+        store.save_memory('s1', 'u1', 'user1', 'second memory')
 
-        # With random returning 0.5 and probability 0.3, should exclude
-        with patch('random.random', return_value=0.5):
-            context = store.get_context_for_user('s1', 'u1', probability=0.3)
+        context = store.get_context_for_user('s1', 'u1')
 
-        assert context == ''
-
-        # With random returning 0.1 and probability 0.3, should include
-        with patch('random.random', return_value=0.1):
-            context = store.get_context_for_user('s1', 'u1', probability=0.3)
-
-        assert 'test memory' in context
+        assert 'first memory' in context
+        assert 'second memory' in context
 
     def test_get_context_respects_max_memories(self, temp_dir):
         """get_context_for_user() should cap at max_memories."""
         store = MemoryStore(os.path.join(temp_dir, 'test.db'))
-        for i in range(10):
+        for i in range(15):
             store.save_memory('s1', 'u1', 'user1', f'memory{i}')
 
-        # With probability=1 to ensure all eligible
-        with patch('random.random', return_value=0):
-            context = store.get_context_for_user('s1', 'u1', probability=1.0, max_memories=3)
+        context = store.get_context_for_user('s1', 'u1', max_memories=3)
 
         # Should have at most 3 memories
-        # Count by checking how many "memory" substrings appear
         assert context.count('memory') <= 3
 
     def test_get_context_marks_included_as_referenced(self, temp_dir):
@@ -286,8 +275,7 @@ class TestMemoryStore:
         store = MemoryStore(os.path.join(temp_dir, 'test.db'))
         mem_id = store.save_memory('s1', 'u1', 'user1', 'test memory')
 
-        with patch('random.random', return_value=0):
-            store.get_context_for_user('s1', 'u1', probability=1.0)
+        store.get_context_for_user('s1', 'u1')
 
         memories = store.get_user_memories('s1', 'u1')
         assert memories[0].reference_count == 1

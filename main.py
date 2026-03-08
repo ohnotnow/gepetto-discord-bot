@@ -260,7 +260,13 @@ def build_messages(question, extended_messages, system_prompt=None, user_hints=N
 
     # Add user context hints if provided
     if user_hints:
-        default_prompt += f"\n\n[Context about this user - reference naturally only when relevant: {user_hints}]"
+        default_prompt += (
+            "\n\n[Things you know about this user: " + user_hints + "]\n"
+            "[You may weave in AT MOST one of these if it fits naturally with your "
+            "persona and the current conversation. Consider your character — only "
+            "reference a fact that your persona would plausibly bring up. "
+            "If none fit, just ignore them entirely.]"
+        )
 
     extended_messages.append({
         'role': 'user',

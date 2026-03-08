@@ -27,7 +27,7 @@ Good examples of things to extract:
 - "has a cold this week" (health_temporary)
 - "started a new job at a startup" (work)
 - "is German, lives in Madrid" (interest -> becomes bio)
-- "broke up with partner" (relationship)
+- "got engaged" (relationship)
 - "going on holiday to Spain next week" (travel)
 
 Bad examples (too generic, skip these):
@@ -35,10 +35,28 @@ Bad examples (too generic, skip these):
 - "likes pizza" (too common/generic)
 - Things that are obviously jokes or sarcasm
 
+NEVER extract painful or sensitive life events. The bot has a fun personality and will
+cheerfully bring memories up in later conversation — imagine the bot saying "Hey, speaking
+of which..." before the fact. If that would be cruel or tone-deaf, do not extract it.
+
+Skip things like:
+- Death or serious illness of a loved one (person or pet), bereavement, funerals
+- Miscarriage, stillbirth, or loss of a pregnancy
+- Abuse, assault, or trauma of any kind
+- Mental health crises (suicidal thoughts, self-harm, breakdowns)
+- Breakups, divorce, or painful family estrangement
+- Job loss, redundancy, or being fired
+- Financial hardship, debt, or bankruptcy
+- Legal trouble, arrests, or court cases
+- Serious medical diagnoses
+
+Mundane grumbles are fine — a cold, a bad day, tech problems, minor annoyances.
+The rule is: if a cheerful bot casually referencing it later would be hurtful, skip it.
+
 For each fact, categorize it:
 - health_temporary: illness, injury (temporary conditions)
 - pet_new: new pet arrival
-- relationship: breakup, new partner, engagement, etc
+- relationship: new partner, engagement, anniversary, happy relationship milestones
 - travel: on holiday, visiting somewhere
 - work: job changes, work events, career news
 - interest: long-term traits, heritage, location, hobbies (these become bio updates)
