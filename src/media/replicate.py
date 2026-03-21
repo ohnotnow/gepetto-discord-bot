@@ -65,6 +65,15 @@ MODEL_CONFIGS = {
         {"size": "2K", "max_images": 1, "image_input": [], "aspect_ratio": "4:3", "sequential_image_generation": "disabled", "output_format": "png"},
         True,
     ),
+    "reve/create": (
+        "reve/create",
+        0.025,
+        {
+            "version": "latest",
+            "aspect_ratio": "3:2"
+        },
+        True,
+    ),
     "luma/": (
         "luma/photon-flash",
         0.02,
