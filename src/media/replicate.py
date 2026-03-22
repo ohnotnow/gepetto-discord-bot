@@ -6,8 +6,8 @@ import random
 # Set in_pool=True to include a model in the random selection pool.
 MODEL_CONFIGS = {
     "black-forest-labs/": (
-        "black-forest-labs/flux-2-pro",
-        0.01,
+        "black-forest-labs/flux-2-max",
+        0.04,
         {"resolution": "1 MP", "aspect_ratio": "1:1", "input_images": [], "output_format": "webp", "output_quality": 80, "safety_tolerance": 5},
         True,
     ),
