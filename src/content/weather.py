@@ -121,12 +121,12 @@ async def get_forecast_met_office(lat: float, long: float) -> dict | None:
         return None
 
 
-def format_met_office_forecast(data: dict, dates: list[datetime.date]) -> str:
+def format_met_office_forecast(data: dict, dates: list[datetime.date], location_name: str = "") -> str:
     features = data.get("features", [])
     if not features:
         return ""
     props = features[0].get("properties", {})
-    location_name = props.get("locationName", "Unknown location")
+    location_name = location_name or props.get("locationName", "Unknown location")
     time_series = props.get("timeSeries", [])
 
     date_strs = {d.isoformat() for d in dates}
@@ -238,7 +238,7 @@ async def get_friendly_forecast_openweathermap(question: str, chatbot):
             if use_met_office:
                 met_data = await get_forecast_met_office(float(lat), float(long))
                 if met_data:
-                    forecast += format_met_office_forecast(met_data, dates) + "\n"
+                    forecast += format_met_office_forecast(met_data, dates, location.strip()) + "\n"
                     logger.info(f"Using Met Office forecast for {location.strip()}")
                 else:
                     logger.info(f"Met Office failed for {location.strip()}, falling back to OpenWeatherMap")
