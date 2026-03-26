@@ -12,6 +12,7 @@ A Discord bot ("Gepetto") that uses LLMs via LiteLLM to chat, generate images, s
 - **discord.py** 2.3.0+ - Discord integration
 - **LiteLLM** 1.66.3+ - Multi-provider LLM abstraction
 - **Replicate** 0.32.1+ - Image generation (Flux, Sora, etc.)
+- **fal-client** 0.13+ - Alternative image generation provider (Flux, Seedream, Nano Banana, etc.)
 - **trafilatura** - Web content extraction
 - **youtube_transcript_api** - YouTube transcript fetching
 - **PyPDF2** - PDF text extraction
@@ -34,7 +35,9 @@ src/
 │   ├── perplexity.py  # Web search
 │   └── response.py  # ChatResponse/FunctionResponse dataclasses
 ├── media/           # Media generation
-│   ├── replicate.py # Image model factory + configs
+│   ├── __init__.py  # Provider routing: get_image_model() selects backend
+│   ├── replicate.py # Replicate image model factory + configs
+│   ├── fal.py       # FAL image model factory + configs
 │   ├── sora.py      # Video generation
 │   └── images.py    # Chat-to-image prompt building
 ├── content/         # Content extraction/summarization
@@ -96,10 +99,13 @@ Model string format: `{provider}/{model}` (e.g., "openai/gpt-4o-mini")
 
 ### Image Generation
 
-Factory pattern in `replicate.py`:
-- `get_image_model(name)` returns `ImageModel` instance
-- `MODEL_CONFIGS` dict maps model prefixes to (default_model, cost, params, in_pool)
+Dual-provider system with `IMAGE_PROVIDER` env var selecting between Replicate and FAL:
+- `src/media/__init__.py` exposes `get_image_model(name)` which routes to the active provider
+- Each provider (`replicate.py`, `fal.py`) has its own `MODEL_CONFIGS` dict and `ImageModel` class with the same interface (`.name`, `.cost`, `.short_name`, `.generate(prompt)`)
+- `MODEL_CONFIGS` maps model prefixes to (default_model, cost, params, in_pool)
 - Random model selection from models with `in_pool=True`
+- FAL import is lazy — only loaded when `IMAGE_PROVIDER="fal"`, so `FAL_KEY` isn't required for Replicate users
+- Video generation remains on Replicate/Sora regardless of image provider
 
 ### Tool Dispatch
 
@@ -292,7 +298,9 @@ uv run pytest              # Run tests
 | `DISCORD_BOT_CHANNEL_ID` | Yes | Channel for scheduled tasks |
 | `BOT_PROVIDER` | Yes | LLM provider (openai, anthropic, groq, openrouter) |
 | `BOT_MODEL` | Yes | Default model name |
-| `REPLICATE_API_KEY` | For images | Replicate API access |
+| `IMAGE_PROVIDER` | No | Image provider: "replicate" (default) or "fal" |
+| `REPLICATE_API_KEY` | For images (replicate) | Replicate API access |
+| `FAL_KEY` | For images (fal) | FAL API access |
 | `CHAT_IMAGE_ENABLED` | No | Enable daily image feature |
 | `FEATURE_HORROR_CHAT` | No | Enable horror posts |
 | `ENABLE_USER_MEMORY` | No | Enable reading user memories |

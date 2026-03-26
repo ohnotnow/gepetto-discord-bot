@@ -39,12 +39,13 @@ response = await chatbot.chat(messages)
 The model string format is `{provider}/{model}` (e.g., "openai/gpt-4o-mini"). You can pass a full LiteLLM model string directly to `chat()`.
 
 ### Image Generation (`src/media/`)
-Uses factory pattern in `replicate.py`:
+Dual-provider system — `IMAGE_PROVIDER` env var selects between `"replicate"` (default) and `"fal"`. Both providers expose the same `ImageModel` interface via a routing function:
 ```python
-from src.media import replicate
-model = replicate.get_image_model()  # Random from enabled models
+from src.media import get_image_model
+model = get_image_model()  # Random from enabled models on the active provider
 image_url = await model.generate("a cat in space")
 ```
+Each provider (`replicate.py`, `fal.py`) has its own `MODEL_CONFIGS` with provider-specific model names and parameters. FAL is lazily imported only when selected.
 
 ### Tool Dispatch (`src/tools/`)
 Simple tools use `ToolDispatcher` in `handlers.py`. Complex tools (that need LLM continuation) remain inline in `main.py`. Tool definitions are in `definitions.py`.

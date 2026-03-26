@@ -24,7 +24,7 @@ The reminders feature lets users ask the bot to remind them about something usin
 
 It has a few 'timed' features too :
 
-* Once a day read the channel history and use an image generator (via replicate) to create an image based on the chat.
+* Once a day read the channel history and use an image generator (via Replicate or FAL) to create an image based on the chat.
 * Randomly through the night post very short 'horror stories' (usually just a single sentence)
 * Occassionally just interject some chat (disabled by default as it's quite annoying)
 
@@ -54,6 +54,7 @@ The script uses the following environment variables (* indicates required):
 | FEATURE_RANDOM_CHAT | Enabling/disabling random chat feature | False | "true" |
 | FEATURE_HORROR_CHAT | Enabling/disabling horror chat feature | False | "true" |
 | CHAT_IMAGE_ENABLED | Enabling/disabling chat image generation | False | "true" |
+| IMAGE_PROVIDER | Image generation API provider | "replicate" | "replicate" or "fal" |
 | IMAGE_MODEL | Override image model for user-requested images | Random | "openai/gpt-image-1.5" |
 | CHAT_IMAGE_MODEL | Override image model for daily chat image (falls back to IMAGE_MODEL) | IMAGE_MODEL | "black-forest-labs/flux-2-pro" |
 | SENTRY_AUTH_TOKEN | Sentry API authentication | - | "your-sentry-auth-token" |
@@ -66,6 +67,7 @@ The script uses the following environment variables (* indicates required):
 | OPENROUTER_API_KEY | OpenRouter API authentication | - | "your-openrouter-api-key" |
 | ANTHROPIC_API_KEY | Anthropic API authentication | - | "your-anthropic-api-key" |
 | REPLICATE_API_KEY | Replicate API authentication (for image generation) | - | "your-replicate-api-key" |
+| FAL_KEY | FAL API authentication (required when IMAGE_PROVIDER="fal") | - | "your-fal-api-key" |
 | USER_LOCATIONS | Setting user locations for image generation | "the UK towns of Bath and Manchester" | "London, Manchester, Edinburgh" |
 | CAT_DESCRIPTIONS | Descriptions of server members' cats for image generation | - | "Mochi is a fluffy orange tabby, Luna is a sleek black cat" |
 | ENABLE_USER_MEMORY | Enable reading user memories for context in responses | False | "true" |

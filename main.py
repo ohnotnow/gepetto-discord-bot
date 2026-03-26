@@ -23,7 +23,7 @@ from src.tools import calculator, ToolDispatcher, ToolResult
 from src.tools.definitions import tool_list, search_url_history_tool, catch_up_tool, twitter_search_tool, set_reminder_tool, manage_memories_tool
 
 # Media
-from src.media import images, replicate, sora
+from src.media import images, replicate, sora, get_image_model
 
 # Content
 from src.content import summary, weather, sentry
@@ -340,7 +340,7 @@ async def create_image(message: ChatMessage, prompt: str) -> None:
         await message.reply(f'Due to budget cuts, I can only generate {MAX_DAILY_IMAGES} images per day.', mention_author=True)
         return
 
-    model = replicate.get_image_model(IMAGE_MODEL)
+    model = get_image_model(IMAGE_MODEL)
     image_url = await model.generate(prompt)
 
     filename = f"{sanitize_filename(prompt)}_{datetime.now().strftime('%Y_%m_%d')}.png"
@@ -987,8 +987,8 @@ async def make_chat_image():
 
         # Generate the image
         full_prompt = llm_chat_prompt + f"\n{images.get_extra_guidelines()}"
-        logger.info("Calling replicate to generate image")
-        model = replicate.get_image_model(CHAT_IMAGE_MODEL)
+        logger.info("Calling image provider to generate image")
+        model = get_image_model(CHAT_IMAGE_MODEL)
         image_url = await model.generate(full_prompt)
         logger.info(f"Image URL: {image_url} - model: {model.short_name} - cost: {model.cost}")
 
