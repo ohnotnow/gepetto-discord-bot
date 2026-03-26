@@ -880,17 +880,21 @@ async def random_chat(trigger_message: ChatMessage):
     channel = platform.get_channel(trigger_message.channel_id)
     context = await get_history_as_openai_messages(channel, include_bot_messages=True)
     system_prompt = get_system_prompt(bot_name=chatbot.name)
+    trigger_content = trigger_message.content[:300]
     context.append({
         'role': 'system',
-        'content': f"{system_prompt}\n\nYou just overheard this conversation and want to make a brief, natural comment. "
-                   f"Be yourself - witty, casual, like a colleague chipping in. Keep it short (1-2 sentences). "
-                   f"If you genuinely have nothing to add, just say 'SKIP' and nothing else."
+        'content': f"{system_prompt}\n\n"
+                   f"Someone in the group chat just said: \"{trigger_content}\"\n"
+                   f"You are chipping in to the conversation unprompted. React to the most recent message only. "
+                   f"Keep it to one sentence. Do not summarise the conversation. "
+                   f"If you have nothing to say, reply with just 'SKIP'."
     })
-    response = await chatbot.chat(context, temperature=1.0)
-    if response.message.strip().upper() == 'SKIP':
+    response = await chatbot.chat(context, temperature=0.8)
+    response_text = response.message.strip()
+    if 'SKIP' in response_text.upper() and len(response_text) < 10:
         logger.info("Random chat chose to skip")
         return
-    await channel.send(f"{response.message[:DISCORD_MESSAGE_LIMIT]}")
+    await channel.send(f"{response_text[:DISCORD_MESSAGE_LIMIT]}")
 
 async def horror_chat():
     # Check cooldown using stored timestamp
