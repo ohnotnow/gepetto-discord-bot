@@ -46,8 +46,8 @@ from src.utils.constants import (
     DISCORD_MESSAGE_LIMIT, MAX_DAILY_IMAGES, MAX_HORROR_HISTORY,
     VIDEO_DURATION_SECONDS, RANDOM_CHAT_PROBABILITY, HORROR_CHAT_PROBABILITY,
     HORROR_CHAT_COOLDOWN_HOURS, LIZ_TRUSS_PROBABILITY, ALTERNATE_PROMPT_PROBABILITY,
-    MIN_MESSAGES_FOR_RANDOM_CHAT, MIN_MESSAGES_FOR_CHAT_IMAGE,
-    NIGHT_START_HOUR, NIGHT_END_HOUR, DAY_START_HOUR, DAY_END_HOUR,
+    MIN_MESSAGES_FOR_CHAT_IMAGE,
+    DAY_START_HOUR, DAY_END_HOUR,
     UK_HOLIDAYS, ABUSIVE_RESPONSES,
     CATCH_UP_MAX_HOURS, CATCH_UP_MAX_MESSAGES, CATCH_UP_BUSY_THRESHOLD,
     URL_SEARCH_RECENCY_DAYS, URL_SEARCH_RECENCY_TIERS,
@@ -719,6 +719,14 @@ async def handle_message(message: ChatMessage):
                 datetime.now()
             )
 
+    # Random drive-by chat - small chance to chime in on any message
+    if (not message.author_is_bot
+            and message.server_id == server_id
+            and os.getenv("FEATURE_RANDOM_CHAT", False)
+            and platform.bot_user_id not in message.content
+            and random.random() < RANDOM_CHAT_PROBABILITY):
+        await random_chat(message)
+
     message_blocked, abusive_reply = bot_guard.should_block(message, platform.bot_user_id, server_id, chatbot)
     if message_blocked:
         if abusive_reply:
@@ -866,31 +874,23 @@ async def say_happy_birthday():
     logger.info("In say_happy_birthday")
     await birthdays.get_birthday_message(platform, chatbot)
 
-async def random_chat():
-    logger.info("In random_chat")
-    if not os.getenv("FEATURE_RANDOM_CHAT", False):
-        logger.info("Not doing random chat because FEATURE_RANDOM_CHAT is not set")
-        return
-    if random.random() > RANDOM_CHAT_PROBABILITY:
-        logger.info("Not joining in with chat because random number is too high")
-        return
-    now = datetime.now().time()
-    start = time(hour=NIGHT_START_HOUR)
-    end = time(hour=NIGHT_END_HOUR)
-    if now >= start or now <= end:
-        logger.info("Not joining in with chat because it is night time")
-        return
-    channel = platform.get_channel(os.getenv('DISCORD_BOT_CHANNEL_ID', 'Invalid').strip())
-    context = await get_history_as_openai_messages(channel, include_bot_messages=False, since_hours=0.5)
+async def random_chat(trigger_message: ChatMessage):
+    """Chime in to the conversation as if the bot is a regular user."""
+    logger.info("Random chat triggered")
+    channel = platform.get_channel(trigger_message.channel_id)
+    context = await get_history_as_openai_messages(channel, include_bot_messages=True)
+    system_prompt = get_system_prompt(bot_name=chatbot.name)
     context.append({
         'role': 'system',
-        'content': get_system_prompt(bot_name=chatbot.name)
+        'content': f"{system_prompt}\n\nYou just overheard this conversation and want to make a brief, natural comment. "
+                   f"Be yourself - witty, casual, like a colleague chipping in. Keep it short (1-2 sentences). "
+                   f"If you genuinely have nothing to add, just say 'SKIP' and nothing else."
     })
-    if len(context) < MIN_MESSAGES_FOR_RANDOM_CHAT:
-        logger.info("Not joining in with chat because it is too quiet")
-        return
     response = await chatbot.chat(context, temperature=1.0)
-    await channel.send(f"{response.message[:DISCORD_MESSAGE_LIMIT]}\n{response.usage}")
+    if response.message.strip().upper() == 'SKIP':
+        logger.info("Random chat chose to skip")
+        return
+    await channel.send(f"{response.message[:DISCORD_MESSAGE_LIMIT]}")
 
 async def horror_chat():
     # Check cooldown using stored timestamp
