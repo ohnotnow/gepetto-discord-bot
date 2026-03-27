@@ -878,16 +878,15 @@ async def random_chat(trigger_message: ChatMessage):
     """Chime in to the conversation as if the bot is a regular user."""
     logger.info("Random chat triggered")
     channel = platform.get_channel(trigger_message.channel_id)
-    context = await get_history_as_openai_messages(channel, include_bot_messages=True)
+    context = await get_history_as_openai_messages(channel, include_bot_messages=False)
     system_prompt = get_system_prompt(bot_name=chatbot.name)
     trigger_content = trigger_message.content[:300]
     context.append({
         'role': 'system',
         'content': f"{system_prompt}\n\n"
-                   f"Someone in the group chat just said: \"{trigger_content}\"\n"
-                   f"You are chipping in to the conversation unprompted. React to the most recent message only. "
-                   f"Keep it to one sentence. Do not summarise the conversation. "
-                   f"If you have nothing to say, reply with just 'SKIP'."
+                   f"You are chipping in to the conversation as a regular human user would. React to one of the recent messages - with your own persona - but in a natural way.  You are taking part in the conversation, not just giving a hot take or zinger (unless warrented!). "
+                   f"Keep it to one sentence. Do not summarise the conversation."
+                   f"If you have nothing to say, reply with just 'SKIP'.  It is perfectly natural not to reply to every message :-)"
     })
     response = await chatbot.chat(context, temperature=0.8)
     response_text = response.message.strip()
