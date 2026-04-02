@@ -55,6 +55,7 @@ def get_initial_chat_image_prompt(chat_history: str, previous_image_themes: str)
         - The prompt should be detailed and specific - it will be given to a state of the art image generation model - so you can be very specific
         - If today's date ({today_string}) has UK significance, weave it in naturally
         - Surprise them with creative interpretations they wouldn't expect
+        - Do not make the image just a montage of the chat history as objects or items.  We want to surprise and delight with the image - subtle suggestions, witty interpretations, etc.
         - If the chat history contains references to people having a truly bad time (not in jest) - please make the image cheerfull - do NOT make the user sad by reflecting their pain back to them (eg, relationship breakdown, pet or parental illness, etc).
 
         {location_guidance}
@@ -162,4 +163,3 @@ async def get_image_response(prompt: str, chatbot) -> dict:
         return arguments
     except:
         return {"prompt": str(response), "themes": [], "reasoning": ""}
-
