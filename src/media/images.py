@@ -15,48 +15,28 @@ def get_initial_chat_image_prompt(chat_history: str, previous_image_themes: str)
     if cat_descriptions:
         cat_guidance = f"If cats appear in the image based on chat mentions, please use these descriptions of the actual cats owned by server members: {cat_descriptions}."
     combined_chat = f"""
-        You are tasked with creating a visually remarkable Stable Diffusion prompt for a Discord server of software developers.
+STEP 1 - READ AND ABSORB:
+Read the entire chat history. Don't take notes. Just absorb the vibe.
 
-        STEP 1 - DELIBERATELY AVOID THE OBVIOUS:
-        First, identify the main conversation topics (likely tech/work related) and keep them at the back of your mind.  These are the obvious topics - we want to be surprising and creative!
+STEP 2 - PICK ONE THING:
+From everything you read, choose ONE single detail — the smaller
+and more unexpected, the better. A texture, a mood, a passing
+comment about weather, a food someone mentioned. Just one.
 
-        STEP 2 - HUNT FOR THE PERIPHERAL:
-        Scan for brief, casual mentions of:
-        - Physical sensations (tired, hungry, cold, comfortable)
-        - Environmental details (weather, sounds, lighting, time of day)
-        - Passing references to objects, food, animals, or places
-        - Emotional micro-moments (small frustrations, tiny celebrations)
-        - Background activities or interruptions
-        - Sensory experiences or textures mentioned
-        - If you are using the main themes - be subtle, be creative, work them into some other details you have identified.
-        - DO NOT invent any details, only use the ones that are mentioned in the chat history.
-        - Weave the main themes in the context of the peripheral details - the peripheral details are the central focus of the image.
-        - If the chat history is very low, then take additional inpiration from a famous event which happened on todays date in history.
+If nothing stands out, use the overall emotional temperature
+of the day (frantic? lazy? celebratory? grumpy?).
 
-        STEP 3 - ARTISTIC STYLE SELECTION:
-        Choose your visual approach from the broad world of art:
-        - Classical fine art tradition (oil painting, watercolor, etc.)
-        - Photography genres (portrait, landscape, street photography, macro)
-        - Illustration styles (vintage poster, children's book, technical drawing)
-        - Abstract or experimental approaches
-        - Historical art movements (impressionist, art nouveau, minimalist)
-        - Cinematography (film noir, horror, etc.)
+STEP 3 - FORGET THE REST:
+Seriously. Everything else from the chat — ignore it.
+Do not reference it. Do not "weave it in." It's gone.
 
-        STEP 4 - AMPLIFY THE SUBTLE:
-        Take your chosen peripheral detail and make it the HERO of a visually stunning composition. Think about:
-        - What mood or atmosphere does this detail suggest?
-        - What unexpected artistic style would make this mundane detail fascinating?
-        - How can you create visual drama from something small?
+STEP 4 - MAKE ART:
+Take that one detail and build a visually stunning,
+complete composition around it. You have total creative
+freedom on style, medium, mood, and setting. Invent
+freely. The only anchor to the chat is that single detail.
 
-        GUIDELINES:
-        - Software developers love wit and unexpected connections
-        - Create something visually striking that would make them pause and smile
-        - Avoid cyberpunk entirely
-        - The prompt should be detailed and specific - it will be given to a state of the art image generation model - so you can be very specific
-        - If today's date ({today_string}) has UK significance, weave it in naturally
-        - Surprise them with creative interpretations they wouldn't expect
-        - Do not make the image just a montage of the chat history as objects or items.  We want to surprise and delight with the image - subtle suggestions, witty interpretations, etc.
-        - If the chat history contains references to people having a truly bad time (not in jest) - please make the image cheerfull - do NOT make the user sad by reflecting their pain back to them (eg, relationship breakdown, pet or parental illness, etc).
+**Important:** If the chat history contains references to people having a truly bad time (not in jest) - please make the image cheerfull - do NOT make the user sad by reflecting their pain back to them (eg, relationship breakdown, pet or parental illness, etc).
 
         {location_guidance}
 
@@ -70,7 +50,7 @@ def get_initial_chat_image_prompt(chat_history: str, previous_image_themes: str)
 
         You **MUST** call the tool "generate_image" with the following parameters:
         - prompt: The prompt you want to give to the Stable Diffusion image model
-        - themes: The themes you want to use in the image
+        - themes: The themes you would use to describe the key details and artistic style in the image
         - reasoning: The reasoning you used to generate the prompt
 
         And remember: the prompt will be used to generate an image, so it should be clear and detailed enough for the image model to understand.
@@ -138,7 +118,7 @@ async def get_image_response(prompt: str, chatbot) -> dict:
                         "themes": {
                             "type": "array",
                             "items": {"type": "string"},
-                            "description": "The themes you want to use in the image"
+                            "description": "The themes you would use to describe the key details and artistic style in the image"
                         },
                         "reasoning": {
                             "type": "string",
