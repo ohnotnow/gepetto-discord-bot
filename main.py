@@ -644,7 +644,7 @@ async def handle_discogs_search(message: ChatMessage, tool_call, arguments: dict
     async with channel.typing():
         search_result = await discogs.search_artist(arguments.get('query', ''))
         explore_result = await discogs.explore_artist(arguments.get('query', ''))
-        messages.append({'role': 'user', 'content': f'[Discogs data — use this to ground your recommendations, but write naturally]\n\n{search_result}\n\n{explore_result}'})
+        messages.append({'role': 'user', 'content': f'[Discogs data — use this to inform your recommendations]\n\n{search_result}\n\n{explore_result}'})
         followup = await chatbot.chat(messages, temperature=temperature, tools=[])
         await reply_to_message(message, followup.message + '\n' + followup.usage_short)
 
@@ -654,7 +654,7 @@ async def handle_discogs_explore(message: ChatMessage, tool_call, arguments: dic
     channel = platform.get_channel(message.channel_id)
     async with channel.typing():
         explore_result = await discogs.explore_artist(arguments.get('artist', ''))
-        messages.append({'role': 'user', 'content': f'[Discogs data — use this to ground your recommendations, but write naturally]\n\n{explore_result}'})
+        messages.append({'role': 'user', 'content': f'[Discogs data — use this to inform your recommendations]\n\n{explore_result}'})
         followup = await chatbot.chat(messages, temperature=temperature, tools=[])
         await reply_to_message(message, followup.message + '\n' + followup.usage_short)
 
