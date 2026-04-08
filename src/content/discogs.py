@@ -30,6 +30,8 @@ def _search_artist_sync(query: str, limit: int = 5) -> str:
     if not client:
         return "Discogs is not configured (missing DISCOGS_TOKEN)."
 
+    logger.info(f"Discogs search: query='{query}', limit={limit}")
+
     try:
         results = client.search(query, type="artist")
     except Exception as e:
@@ -37,6 +39,7 @@ def _search_artist_sync(query: str, limit: int = 5) -> str:
         return f"Discogs search failed: {e}"
 
     if not results or results.count == 0:
+        logger.info(f"Discogs search: no results for '{query}'")
         return f"No artists found on Discogs matching '{query}'."
 
     lines = []
@@ -45,7 +48,10 @@ def _search_artist_sync(query: str, limit: int = 5) -> str:
         name = artist.name if hasattr(artist, "name") else str(artist)
         lines.append(f"- {name} (ID: {artist_id})")
 
-    return f"Discogs artist search results for '{query}':\n" + "\n".join(lines)
+    output = f"Discogs artist search results for '{query}':\n" + "\n".join(lines)
+    logger.info(f"Discogs search: returning {len(lines)} results for '{query}'")
+    logger.debug(f"Discogs search response:\n{output}")
+    return output
 
 
 def _explore_artist_sync(artist_query: str) -> str:
@@ -57,9 +63,12 @@ def _explore_artist_sync(artist_query: str) -> str:
     if not client:
         return "Discogs is not configured (missing DISCOGS_TOKEN)."
 
+    logger.info(f"Discogs explore: artist_query='{artist_query}'")
+
     # Resolve artist - by ID if numeric, otherwise search
     artist = None
     if artist_query.strip().isdigit():
+        logger.info(f"Discogs explore: looking up by ID {artist_query}")
         try:
             artist = client.artist(int(artist_query.strip()))
             _ = artist.name  # force fetch
@@ -67,17 +76,20 @@ def _explore_artist_sync(artist_query: str) -> str:
             logger.warning(f"Discogs artist lookup by ID failed: {e}")
             return f"Could not find artist with ID {artist_query}."
     else:
+        logger.info(f"Discogs explore: searching for '{artist_query}'")
         try:
             results = client.search(artist_query, type="artist")
             if results and results.count > 0:
                 artist = results[0]
                 # Fetch the full artist object
                 artist = client.artist(artist.id)
+                logger.info(f"Discogs explore: resolved '{artist_query}' to '{artist.name}' (ID: {artist.id})")
         except Exception as e:
             logger.warning(f"Discogs artist search failed: {e}")
             return f"Discogs search failed: {e}"
 
     if not artist:
+        logger.info(f"Discogs explore: no artist found for '{artist_query}'")
         return f"No artist found on Discogs matching '{artist_query}'."
 
     sections = [f"## {artist.name}"]
@@ -148,7 +160,10 @@ def _explore_artist_sync(artist_query: str) -> str:
     if notable_releases:
         sections.append("**Key releases:** " + " | ".join(notable_releases))
 
-    return "\n\n".join(sections)
+    output = "\n\n".join(sections)
+    logger.info(f"Discogs explore: returning data for '{artist.name}' — {len(sections)} sections (genres={genres}, styles={styles})")
+    logger.debug(f"Discogs explore response:\n{output}")
+    return output
 
 
 async def search_artist(query: str) -> str:
