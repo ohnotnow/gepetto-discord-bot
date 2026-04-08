@@ -19,6 +19,7 @@ dependencies = [
     "xai-sdk>=1.6.1",
     "matrix-nio>=0.25.2",
     "fal-client>=0.13.2",
+    "python3-discogs-client>=2.8",
 ]
 
 [project.optional-dependencies]

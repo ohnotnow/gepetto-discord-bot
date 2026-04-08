@@ -20,13 +20,13 @@ from src.providers import split_for_discord
 
 # Tools
 from src.tools import calculator, ToolDispatcher, ToolResult
-from src.tools.definitions import tool_list, search_url_history_tool, catch_up_tool, twitter_search_tool, set_reminder_tool, manage_memories_tool
+from src.tools.definitions import tool_list, search_url_history_tool, catch_up_tool, twitter_search_tool, set_reminder_tool, manage_memories_tool, search_discogs_tool, explore_discogs_artist_tool
 
 # Media
 from src.media import images, replicate, sora, get_image_model
 
 # Content
-from src.content import summary, weather, sentry
+from src.content import summary, weather, sentry, discogs
 
 # Tasks
 from src.tasks import birthdays
@@ -185,6 +185,9 @@ ENABLE_CATCH_UP_TRACKING = os.getenv("ENABLE_CATCH_UP_TRACKING", "false").lower(
 # Twitter/X search feature (uses Grok via OpenRouter)
 ENABLE_TWITTER_SEARCH = os.getenv("ENABLE_TWITTER_SEARCH", "false").lower() == "true"
 
+# Discogs music recommendations
+ENABLE_DISCOGS = os.getenv("DISCOGS_TOKEN", "") != ""
+
 # Build the active tool list based on feature flags
 active_tool_list = tool_list.copy()
 if ENABLE_URL_HISTORY:
@@ -197,6 +200,9 @@ if ENABLE_REMINDERS:
     active_tool_list.append(set_reminder_tool)
 if ENABLE_USER_MEMORY:
     active_tool_list.append(manage_memories_tool)
+if ENABLE_DISCOGS:
+    active_tool_list.append(search_discogs_tool)
+    active_tool_list.append(explore_discogs_artist_tool)
 
 location = os.getenv('BOT_LOCATION', 'dunno')
 chat_image_hour = int(os.getenv('CHAT_IMAGE_HOUR', 18))
@@ -628,6 +634,25 @@ if ENABLE_CATCH_UP:
     tool_dispatcher.register('catch_up', lambda msg, **args: handle_catch_up(msg, **args))
 if ENABLE_TWITTER_SEARCH:
     tool_dispatcher.register('twitter_search', lambda msg, **args: twitter_search(msg, args.get('query', '')))
+if ENABLE_DISCOGS:
+    tool_dispatcher.register('search_discogs', lambda msg, **args: search_discogs(msg, args.get('query', '')))
+    tool_dispatcher.register('explore_discogs_artist', lambda msg, **args: explore_discogs_artist(msg, args.get('artist', '')))
+
+
+async def search_discogs(message: ChatMessage, query: str) -> None:
+    """Search Discogs for artists matching a query."""
+    channel = platform.get_channel(message.channel_id)
+    async with channel.typing():
+        result = await discogs.search_artist(query)
+        await reply_to_message(message, result)
+
+
+async def explore_discogs_artist(message: ChatMessage, artist: str) -> None:
+    """Explore an artist's network on Discogs."""
+    channel = platform.get_channel(message.channel_id)
+    async with channel.typing():
+        result = await discogs.explore_artist(artist)
+        await reply_to_message(message, result)
 
 
 async def handle_catch_up(message: ChatMessage, hours: int = None) -> None:

@@ -128,6 +128,43 @@ tool_list = [
     },
 ]
 
+# Discogs music tools - conditionally added based on ENABLE_DISCOGS
+search_discogs_tool = {
+    "type": "function",
+    "function": {
+        "name": "search_discogs",
+        "description": "Searches the Discogs music database for artists. Use this when a user asks about a band or musician, wants music recommendations, or you need to find an artist's Discogs ID for further exploration.",
+        "parameters": {
+            "type": "object",
+            "properties": {
+                "query": {
+                    "type": "string",
+                    "description": "The artist or band name to search for."
+                }
+            },
+            "required": ["query"]
+        }
+    }
+}
+
+explore_discogs_artist_tool = {
+    "type": "function",
+    "function": {
+        "name": "explore_discogs_artist",
+        "description": "Explores an artist's network on Discogs - their members, side-projects, genres, styles, and key releases. Use this to find related artists, discover band members' other projects, or understand an artist's musical style for making recommendations. You can pass an artist name or a Discogs artist ID.",
+        "parameters": {
+            "type": "object",
+            "properties": {
+                "artist": {
+                    "type": "string",
+                    "description": "The artist name or Discogs artist ID to explore."
+                }
+            },
+            "required": ["artist"]
+        }
+    }
+}
+
 # Tool for searching URL history - conditionally added based on ENABLE_URL_HISTORY
 search_url_history_tool = {
     "type": "function",
