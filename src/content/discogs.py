@@ -43,7 +43,9 @@ def _search_artist_sync(query: str, limit: int = 5) -> str:
         return f"No artists found on Discogs matching '{query}'."
 
     lines = []
-    for artist in results[:limit]:
+    for i, artist in enumerate(results):
+        if i >= limit:
+            break
         artist_id = artist.id
         name = artist.name if hasattr(artist, "name") else str(artist)
         lines.append(f"- {name} (ID: {artist_id})")
@@ -106,7 +108,9 @@ def _explore_artist_sync(artist_query: str) -> str:
         members = artist.members
         if members:
             member_names = []
-            for m in members[:15]:
+            for i, m in enumerate(members):
+                if i >= 15:
+                    break
                 name = m.name if hasattr(m, "name") else str(m)
                 member_names.append(f"{name} (ID: {m.id})")
             sections.append("**Members:** " + ", ".join(member_names))
@@ -118,7 +122,9 @@ def _explore_artist_sync(artist_query: str) -> str:
         groups = artist.groups
         if groups:
             group_names = []
-            for g in groups[:10]:
+            for i, g in enumerate(groups):
+                if i >= 10:
+                    break
                 name = g.name if hasattr(g, "name") else str(g)
                 group_names.append(f"{name} (ID: {g.id})")
             sections.append("**Also in:** " + ", ".join(group_names))
