@@ -680,7 +680,7 @@ async def handle_discogs_explore(message: ChatMessage, tool_call, arguments: dic
             }]
         })
         messages.append({'role': 'tool', 'tool_call_id': tool_call.id, 'content': tool_result})
-        followup = await chatbot.chat(messages, temperature=temperature, tools=[])
+        followup = await chatbot.chat(messages, temperature=temperature, tools=active_tool_list)
         await reply_to_message(message, followup.message + '\n' + followup.usage_short)
 
 
