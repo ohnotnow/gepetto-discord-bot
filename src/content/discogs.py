@@ -12,7 +12,7 @@ from functools import lru_cache
 
 import discogs_client
 
-logger = logging.getLogger(__name__)
+logger = logging.getLogger('discord')
 
 USER_AGENT = "GepettoDiscordBot/1.0"
 

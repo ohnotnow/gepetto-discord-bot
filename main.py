@@ -639,48 +639,23 @@ if ENABLE_CATCH_UP:
 if ENABLE_TWITTER_SEARCH:
     tool_dispatcher.register('twitter_search', lambda msg, **args: twitter_search(msg, args.get('query', '')))
 async def handle_discogs_search(message: ChatMessage, tool_call, arguments: dict, messages: list, temperature: float) -> None:
-    """Handle search_discogs tool call: search Discogs, then let the LLM use the results."""
+    """Handle search_discogs: search, then explore the top result, then let the LLM synthesise."""
     channel = platform.get_channel(message.channel_id)
     async with channel.typing():
-        tool_result = await discogs.search_artist(arguments.get('query', ''))
-        messages.append({
-            'role': 'assistant',
-            'content': None,
-            'tool_calls': [{
-                'id': tool_call.id,
-                'type': 'function',
-                'function': {'name': 'search_discogs', 'arguments': tool_call.function.arguments}
-            }]
-        })
-        messages.append({'role': 'tool', 'tool_call_id': tool_call.id, 'content': tool_result})
-        followup = await chatbot.chat(messages, temperature=temperature, tools=active_tool_list)
-        # If the LLM wants to call explore_discogs_artist as a follow-up, handle that too
-        if followup.tool_calls:
-            next_call = followup.tool_calls[0]
-            next_args = json.loads(next_call.function.arguments)
-            next_fname = next_call.function.name
-            if next_fname == 'explore_discogs_artist':
-                await handle_discogs_explore(message, next_call, next_args, messages, temperature)
-                return
+        search_result = await discogs.search_artist(arguments.get('query', ''))
+        explore_result = await discogs.explore_artist(arguments.get('query', ''))
+        messages.append({'role': 'user', 'content': f'[Discogs data — use this to ground your recommendations, but write naturally]\n\n{search_result}\n\n{explore_result}'})
+        followup = await chatbot.chat(messages, temperature=temperature, tools=[])
         await reply_to_message(message, followup.message + '\n' + followup.usage_short)
 
 
 async def handle_discogs_explore(message: ChatMessage, tool_call, arguments: dict, messages: list, temperature: float) -> None:
-    """Handle explore_discogs_artist tool call: fetch artist network, then let the LLM synthesise recommendations."""
+    """Handle explore_discogs_artist: fetch artist network, then let the LLM synthesise."""
     channel = platform.get_channel(message.channel_id)
     async with channel.typing():
-        tool_result = await discogs.explore_artist(arguments.get('artist', ''))
-        messages.append({
-            'role': 'assistant',
-            'content': None,
-            'tool_calls': [{
-                'id': tool_call.id,
-                'type': 'function',
-                'function': {'name': 'explore_discogs_artist', 'arguments': tool_call.function.arguments}
-            }]
-        })
-        messages.append({'role': 'tool', 'tool_call_id': tool_call.id, 'content': tool_result})
-        followup = await chatbot.chat(messages, temperature=temperature, tools=active_tool_list)
+        explore_result = await discogs.explore_artist(arguments.get('artist', ''))
+        messages.append({'role': 'user', 'content': f'[Discogs data — use this to ground your recommendations, but write naturally]\n\n{explore_result}'})
+        followup = await chatbot.chat(messages, temperature=temperature, tools=[])
         await reply_to_message(message, followup.message + '\n' + followup.usage_short)
 
 
