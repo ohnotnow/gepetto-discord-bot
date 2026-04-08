@@ -102,7 +102,11 @@ def get_system_prompt(system_prompt=None, bot_name="Assistant"):
 
     response_style = os.getenv('DISCORD_BOT_RESPONSE_STYLE', '')
     if response_style:
-        return f"{persona}\n\n{response_style}"
+        persona = f"{persona}\n\n{response_style}"
+
+    if ENABLE_DISCOGS:
+        persona += "\n\nYou have access to the Discogs music database. When users ask for music recommendations, ask about bands/musicians, or want to discover new music, you MUST use the search_discogs and explore_discogs_artist tools to ground your suggestions in real data. Search first, then explore the artist to find their members, side-projects, genres, and styles. Use that data to make your recommendations interesting and non-obvious - don't just list the usual suspects."
+
     return persona
 
 MARVIN_SPELLCHECK_PROMPT = '''You are Marvin, the Paranoid Android from The Hitchhiker's Guide to the Galaxy,
@@ -634,25 +638,50 @@ if ENABLE_CATCH_UP:
     tool_dispatcher.register('catch_up', lambda msg, **args: handle_catch_up(msg, **args))
 if ENABLE_TWITTER_SEARCH:
     tool_dispatcher.register('twitter_search', lambda msg, **args: twitter_search(msg, args.get('query', '')))
-if ENABLE_DISCOGS:
-    tool_dispatcher.register('search_discogs', lambda msg, **args: search_discogs(msg, args.get('query', '')))
-    tool_dispatcher.register('explore_discogs_artist', lambda msg, **args: explore_discogs_artist(msg, args.get('artist', '')))
-
-
-async def search_discogs(message: ChatMessage, query: str) -> None:
-    """Search Discogs for artists matching a query."""
+async def handle_discogs_search(message: ChatMessage, tool_call, arguments: dict, messages: list, temperature: float) -> None:
+    """Handle search_discogs tool call: search Discogs, then let the LLM use the results."""
     channel = platform.get_channel(message.channel_id)
     async with channel.typing():
-        result = await discogs.search_artist(query)
-        await reply_to_message(message, result)
+        tool_result = await discogs.search_artist(arguments.get('query', ''))
+        messages.append({
+            'role': 'assistant',
+            'content': None,
+            'tool_calls': [{
+                'id': tool_call.id,
+                'type': 'function',
+                'function': {'name': 'search_discogs', 'arguments': tool_call.function.arguments}
+            }]
+        })
+        messages.append({'role': 'tool', 'tool_call_id': tool_call.id, 'content': tool_result})
+        followup = await chatbot.chat(messages, temperature=temperature, tools=active_tool_list)
+        # If the LLM wants to call explore_discogs_artist as a follow-up, handle that too
+        if followup.tool_calls:
+            next_call = followup.tool_calls[0]
+            next_args = json.loads(next_call.function.arguments)
+            next_fname = next_call.function.name
+            if next_fname == 'explore_discogs_artist':
+                await handle_discogs_explore(message, next_call, next_args, messages, temperature)
+                return
+        await reply_to_message(message, followup.message + '\n' + followup.usage_short)
 
 
-async def explore_discogs_artist(message: ChatMessage, artist: str) -> None:
-    """Explore an artist's network on Discogs."""
+async def handle_discogs_explore(message: ChatMessage, tool_call, arguments: dict, messages: list, temperature: float) -> None:
+    """Handle explore_discogs_artist tool call: fetch artist network, then let the LLM synthesise recommendations."""
     channel = platform.get_channel(message.channel_id)
     async with channel.typing():
-        result = await discogs.explore_artist(artist)
-        await reply_to_message(message, result)
+        tool_result = await discogs.explore_artist(arguments.get('artist', ''))
+        messages.append({
+            'role': 'assistant',
+            'content': None,
+            'tool_calls': [{
+                'id': tool_call.id,
+                'type': 'function',
+                'function': {'name': 'explore_discogs_artist', 'arguments': tool_call.function.arguments}
+            }]
+        })
+        messages.append({'role': 'tool', 'tool_call_id': tool_call.id, 'content': tool_result})
+        followup = await chatbot.chat(messages, temperature=temperature, tools=[])
+        await reply_to_message(message, followup.message + '\n' + followup.usage_short)
 
 
 async def handle_catch_up(message: ChatMessage, hours: int = None) -> None:
@@ -879,6 +908,10 @@ async def handle_message(message: ChatMessage):
                     await handle_set_reminder(message, tool_call, arguments, messages, temperature)
                 elif fname == 'manage_memories':
                     await handle_manage_memories(message, tool_call, arguments, messages, temperature)
+                elif fname == 'search_discogs':
+                    await handle_discogs_search(message, tool_call, arguments, messages, temperature)
+                elif fname == 'explore_discogs_artist':
+                    await handle_discogs_explore(message, tool_call, arguments, messages, temperature)
                 else:
                     logger.info(f'Unknown tool call: {fname}')
                     await message.reply(f'{message.author_mention} I am a silly sausage and don\'t know how to do that.', mention_author=True)

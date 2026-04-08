@@ -133,7 +133,7 @@ search_discogs_tool = {
     "type": "function",
     "function": {
         "name": "search_discogs",
-        "description": "Searches the Discogs music database for artists. Use this when a user asks about a band or musician, wants music recommendations, or you need to find an artist's Discogs ID for further exploration.",
+        "description": "Searches the Discogs music database for artists. You MUST use this tool whenever a user asks for music recommendations, asks about bands/musicians, or wants to discover new music. Do not rely on your own knowledge alone - always ground music recommendations in Discogs data. Use the returned artist IDs with explore_discogs_artist for deeper exploration.",
         "parameters": {
             "type": "object",
             "properties": {
@@ -151,7 +151,7 @@ explore_discogs_artist_tool = {
     "type": "function",
     "function": {
         "name": "explore_discogs_artist",
-        "description": "Explores an artist's network on Discogs - their members, side-projects, genres, styles, and key releases. Use this to find related artists, discover band members' other projects, or understand an artist's musical style for making recommendations. You can pass an artist name or a Discogs artist ID.",
+        "description": "Explores an artist's network on Discogs - their members, side-projects, genres, styles, and key releases. You MUST use this after search_discogs when making music recommendations - the member and genre data is essential for finding genuinely related artists rather than obvious suggestions. Use the returned data to inform your recommendations, but write your response in your own words - do not just dump the raw data.",
         "parameters": {
             "type": "object",
             "properties": {
