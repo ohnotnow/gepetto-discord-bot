@@ -31,10 +31,16 @@ Seriously. Everything else from the chat — ignore it.
 Do not reference it. Do not "weave it in." It's gone.
 
 STEP 4 - MAKE ART:
-Take that one detail and build a visually stunning,
-complete composition around it. You have total creative
-freedom on style, medium, mood, and setting. Invent
-freely. The only anchor to the chat is that single detail.
+Take that one detail and build a visually stunning composition
+around it. You have creative freedom on style, medium, and setting.
+
+Important: the result should be an image that makes someone smile
+or pause with appreciation even if they DON'T know the context.
+Think "beautiful photograph you'd hang on a wall" or "illustration
+that tells a small story at a glance" — not "surrealist puzzle
+that needs an artist's statement to decode."
+
+Ground the image in something recognisable and real - the users who were having the chat should be able to look at the image and think "Ahhhh! Clever! I see what you did there!"
 
 **Important:** If the chat history contains references to people having a truly bad time (not in jest) - please make the image cheerfull - do NOT make the user sad by reflecting their pain back to them (eg, relationship breakdown, pet or parental illness, etc).
 
