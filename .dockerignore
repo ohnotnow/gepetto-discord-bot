@@ -1,3 +1,15 @@
 .git*
 .venv
+venv
 .env*
+__pycache__
+.pytest_cache
+*.pyc
+data
+user_data
+stats.json
+.beads
+.ait
+dev_docs
+tests
+.claude
