@@ -4,7 +4,7 @@ import random
 from datetime import datetime
 
 
-def get_initial_chat_image_prompt(chat_history: str, previous_image_themes: str) -> str:
+def get_initial_chat_image_prompt(chat_history: str, previous_image_themes: str, user_bios: str = "") -> str:
     user_locations = os.getenv('USER_LOCATIONS', 'the UK towns of Bath and Manchester').strip()
     cat_descriptions = os.getenv('CAT_DESCRIPTIONS', '').strip()
     today_string = datetime.now().strftime("%Y-%m-%d")
@@ -14,6 +14,9 @@ def get_initial_chat_image_prompt(chat_history: str, previous_image_themes: str)
     cat_guidance = ""
     if cat_descriptions:
         cat_guidance = f"If cats appear in the image based on chat mentions, please use these descriptions of the actual cats owned by server members: {cat_descriptions}."
+    bio_guidance = ""
+    if user_bios:
+        bio_guidance = f"For background colour, here are short bios of the people in the chat. Do NOT depict specific people or make the image about a specific person — but feel free to let their nationalities, hobbies, or quirks subtly flavour the mood, setting, or details of the image: {user_bios}"
     combined_chat = f"""
 STEP 1 - READ AND ABSORB:
 Read the entire chat history. Don't take notes. Just absorb the vibe.
@@ -47,6 +50,8 @@ Ground the image in something recognisable and real - the users who were having 
         {location_guidance}
 
         {cat_guidance}
+
+        {bio_guidance}
 
         {previous_image_themes}
 

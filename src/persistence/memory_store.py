@@ -341,6 +341,21 @@ class MemoryStore:
 
         return self._row_to_bio(row)
 
+    def get_all_bios(self, server_id: str) -> list[UserBio]:
+        """Get all bios for a server."""
+        with self._get_connection() as conn:
+            cursor = conn.execute(
+                """
+                SELECT server_id, user_id, user_name, bio, updated_at
+                FROM user_bios
+                WHERE server_id = ?
+                """,
+                (server_id,)
+            )
+            rows = cursor.fetchall()
+
+        return [self._row_to_bio(row) for row in rows]
+
     def delete_memory(self, server_id: str, user_id: str, memory_id: int) -> bool:
         """Delete a specific memory by ID, scoped to server and user. Returns True if deleted."""
         with self._get_connection() as conn:

@@ -1008,7 +1008,9 @@ async def make_chat_image():
         if previous_themes:
             previous_themes_text = f"Please try and avoid repeating themes from the previous image themes. Previously used themes are:\n{previous_themes}\n\n"
 
-        combined_chat = images.get_initial_chat_image_prompt(chat_text, previous_themes_text)
+        all_bios = memory_store.get_all_bios(server_id)
+        bios_text = "; ".join(f"{b.user_name}: {b.bio}" for b in all_bios) if all_bios else ""
+        combined_chat = images.get_initial_chat_image_prompt(chat_text, previous_themes_text, bios_text)
         decoded_response = await images.get_image_response(combined_chat, chatbot)
         logger.info(f"Decoded response: {decoded_response}")
 

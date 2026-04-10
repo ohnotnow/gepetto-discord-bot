@@ -221,6 +221,23 @@ class TestMemoryStore:
         assert s1_bio.bio == 'server1 bio'
         assert s2_bio.bio == 'server2 bio'
 
+    def test_get_all_bios_returns_all_for_server(self, temp_dir):
+        """get_all_bios() should return all bios for a given server."""
+        store = MemoryStore(os.path.join(temp_dir, 'test.db'))
+        store.save_bio('server1', 'u1', 'Alice', 'Alice bio')
+        store.save_bio('server1', 'u2', 'Bob', 'Bob bio')
+        store.save_bio('server2', 'u3', 'Charlie', 'Charlie bio')
+
+        bios = store.get_all_bios('server1')
+        assert len(bios) == 2
+        names = {b.user_name for b in bios}
+        assert names == {'Alice', 'Bob'}
+
+    def test_get_all_bios_returns_empty_when_none(self, temp_dir):
+        """get_all_bios() should return empty list when no bios exist."""
+        store = MemoryStore(os.path.join(temp_dir, 'test.db'))
+        assert store.get_all_bios('server1') == []
+
     def test_delete_only_affects_specified_server(self, temp_dir):
         """delete_user_data() should only affect the specified server."""
         store = MemoryStore(os.path.join(temp_dir, 'test.db'))
