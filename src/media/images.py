@@ -68,6 +68,56 @@ Ground the image in something recognisable and real - the users who were having 
         """
     return combined_chat
 
+def get_creative_image_prompt(previous_image_themes: str) -> str:
+    """Generate a prompt for creative image generation when chat is quiet."""
+    now = datetime.now()
+    date_string = now.strftime("%A, %d %B %Y")
+    month = now.month
+
+    if month in (12, 1, 2):
+        season = "winter"
+        season_hints = "short days, frost, bare branches, warm interiors, candlelight, woodsmoke, cold clear skies"
+    elif month in (3, 4, 5):
+        season = "spring"
+        season_hints = "new growth, blossom, longer evenings, rain showers, birdsong, muddy paths, pale green"
+    elif month in (6, 7, 8):
+        season = "summer"
+        season_hints = "long golden light, warm stone, open windows, thunderstorms, insects, overgrown gardens"
+    else:
+        season = "autumn"
+        season_hints = "turning leaves, mist, harvest, conkers, damp earth, low sun, woodsmoke, gathering dark"
+
+    return f"""
+You have total creative freedom today. There was barely any chat, so instead of
+summarising a conversation you get to make whatever you like.
+
+The date is {date_string} and it's {season} in the UK ({season_hints}).
+
+Use the date and season as a *subtle* starting point — not a heavy-handed theme.
+Maybe the date reminds you of an obscure historical event, a feeling, a colour,
+a half-remembered painting, a strange scientific fact, an imaginary place. Let
+one small spark lead you somewhere unexpected.
+
+Pick a bold artistic style. You might channel a specific painter, a film
+movement, a photographic technique, a printmaking method, a textile pattern,
+pixel art, architectural rendering, botanical illustration — anything that
+excites you. Commit fully to the style rather than hedging.
+
+The image should be visually striking and make someone pause with appreciation
+even without any context. Think gallery wall, album cover, or the frame from a
+film you'd rewind to look at again.
+
+{previous_image_themes}
+
+You **MUST** call the tool "generate_image" with the following parameters:
+- prompt: The prompt you want to give to the Stable Diffusion image model
+- themes: The themes you would use to describe the key details and artistic style in the image
+- reasoning: The reasoning you used to generate the prompt (mention what sparked the idea)
+
+And remember: the prompt will be used to generate an image, so it should be clear and detailed enough for the image model to understand.
+"""
+
+
 def get_extra_guidelines() -> str:
     extra_guidelines = ""
     random_1 = random.random()
