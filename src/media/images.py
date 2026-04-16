@@ -74,6 +74,8 @@ def get_creative_image_prompt(previous_image_themes: str) -> str:
     date_string = now.strftime("%A, %d %B %Y")
     month = now.month
 
+    user_locations = os.getenv('USER_LOCATIONS', 'the UK towns of Bath and Manchester').strip()
+    location_guidance = f"If it makes sense to use an outdoor location for the image, please choose between {user_locations}."
     if month in (12, 1, 2):
         season = "winter"
         season_hints = "short days, frost, bare branches, warm interiors, candlelight, woodsmoke, cold clear skies"
@@ -106,6 +108,8 @@ excites you. Commit fully to the style rather than hedging.
 The image should be visually striking and make someone pause with appreciation
 even without any context. Think gallery wall, album cover, or the frame from a
 film you'd rewind to look at again.
+
+{location_guidance}
 
 {previous_image_themes}
 
