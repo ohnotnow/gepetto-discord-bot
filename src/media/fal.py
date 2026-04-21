@@ -60,6 +60,12 @@ MODEL_CONFIGS = {
         {"image_size": "square_hd", "output_format": "png"},
         False,
     ),
+    "fal-ai/openai/gpt-image-2": (
+        "fal-ai/openai/gpt-image-2",
+        0.08,
+        {"size": "1536x1024"},
+        False,
+    ),
 }
 
 # Default fallback config
