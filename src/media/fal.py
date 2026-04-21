@@ -60,10 +60,10 @@ MODEL_CONFIGS = {
         {"image_size": "square_hd", "output_format": "png"},
         False,
     ),
-    "fal-ai/openai/gpt-image-2": (
-        "fal-ai/openai/gpt-image-2",
+    "openai/gpt-image-2": (
+        "openai/gpt-image-2",
         0.08,
-        {"size": "1536x1024"},
+        {"image_size": {"width": 1536, "height": 1024}, "quality": "high", "output_format": "png"},
         False,
     ),
 }
