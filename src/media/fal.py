@@ -44,7 +44,7 @@ MODEL_CONFIGS = {
     ),
     "fal-ai/nano-banana": (
         "fal-ai/nano-banana-2",
-        0.08,
+        0.12,
         {"num_images": 1, "aspect_ratio": "4:3", "output_format": "png", "safety_tolerance": "6", "resolution": "2K"},
         True,
     ),
@@ -62,7 +62,7 @@ MODEL_CONFIGS = {
     ),
     "openai/gpt-image-2": (
         "openai/gpt-image-2",
-        0.08,
+        0.17,
         {"image_size": {"width": 1536, "height": 1024}, "quality": "high", "output_format": "png"},
         False,
     ),
