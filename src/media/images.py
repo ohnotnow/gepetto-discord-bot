@@ -8,7 +8,7 @@ def get_initial_chat_image_prompt(chat_history: str, previous_image_themes: str,
     user_locations = os.getenv('USER_LOCATIONS', 'the UK towns of Bath and Manchester').strip()
     cat_descriptions = os.getenv('CAT_DESCRIPTIONS', '').strip()
     today_string = datetime.now().strftime("%Y-%m-%d")
-    location_guidance = f"If it makes sense to use an outdoor location for the image, please choose between {user_locations}."
+    location_guidance = f"If it makes sense to use an outdoor location for the image, please choose between {user_locations}.  Do not use London as a location unless it specifically makes overwhelming sense for the context.  The users do not want to see pictures of London if they can possibly avoid it."
     cat_guidance = ""
     if cat_descriptions:
         cat_guidance = f"If cats appear in the image based on chat mentions, please use these descriptions of the actual cats owned by server members: {cat_descriptions}."
