@@ -8,9 +8,7 @@ def get_initial_chat_image_prompt(chat_history: str, previous_image_themes: str,
     user_locations = os.getenv('USER_LOCATIONS', 'the UK towns of Bath and Manchester').strip()
     cat_descriptions = os.getenv('CAT_DESCRIPTIONS', '').strip()
     today_string = datetime.now().strftime("%Y-%m-%d")
-    location_guidance = ""
-    if random.random() > 0.9:
-        location_guidance = f"If it makes sense to use an outdoor location for the image, please choose between {user_locations}."
+    location_guidance = f"If it makes sense to use an outdoor location for the image, please choose between {user_locations}."
     cat_guidance = ""
     if cat_descriptions:
         cat_guidance = f"If cats appear in the image based on chat mentions, please use these descriptions of the actual cats owned by server members: {cat_descriptions}."
@@ -47,6 +45,8 @@ Ground the image in something recognisable and real - the users who were having 
 
 **Important:** If the chat history contains references to people having a truly bad time (not in jest) - please make the image cheerfull - do NOT make the user sad by reflecting their pain back to them (eg, relationship breakdown, pet or parental illness, etc).
 
+        Todays date is {today_string}.
+
         {location_guidance}
 
         {cat_guidance}
@@ -68,7 +68,7 @@ Ground the image in something recognisable and real - the users who were having 
         """
     return combined_chat
 
-def get_creative_image_prompt(previous_image_themes: str) -> str:
+def get_creative_image_prompt(previous_image_themes: str, user_bios: str = "") -> str:
     """Generate a prompt for creative image generation when chat is quiet."""
     now = datetime.now()
     date_string = now.strftime("%A, %d %B %Y")
@@ -110,6 +110,8 @@ even without any context. Think gallery wall, album cover, or the frame from a
 film you'd rewind to look at again.
 
 {location_guidance}
+
+{user_bios}
 
 {previous_image_themes}
 
