@@ -259,7 +259,7 @@ async def get_history_as_openai_messages(channel, include_bot_messages=True, lim
 
     return messages
 
-def build_messages(question, extended_messages, system_prompt=None, user_hints=None):
+def build_messages(question, extended_messages, system_prompt=None, user_bio=None):
     liz_love = ""
     if random.random() < LIZ_TRUSS_PROBABILITY:
         liz_love = "You should always try and shoehorn in some mention of UK Politician Liz Truss. She became Prime Minister in September 22 for only 45 days. She is the best."
@@ -268,14 +268,12 @@ def build_messages(question, extended_messages, system_prompt=None, user_hints=N
 
     default_prompt = get_system_prompt(system_prompt, bot_name=chatbot.name)
 
-    # Add user context hints if provided
-    if user_hints:
+    if user_bio:
         default_prompt += (
-            "\n\n[Things you know about this user: " + user_hints + "]\n"
-            "[You may weave in AT MOST one of these if it fits naturally with your "
-            "persona and the current conversation. Consider your character — only "
-            "reference a fact that your persona would plausibly bring up. "
-            "If none fit, just ignore them entirely.]"
+            "\n\n[Background on the user you're talking to: " + user_bio + "]\n"
+            "[This is standing context to help you understand who they are — "
+            "not a list of things to mention. Do not shoehorn any of it into your "
+            "reply. Only draw on it if it's directly relevant to what they've asked.]"
         )
 
     extended_messages.append({
@@ -845,15 +843,13 @@ async def handle_message(message: ChatMessage):
                 await reply_to_message(message, response.message + '\n' + response.usage_short)
                 return
 
-            # Get user memory context if feature enabled
-            user_hints = None
+            user_bio = None
             if ENABLE_USER_MEMORY:
-                user_hints = memory_store.get_context_for_user(
-                    server_id=server_id,
-                    user_id=message.author_id
-                )
+                bio = memory_store.get_user_bio(server_id, message.author_id)
+                if bio:
+                    user_bio = bio.bio
 
-            messages = build_messages(question_with_context, context, system_prompt=system_prompt, user_hints=user_hints)
+            messages = build_messages(question_with_context, context, system_prompt=system_prompt, user_bio=user_bio)
             response = await chatbot.chat(messages, temperature=temperature, tools=active_tool_list)
             if response.reasoning_content:
                 bot_state.previous_reasoning_content = response.reasoning_content[:DISCORD_MESSAGE_LIMIT]

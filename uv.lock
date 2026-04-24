@@ -766,6 +766,7 @@ dependencies = [
     { name = "python3-discogs-client" },
     { name = "replicate" },
     { name = "trafilatura" },
+    { name = "typing-extensions" },
     { name = "xai-sdk" },
     { name = "youtube-transcript-api" },
 ]
@@ -796,6 +797,7 @@ requires-dist = [
     { name = "python3-discogs-client", specifier = ">=2.8" },
     { name = "replicate", specifier = ">=0.32.1" },
     { name = "trafilatura", specifier = ">=1.8.1" },
+    { name = "typing-extensions", specifier = ">=4.15.0" },
     { name = "xai-sdk", specifier = ">=1.6.1" },
     { name = "youtube-transcript-api", specifier = ">=1.2.2" },
 ]

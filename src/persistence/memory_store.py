@@ -9,6 +9,8 @@ from dataclasses import dataclass
 from datetime import datetime, timedelta
 from typing import List, Optional
 
+from typing_extensions import deprecated
+
 logger = logging.getLogger(__name__)
 
 
@@ -397,6 +399,11 @@ class MemoryStore:
             'bio_deleted': bio_deleted
         }
 
+    @deprecated(
+        "Deprecated 2026-04-24: memories are no longer injected into chat context "
+        "(they caused the LLM to shoehorn stale facts into replies). Use get_user_bio "
+        "directly. Only kept alive by its own tests — safe to remove if no other callers appear."
+    )
     def get_context_for_user(
         self,
         server_id: str,
