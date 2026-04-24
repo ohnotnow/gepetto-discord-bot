@@ -1,10 +1,12 @@
 import os
 
 from . import images
+from . import images_direct
 from . import replicate
 from . import sora
+from . import vlm
 
-__all__ = ['images', 'replicate', 'sora', 'get_image_model']
+__all__ = ['images', 'images_direct', 'replicate', 'sora', 'vlm', 'get_image_model']
 
 
 def get_image_model(model_name=None):

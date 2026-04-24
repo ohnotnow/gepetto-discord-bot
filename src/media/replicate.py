@@ -2,105 +2,132 @@ import replicate as replicate_client
 import random
 
 
-# Model configurations: prefix -> (default_model, cost, base_params, in_pool)
-# Set in_pool=True to include a model in the random selection pool.
+# Model configurations. Each entry is keyed by a prefix used to route a
+# user-supplied model name back to its config, and contains:
+#   model    — default model ID for this prefix
+#   cost     — USD cost per image
+#   params   — base input params merged with {"prompt": ...} at call time
+#   in_pool  — True to include in the random-selection pool
+#   strategy — "distill" for simple diffusion models that need a tight prompt
+#              distilled by an LLM first, or "direct" for smart omni models
+#              that cope well with our rich instructional prose directly.
 MODEL_CONFIGS = {
-    "black-forest-labs/": (
-        "black-forest-labs/flux-2-max",
-        0.04,
-        {"resolution": "1 MP", "aspect_ratio": "1:1", "input_images": [], "output_format": "webp", "output_quality": 80, "safety_tolerance": 5},
-        True,
-    ),
-    "prunaai/": (
-        "prunaai/z-image-turbo",
-        0.005,
-        {"guidance_scale": 0},
-        True,
-    ),
-    "tencent/": (
-        "tencent/hunyuan-image-3",
-        0.08,
-        {"disable_safety_checker": True},
-        False,
-    ),
-    "qwen/": (
-        "qwen/qwen-image",
-        0.025,
-        {},
-        False,
-    ),
-    "bria/": (
-        "bria/image-3.2",
-        0.04,
-        {},
-        False,
-    ),
-    "openai/": (
-        "openai/gpt-image-1.5",
-        0.01,  # "low" quality
-        {"quality": "low", "background": "auto", "moderation": "low", "aspect_ratio": "2:3", "output_format": "webp", "input_fidelity": "low", "number_of_images": 1, "output_compression": 90},
-        False,
-    ),
-    "recraft-ai/": (
-        "recraft-ai/recraft-v4",
-        0.04,
-        {"size": "1536x768", "style": "any", "aspect_ratio": "2:1"},
-        True,
-    ),
-    "ideogram-ai/": (
-        "ideogram-ai/ideogram-v3",
-        0.06,
-        {"resolution": "None", "style_type": "None", "aspect_ratio": "1:1", "magic_prompt_option": "Auto"},
-        False,
-    ),
-    "bytedance/seedream-5-lite": (
-        "bytedance/seedream-5-lite",
-        0.03,
-        {"size": "2K", "max_images": 1, "image_input": [], "aspect_ratio": "4:3", "sequential_image_generation": "disabled", "output_format": "png"},
-        True,
-    ),
-    "bytedance/seedream-5": (
-        "bytedance/seedream-5",
-        0.03,
-        {"size": "2K", "max_images": 1, "image_input": [], "aspect_ratio": "4:3", "sequential_image_generation": "disabled", "output_format": "png"},
-        True,
-    ),
-    "reve/create": (
-        "reve/create",
-        0.025,
-        {
+    "black-forest-labs/": {
+        "model": "black-forest-labs/flux-2-max",
+        "cost": 0.04,
+        "params": {"resolution": "1 MP", "aspect_ratio": "1:1", "input_images": [], "output_format": "webp", "output_quality": 80, "safety_tolerance": 5},
+        "in_pool": True,
+        "strategy": "distill",
+    },
+    "prunaai/": {
+        "model": "prunaai/z-image-turbo",
+        "cost": 0.005,
+        "params": {"guidance_scale": 0},
+        "in_pool": True,
+        "strategy": "distill",
+    },
+    "tencent/": {
+        "model": "tencent/hunyuan-image-3",
+        "cost": 0.08,
+        "params": {"disable_safety_checker": True},
+        "in_pool": False,
+        "strategy": "direct",
+    },
+    "qwen/": {
+        "model": "qwen/qwen-image",
+        "cost": 0.025,
+        "params": {},
+        "in_pool": False,
+        "strategy": "distill",
+    },
+    "bria/": {
+        "model": "bria/image-3.2",
+        "cost": 0.04,
+        "params": {},
+        "in_pool": False,
+        "strategy": "distill",
+    },
+    "openai/": {
+        "model": "openai/gpt-image-1.5",
+        "cost": 0.01,  # "low" quality
+        "params": {"quality": "low", "background": "auto", "moderation": "low", "aspect_ratio": "2:3", "output_format": "webp", "input_fidelity": "low", "number_of_images": 1, "output_compression": 90},
+        "in_pool": False,
+        "strategy": "direct",
+    },
+    "recraft-ai/": {
+        "model": "recraft-ai/recraft-v4",
+        "cost": 0.04,
+        "params": {"size": "1536x768", "style": "any", "aspect_ratio": "2:1"},
+        "in_pool": True,
+        # Recraft caps prompts at 1000 chars — treat it as a plain diffusion
+        # model and let the LLM distill down first.
+        "strategy": "distill",
+    },
+    "ideogram-ai/": {
+        "model": "ideogram-ai/ideogram-v3",
+        "cost": 0.06,
+        "params": {"resolution": "None", "style_type": "None", "aspect_ratio": "1:1", "magic_prompt_option": "Auto"},
+        "in_pool": False,
+        # Ideogram's magic_prompt expands short prompts internally — a long
+        # instructional prompt fights that behaviour. Distill first.
+        "strategy": "distill",
+    },
+    "bytedance/seedream-5-lite": {
+        "model": "bytedance/seedream-5-lite",
+        "cost": 0.03,
+        "params": {"size": "2K", "max_images": 1, "image_input": [], "aspect_ratio": "4:3", "sequential_image_generation": "disabled", "output_format": "png"},
+        "in_pool": True,
+        "strategy": "direct",
+    },
+    "bytedance/seedream-5": {
+        "model": "bytedance/seedream-5",
+        "cost": 0.03,
+        "params": {"size": "2K", "max_images": 1, "image_input": [], "aspect_ratio": "4:3", "sequential_image_generation": "disabled", "output_format": "png"},
+        "in_pool": True,
+        "strategy": "direct",
+    },
+    "reve/create": {
+        "model": "reve/create",
+        "cost": 0.025,
+        "params": {
             "version": "latest",
             "aspect_ratio": "3:2"
         },
-        True,
-    ),
-    "luma/": (
-        "luma/photon-flash",
-        0.02,
-        {"aspect_ratio": "1:1", "image_reference_weight": 0.85, "style_reference_weight": 0.85},
-        False,
-    ),
-    "google/nano-banana-pro": (
-        "google/nano-banana-pro",
-        0.14,
-        {"resolution": "2K", "image_input": [], "aspect_ratio": "4:3", "output_format": "png", "safety_filter_level": "block_only_high"},
-        False,
-    ),
-    "google/nano-banana-2": (
-        "google/nano-banana-2",
-        0.10,
-        {"resolution": "2K", "image_input": [], "aspect_ratio": "4:3", "output_format": "png", "safety_filter_level": "block_only_high"},
-        True,
-    ),
+        "in_pool": True,
+        # Reve is a diffusion model with prompt-length constraints — distill.
+        "strategy": "distill",
+    },
+    "luma/": {
+        "model": "luma/photon-flash",
+        "cost": 0.02,
+        "params": {"aspect_ratio": "1:1", "image_reference_weight": 0.85, "style_reference_weight": 0.85},
+        "in_pool": False,
+        "strategy": "distill",
+    },
+    "google/nano-banana-pro": {
+        "model": "google/nano-banana-pro",
+        "cost": 0.14,
+        "params": {"resolution": "2K", "image_input": [], "aspect_ratio": "4:3", "output_format": "png", "safety_filter_level": "block_only_high"},
+        "in_pool": False,
+        "strategy": "direct",
+    },
+    "google/nano-banana-2": {
+        "model": "google/nano-banana-2",
+        "cost": 0.10,
+        "params": {"resolution": "2K", "image_input": [], "aspect_ratio": "4:3", "output_format": "png", "safety_filter_level": "block_only_high"},
+        "in_pool": True,
+        "strategy": "direct",
+    },
 }
 
 # Default fallback config (sana model format)
-DEFAULT_CONFIG = (
-    "nvidia/sana",
-    0.003,
-    {"width": 1024, "height": 1024, "guidance_scale": 5, "negative_prompt": "", "pag_guidance_scale": 2, "num_inference_steps": 18},
-    False,
-)
+DEFAULT_CONFIG = {
+    "model": "nvidia/sana",
+    "cost": 0.003,
+    "params": {"width": 1024, "height": 1024, "guidance_scale": 5, "negative_prompt": "", "pag_guidance_scale": 2, "num_inference_steps": 18},
+    "in_pool": False,
+    "strategy": "distill",
+}
 
 
 def _extract_url(output) -> str:
@@ -117,10 +144,11 @@ def _extract_url(output) -> str:
 class ImageModel:
     """A simple image generation model wrapper."""
 
-    def __init__(self, name: str, params: dict, cost: float):
+    def __init__(self, name: str, params: dict, cost: float, strategy: str):
         self.name = name
         self._params = params
         self._cost = cost
+        self.strategy = strategy
 
     @property
     def cost(self) -> float:
@@ -141,7 +169,7 @@ class ImageModel:
 
 def _select_random_model() -> str:
     """Select a random model from the pool (those with in_pool=True)."""
-    pool = [model for model, _cost, _params, in_pool in MODEL_CONFIGS.values() if in_pool]
+    pool = [cfg["model"] for cfg in MODEL_CONFIGS.values() if cfg["in_pool"]]
     return random.choice(pool)
 
 
@@ -154,13 +182,11 @@ def get_image_model(model_name: str | None = None) -> ImageModel:
         model_name = _select_random_model()
 
     # Find matching config by prefix
-    for prefix, (default, cost, params, _) in MODEL_CONFIGS.items():
+    for prefix, cfg in MODEL_CONFIGS.items():
         if model_name.startswith(prefix):
-            return ImageModel(model_name, params, cost)
+            return ImageModel(model_name, cfg["params"], cfg["cost"], cfg["strategy"])
 
-    # Fallback to default config
-    _, cost, params, _ = DEFAULT_CONFIG
-    return ImageModel(model_name, params, cost)
+    return ImageModel(model_name, DEFAULT_CONFIG["params"], DEFAULT_CONFIG["cost"], DEFAULT_CONFIG["strategy"])
 
 
 async def generate_video(prompt, model="wan-video/wan-2.2-t2v-fast"):

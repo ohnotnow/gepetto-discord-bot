@@ -23,7 +23,7 @@ from src.tools import calculator, ToolDispatcher, ToolResult
 from src.tools.definitions import tool_list, search_url_history_tool, catch_up_tool, twitter_search_tool, set_reminder_tool, manage_memories_tool, search_discogs_tool, explore_discogs_artist_tool
 
 # Media
-from src.media import images, replicate, sora, get_image_model
+from src.media import images, images_direct, replicate, sora, vlm, get_image_model
 
 # Content
 from src.content import summary, weather, sentry, discogs
@@ -1006,46 +1006,66 @@ async def make_chat_image():
 
         all_bios = memory_store.get_all_bios(server_id)
         bios_text = "; ".join(f"{b.user_name}: {b.bio}" for b in all_bios) if all_bios else ""
-        if len(history) < MIN_MESSAGES_FOR_CHAT_IMAGE:
-            # Quiet day — let the LLM go wild with creative freedom
-            combined_chat = images.get_creative_image_prompt(previous_themes_text, bios_text)
+        quiet_day = len(history) < MIN_MESSAGES_FOR_CHAT_IMAGE
+
+        model = get_image_model(CHAT_IMAGE_MODEL)
+        logger.info(f"Chat image strategy: {model.strategy} (model: {model.short_name})")
+
+        if model.strategy == "direct":
+            if quiet_day:
+                image_prompt = images_direct.get_creative_image_prompt(previous_themes_text, bios_text)
+            else:
+                image_prompt = images_direct.get_initial_chat_image_prompt(chat_text, previous_themes_text, bios_text)
+            display_prompt = image_prompt
+
+            logger.info("Calling image provider to generate image (direct strategy)")
+            image_url = await model.generate(image_prompt)
+            logger.info(f"Image URL: {image_url} - model: {model.short_name} - cost: {model.cost}")
+
+            if not image_url:
+                logger.info('We did not get a file from API')
+                await channel.send("Sorry, I tried to make an image but I failed (probably because of naughty words - tsk).")
+                return
+
+            logger.info("Captioning generated image for themes/reasoning (VLM)")
+            caption = await vlm.caption_image(image_url)
+            llm_chat_themes = caption.get("themes") or []
+            llm_chat_reasoning = caption.get("reasoning", "") or caption.get("description", "")
         else:
-            combined_chat = images.get_initial_chat_image_prompt(chat_text, previous_themes_text, bios_text)
-        decoded_response = await images.get_image_response(combined_chat, chatbot)
-        logger.info(f"Decoded response: {decoded_response}")
+            if quiet_day:
+                combined_chat = images.get_creative_image_prompt(previous_themes_text, bios_text)
+            else:
+                combined_chat = images.get_initial_chat_image_prompt(chat_text, previous_themes_text, bios_text)
+            decoded_response = await images.get_image_response(combined_chat, chatbot)
+            logger.info(f"Decoded response: {decoded_response}")
 
-        llm_chat_prompt = decoded_response.get("prompt", "") or str(decoded_response)
-        llm_chat_themes = decoded_response.get("themes", [])
-        llm_chat_reasoning = decoded_response.get("reasoning", "")
+            display_prompt = decoded_response.get("prompt", "") or str(decoded_response)
+            llm_chat_themes = decoded_response.get("themes", [])
+            llm_chat_reasoning = decoded_response.get("reasoning", "")
 
-        # Store for --reasoning command
-        bot_state.previous_image_prompt = llm_chat_prompt
+            full_prompt = display_prompt + f"\n{images.get_extra_guidelines()}"
+            logger.info("Calling image provider to generate image (distill strategy)")
+            image_url = await model.generate(full_prompt)
+            logger.info(f"Image URL: {image_url} - model: {model.short_name} - cost: {model.cost}")
+
+            if not image_url:
+                logger.info('We did not get a file from API')
+                await channel.send("Sorry, I tried to make an image but I failed (probably because of naughty words - tsk).")
+                return
+
+        bot_state.previous_image_prompt = display_prompt
         bot_state.previous_image_themes = llm_chat_themes
         bot_state.previous_image_reasoning = llm_chat_reasoning
 
-        # Generate the image
-        full_prompt = llm_chat_prompt + f"\n{images.get_extra_guidelines()}"
-        logger.info("Calling image provider to generate image")
-        model = get_image_model(CHAT_IMAGE_MODEL)
-        image_url = await model.generate(full_prompt)
-        logger.info(f"Image URL: {image_url} - model: {model.short_name} - cost: {model.cost}")
-
-        if not image_url:
-            logger.info('We did not get a file from API')
-            await channel.send("Sorry, I tried to make an image but I failed (probably because of naughty words - tsk).")
-            return
-
-    # Send to channel
     today_string = datetime.now().strftime("%Y-%m-%d")
     send_message = f'{chatbot.name}\'s chosen themes: _{", ".join(llm_chat_themes)}_\n_Model: {model.short_name}] / Estimated cost: US${model.cost:.3f}_'
     await channel.send_file(send_message[:DISCORD_MESSAGE_LIMIT], image_url, f'channel_summary_{today_string}.png')
 
-    # Save to database for persistence
     image_store.save(
         server_id=server_id,
         themes=llm_chat_themes if isinstance(llm_chat_themes, list) else [llm_chat_themes],
         reasoning=llm_chat_reasoning,
-        prompt=llm_chat_prompt,
+        prompt=display_prompt,
         image_url=image_url
     )
 

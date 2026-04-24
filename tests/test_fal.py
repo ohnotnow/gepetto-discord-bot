@@ -38,19 +38,19 @@ def test_get_image_model_random_selection():
 
 def test_select_random_model_only_from_pool():
     from src.media.fal import MODEL_CONFIGS
-    pool_models = [m for m, _c, _p, in_pool in MODEL_CONFIGS.values() if in_pool]
+    pool_models = [cfg["model"] for cfg in MODEL_CONFIGS.values() if cfg["in_pool"]]
     for _ in range(20):
         selected = _select_random_model()
         assert selected in pool_models
 
 
 def test_short_name_strips_hash():
-    model = ImageModel("fal-ai/flux-pro:abc123", {}, 0.04)
+    model = ImageModel("fal-ai/flux-pro:abc123", {}, 0.04, "distill")
     assert model.short_name == "fal-ai/flux-pro"
 
 
 def test_short_name_without_hash():
-    model = ImageModel("fal-ai/flux-pro/v1.1-ultra", {}, 0.04)
+    model = ImageModel("fal-ai/flux-pro/v1.1-ultra", {}, 0.04, "distill")
     assert model.short_name == "fal-ai/flux-pro/v1.1-ultra"
 
 
@@ -61,7 +61,7 @@ async def test_generate_calls_fal_subscribe():
         "images": [{"url": "https://fal.media/generated.png"}]
     }
 
-    model = ImageModel("fal-ai/flux-pro/v1.1-ultra", {"image_size": "square_hd"}, 0.04)
+    model = ImageModel("fal-ai/flux-pro/v1.1-ultra", {"image_size": "square_hd"}, 0.04, "distill")
 
     with patch("src.media.fal._client", mock_client):
         url = await model.generate("a cat in space")
