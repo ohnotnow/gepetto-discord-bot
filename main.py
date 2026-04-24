@@ -804,20 +804,22 @@ async def handle_message(message: ChatMessage):
                 await reindex_url_history(message)
                 return
             if '--reasoning' in lq:
-                # Try in-memory state first (current session), fall back to database
+                # Try in-memory state first (current session), fall back to database.
+                # We deliberately do NOT include the raw prompt here — in the
+                # direct-strategy path the "prompt" is our instructional template
+                # which bakes in USER_LOCATIONS, CAT_DESCRIPTIONS, user bios, and
+                # previous themes. Leaking that to the channel exposes env/config.
                 reasoning = bot_state.previous_image_reasoning
                 themes = bot_state.previous_image_themes
-                prompt = bot_state.previous_image_prompt
 
-                if reasoning == 'Dunno':  # Default value means no image this session
+                if reasoning == 'Dunno':
                     latest = image_store.get_latest(server_id)
                     if latest:
                         reasoning = latest.reasoning
                         themes = str(latest.themes)
-                        prompt = latest.prompt
 
                 await message.reply(
-                    f'{message.author_mention} **Reasoning:** {reasoning}\n**Themes:** {themes}\n**Image Prompt:** {prompt}'[:DISCORD_MESSAGE_LIMIT],
+                    f'{message.author_mention} **Reasoning:** {reasoning}\n**Themes:** {themes}'[:DISCORD_MESSAGE_LIMIT],
                     mention_author=True
                 )
                 return
@@ -1016,7 +1018,6 @@ async def make_chat_image():
                 image_prompt = images_direct.get_creative_image_prompt(previous_themes_text, bios_text)
             else:
                 image_prompt = images_direct.get_initial_chat_image_prompt(chat_text, previous_themes_text, bios_text)
-            display_prompt = image_prompt
 
             logger.info("Calling image provider to generate image (direct strategy)")
             image_url = await model.generate(image_prompt)
@@ -1031,6 +1032,12 @@ async def make_chat_image():
             caption = await vlm.caption_image(image_url)
             llm_chat_themes = caption.get("themes") or []
             llm_chat_reasoning = caption.get("reasoning", "") or caption.get("description", "")
+            # The direct path has no safe user-facing "prompt" to expose.
+            # Our instructional template bakes in USER_LOCATIONS, CAT_DESCRIPTIONS,
+            # user bios, and previous themes — all of which must never leak
+            # to Discord. Store a literal "Unknown" rather than anything
+            # derived from the generation pipeline.
+            display_prompt = "Unknown"
         else:
             if quiet_day:
                 combined_chat = images.get_creative_image_prompt(previous_themes_text, bios_text)
