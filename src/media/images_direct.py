@@ -83,7 +83,7 @@ Other context:
 {chat_history}
 </chat_history>
 
-Produce one image only. No text in the image, no captions, no watermarks."""
+Produce one image only."""
 
 
 def get_creative_image_prompt(previous_image_themes: str, user_bios: str = "") -> str:
@@ -143,4 +143,4 @@ Other context:
 
 {extras_block}
 
-Produce one image only. No text in the image, no captions, no watermarks."""
+Produce one image only."""
