@@ -63,11 +63,12 @@ How to approach it:
 - Pick ONE small, unexpected detail — a texture, a mood, a food someone mentioned, a passing comment on the weather. The smaller and more specific, the better.
 - If nothing stands out, use the overall emotional temperature of the day (frantic, lazy, celebratory, grumpy) as your starting point instead.
 - Build a visually stunning composition around that single spark. Everything else from the chat: ignore it. Do not try to weave the rest in.
+- Do not be too literal.  If someone mentions having a coffee, and image of a cup of coffee will not exactly amaze them.
 
 Style and mood:
 - You have full creative freedom on medium, style, and setting.
 - The result should make someone smile or pause with appreciation even if they don't know the original context. Think "photograph you'd hang on a wall" or "illustration that tells a small story at a glance" — not a surrealist puzzle that needs an artist's statement to decode.
-- Ground the image in something recognisable and real, so the people who had the chat can look at it and think "ahh, clever, I see what you did there".
+- The image should delight and amaze, but not be *too* obscure, so the people who had the chat can look at it and think "ahh, clever, I see what you did there!".
 - If the chat contains someone genuinely struggling (relationship breakdown, pet or parent illness, real distress — not jokes), make the image cheerful and uplifting. Do NOT reflect their pain back at them.
 
 Other context:
