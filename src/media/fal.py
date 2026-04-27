@@ -80,7 +80,7 @@ MODEL_CONFIGS = {
     "openai/gpt-image-2": {
         "model": "openai/gpt-image-2",
         "cost": 0.17,
-        "params": {"image_size": {"width": 1536, "height": 1024}, "quality": "high", "output_format": "png"},
+        "params": {"image_size": {"width": 1536, "height": 1024}, "quality": "medium", "output_format": "png"},
         "in_pool": False,
         "strategy": "direct",
     },
