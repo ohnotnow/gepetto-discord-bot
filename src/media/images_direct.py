@@ -56,21 +56,37 @@ def get_initial_chat_image_prompt(chat_history: str, previous_image_themes: str,
     if extra_guidelines:
         extras_block = f"Additional stylistic directions:\n{extra_guidelines}"
 
-    return f"""Generate a single striking, beautiful image inspired by the chat conversation at the end of this prompt.
+    return f"""Generate one striking, beautiful image inspired by the chat conversation at the end of this prompt.
 
-How to approach it:
-- Read the chat below, but do NOT attempt to illustrate the whole conversation.
-- Pick ONE small, unexpected detail — a texture, a mood, a food someone mentioned, a passing comment on the weather. The smaller and more specific, the better.
-- If nothing stands out, use the overall emotional temperature of the day (frantic, lazy, celebratory, grumpy) as your starting point instead.
-- Build a visually stunning composition around that single spark. Everything else from the chat: ignore it. Do not try to weave the rest in.
-- Do not be too literal.  If someone mentions having a coffee, and image of a cup of coffee will not exactly amaze them.
+THE MOVE — read the chat, then pick ONE small, specific detail: a texture, a mood, a food someone mentioned, a passing weather remark, a turn of phrase. Now do NOT illustrate that detail. Transpose it into a strong, committed visual register from somewhere else entirely. Examples of the kind of leap to make:
+- Edo-period woodblock print
+- mid-century scientific or botanical plate
+- vintage Penguin Classics cover
+- Soviet propaganda print
+- Dutch Golden Age still life
+- Studio Ghibli background still
+- 1950s Technicolor B-movie poster
+- Bauhaus / Constructivist diagram
+- Ladybird Book illustration
+- 1960s Blue Note jazz album cover (Reid Miles / Francis Wolff)
+- William Morris-style textile pattern
+- Saul Bass title-sequence still
+- Magritte- or New Yorker-cover-style visual pun where the *composition itself* is the wit (no caption needed)
 
-Style and mood:
-- You have full creative freedom on medium, style, and setting.
-- The result should make someone smile or pause with appreciation even if they don't know the original context. Think "photograph you'd hang on a wall" or "illustration that tells a small story at a glance" — not a surrealist puzzle that needs an artist's statement to decode.
-- The image should delight and amaze, but not be *too* obscure, so the people who had the chat can look at it and think "ahh, clever, I see what you did there!".
-- Shy away from just a natural visual representation.  A photo-realistic picture of a street with a bin in it will very much not delight and amaze.
-- If the chat contains someone genuinely struggling (relationship breakdown, pet or parent illness, real distress — not jokes), make the image cheerful and uplifting. Do NOT reflect their pain back at them.
+These are examples, not a menu — surprise yourself. The further the chosen register sits from the original chat detail, the better the image tends to be. If nothing in the chat stands out at all, use the overall emotional temperature of the day (frantic, lazy, celebratory, grumpy) as the spark instead.
+
+COMMIT TO THE STYLE. Whatever register you pick, render it with the *full* visual vocabulary of that genre — typography, palette, paper stock, brushwork, mannerisms, period quirks. Hedging produces beige. The audience are technically-minded people who appreciate cleverness expressed through *design*, not through punchlines.
+
+DO NOT:
+- Render the chat detail literally. A photo-realistic street with a bin in it, a cup of coffee because someone mentioned a coffee, a still life of an object someone named — none of these will delight or amaze.
+- Render text from the chat as the subject. No sticky notes, Post-its, handwritten signs, chalkboards, or labels with the quote written on them. Text is allowed only when the chosen genre actively requires it (film poster, comic panel, propaganda print, book cover) — and then it must be in-genre, not a transcribed quote from the chat.
+- Default to product photography. A single ceramic object on a neutral background is the visual equivalent of a shrug.
+- Lean on a verbal joke or pun rendered as text. Wit through composition, not captions.
+- Try to weave the whole conversation in. One spark, then transposition. Everything else: ignore it.
+
+THE BAR — the people who had the chat should look at the image and think "ah, clever, and what a great-looking thing." Someone with no context should still pause and want to look longer. Gallery wall, not Slack reaction.
+
+ONE EXCEPTION — if the chat contains someone in genuine distress (relationship breakdown, pet or parent illness, real hardship — not jokes), make the image warm, cheerful and uplifting. Do not reflect their pain back at them.
 
 Other context:
 - Today's date is {today_string}.
@@ -126,17 +142,36 @@ def get_creative_image_prompt(previous_image_themes: str, user_bios: str = "") -
     if extra_guidelines:
         extras_block = f"Additional stylistic directions:\n{extra_guidelines}"
 
-    return f"""Generate a single striking, beautiful image of your own choosing.
+    return f"""Generate one striking, beautiful image of your own choosing.
 
-Total creative freedom today — there was barely any chat to draw from, so you're inventing something from scratch.
+There was barely any chat to draw from today, so you're inventing from scratch.
 
-Starting point (subtle, not heavy-handed):
-- The date is {date_string}, and it's {season} in the UK ({season_hints}).
-- Let the date or season nudge you somewhere unexpected — an obscure historical event, a half-remembered painting, a strange scientific fact, an imagined place, a feeling, a colour. One small spark, then run with it.
+THE SPARK — the date is {date_string}, and it's {season} in the UK ({season_hints}). Let the date or season nudge you somewhere unexpected: an obscure historical event, a half-remembered painting, a strange scientific fact, an imagined place, a feeling, a colour. One small spark, then run with it.
 
-Style:
-- Pick a bold artistic style and commit to it fully — a specific painter, film movement, photographic technique, printmaking method, textile pattern, pixel art, architectural rendering, botanical illustration. Anything that excites you. Don't hedge.
-- The image should be visually striking and make someone pause with appreciation even with zero context. Think gallery wall, album cover, or a single frame from a film you'd rewind to look at again.
+COMMIT TO A REGISTER. Pick a strong visual style and render it with its full vocabulary — typography, palette, brushwork, period quirks. Examples of the kind of register to commit to:
+- Edo-period woodblock print
+- mid-century scientific or botanical plate
+- vintage Penguin Classics cover
+- Soviet propaganda print
+- Dutch Golden Age still life
+- Studio Ghibli background still
+- 1950s Technicolor B-movie poster
+- Bauhaus / Constructivist diagram
+- Ladybird Book illustration
+- 1960s Blue Note jazz album cover (Reid Miles / Francis Wolff)
+- William Morris-style textile pattern
+- Saul Bass title-sequence still
+- Magritte- or New Yorker-cover-style visual pun where the *composition itself* is the wit (no caption needed)
+
+Examples, not a menu — surprise yourself. Hedging produces beige. The audience are technically-minded people who appreciate cleverness expressed through design, not through punchlines.
+
+DO NOT:
+- Default to product photography. A single object on a neutral background is the visual equivalent of a shrug.
+- Render text as the subject — no sticky notes, signs, labels. Text is allowed only when the chosen genre actively requires it (poster, book cover, comic panel) and then must be in-genre.
+- Be too on-the-nose with the season. A pumpkin in October, a daffodil in spring — that's lazy. Use the season as flavour, not subject.
+- Lean on a verbal joke rendered as text. Wit through composition, not captions.
+
+THE BAR — the image should be visually striking even with zero context. Gallery wall, album cover, or a single frame from a film you'd rewind to look at again.
 
 Other context:
 - {location_guidance}
