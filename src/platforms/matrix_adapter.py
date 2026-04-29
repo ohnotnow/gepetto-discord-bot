@@ -93,13 +93,14 @@ class MatrixChannel:
         }
         await self._client.room_send(self._room.room_id, "m.room.message", content)
 
-    async def history(self, limit: int, after=None) -> list[ChatMessage]:
+    async def history(self, limit: int, after=None, before=None, oldest_first=None) -> list[ChatMessage]:
         messages = []
         start_token = ""
 
         # Convert 'after' datetime to a token by getting the room's message history
         # and filtering by timestamp. Matrix uses pagination tokens, not datetimes.
         after_ts = int(after.timestamp() * 1000) if after else 0
+        before_ts = int(before.timestamp() * 1000) if before else 0
 
         while len(messages) < limit:
             resp = await self._client.room_messages(
@@ -117,15 +118,17 @@ class MatrixChannel:
             for event in resp.chunk:
                 if not isinstance(event, nio.RoomMessageText):
                     continue
+                if before_ts and event.server_timestamp >= before_ts:
+                    continue
                 if after_ts and event.server_timestamp < after_ts:
-                    return list(reversed(messages))
+                    return list(reversed(messages)) if oldest_first else messages
                 messages.append(_wrap_message(self._room, event, self._client))
 
             if not resp.chunk or resp.end == start_token:
                 break
             start_token = resp.end
 
-        return list(reversed(messages))
+        return list(reversed(messages)) if oldest_first else messages
 
     @asynccontextmanager
     async def typing(self):

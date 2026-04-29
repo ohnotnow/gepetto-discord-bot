@@ -230,11 +230,27 @@ def get_chatbot():
         chatbot = gpt.GPTModel()
     return chatbot
 
-async def get_history_as_openai_messages(channel, include_bot_messages=True, limit=10, since_hours=None, nsfw_filter=False, max_length=1000, include_timestamps=True):
+async def get_history_as_openai_messages(
+    channel,
+    include_bot_messages=True,
+    limit=10,
+    since_hours=None,
+    nsfw_filter=False,
+    max_length=1000,
+    include_timestamps=True,
+    before=None,
+):
     messages = []
     total_length = 0
-    after_time = datetime.now() - timedelta(hours=HISTORY_HOURS)
-    history_msgs = await channel.history(limit=limit, after=after_time)
+    history_hours = HISTORY_HOURS if since_hours is None else since_hours
+    after_time = datetime.now(timezone.utc) - timedelta(hours=history_hours)
+    history_msgs = await channel.history(
+        limit=limit,
+        after=after_time,
+        before=before,
+        oldest_first=False,
+    )
+    history_msgs = sorted(history_msgs, key=lambda msg: msg.created_at)
     for msg in history_msgs:
         if (not include_bot_messages) and msg.author_is_bot:
             continue
@@ -252,7 +268,6 @@ async def get_history_as_openai_messages(channel, include_bot_messages=True, lim
             "content": message_content,
         })
         total_length += message_length
-    messages = messages[1:]  # Exclude the mention message
     logger.info(f"Length of messages: {len(messages)}")
     for message in messages:
         logger.info(f"Message: {message['content']}")
@@ -781,7 +796,7 @@ async def handle_message(message: ChatMessage):
                 question = question.replace("--no-logs", "")
             else:
                 if chatbot.uses_logs:
-                    context = await get_history_as_openai_messages(channel)
+                    context = await get_history_as_openai_messages(channel, before=message.created_at)
                 else:
                     context = []
             if '--serious' in lq:
@@ -1475,13 +1490,19 @@ async def reset_daily_image_count():
     logger.info("In reset_daily_image_count")
     bot_state.daily_image_count = 0
 
-# Run the bot
 chatbot = get_chatbot()
 if os.getenv("BOT_NAME", None):
     chatbot.name = os.getenv("BOT_NAME")
 bot_guard = BotGuard()
-backend = os.getenv("BOT_BACKEND", "discord")
-if backend == "matrix":
-    platform.run(os.getenv("MATRIX_PASSWORD", ""))
-else:
-    platform.run(os.getenv("DISCORD_BOT_TOKEN", "not_set"))
+
+
+def main():
+    backend = os.getenv("BOT_BACKEND", "discord")
+    if backend == "matrix":
+        platform.run(os.getenv("MATRIX_PASSWORD", ""))
+    else:
+        platform.run(os.getenv("DISCORD_BOT_TOKEN", "not_set"))
+
+
+if __name__ == "__main__":
+    main()

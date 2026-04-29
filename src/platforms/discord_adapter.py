@@ -50,9 +50,14 @@ class DiscordChannel:
         discord_file = discord.File(io.BytesIO(response.content), filename=filename)
         await self._channel.send(text, file=discord_file)
 
-    async def history(self, limit: int, after=None) -> list[ChatMessage]:
+    async def history(self, limit: int, after=None, before=None, oldest_first=None) -> list[ChatMessage]:
         messages = []
-        async for msg in self._channel.history(limit=limit, after=after):
+        async for msg in self._channel.history(
+            limit=limit,
+            after=after,
+            before=before,
+            oldest_first=oldest_first,
+        ):
             messages.append(_wrap_message(msg))
         return messages
 
