@@ -63,7 +63,6 @@ THE MOVE — read the chat, then pick ONE small, specific detail: a texture, a m
 - mid-century scientific or botanical plate
 - vintage Penguin Classics cover
 - Soviet propaganda print
-- Dutch Golden Age still life
 - Studio Ghibli background still
 - 1950s Technicolor B-movie poster
 - Bauhaus / Constructivist diagram
@@ -153,7 +152,6 @@ COMMIT TO A REGISTER. Pick a strong visual style and render it with its full voc
 - mid-century scientific or botanical plate
 - vintage Penguin Classics cover
 - Soviet propaganda print
-- Dutch Golden Age still life
 - Studio Ghibli background still
 - 1950s Technicolor B-movie poster
 - Bauhaus / Constructivist diagram
