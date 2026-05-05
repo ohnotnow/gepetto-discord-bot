@@ -15,4 +15,7 @@ def get_image_model(model_name=None):
     if provider == "fal":
         from . import fal
         return fal.get_image_model(model_name)
+    if provider == "openai":
+        from . import openai_direct
+        return openai_direct.get_image_model(model_name)
     return replicate.get_image_model(model_name)

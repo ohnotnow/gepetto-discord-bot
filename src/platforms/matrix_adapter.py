@@ -62,11 +62,17 @@ class MatrixChannel:
         await self._client.room_send(self._room.room_id, "m.room.message", content)
 
     async def send_file(self, text: str, file_path: str, filename: str) -> None:
-        # Download from URL to a temp file, then upload to Matrix content repo
-        async with aiohttp.ClientSession() as session:
-            async with session.get(file_path) as resp:
-                data = await resp.read()
-                content_type = resp.content_type or "application/octet-stream"
+        # Source can be a remote URL (Replicate/FAL) or a local path (OpenAI direct)
+        if file_path.startswith(("http://", "https://")):
+            async with aiohttp.ClientSession() as session:
+                async with session.get(file_path) as resp:
+                    data = await resp.read()
+                    content_type = resp.content_type or "application/octet-stream"
+        else:
+            with open(file_path, "rb") as f:
+                data = f.read()
+            ext = os.path.splitext(file_path)[1].lstrip(".").lower()
+            content_type = f"image/{ext}" if ext else "application/octet-stream"
 
         upload_resp, _ = await self._client.upload(
             data,

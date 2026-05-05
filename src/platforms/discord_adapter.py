@@ -46,8 +46,12 @@ class DiscordChannel:
         await self._channel.send(text, **kwargs)
 
     async def send_file(self, text: str, file_path: str, filename: str) -> None:
-        response = requests.get(file_path)
-        discord_file = discord.File(io.BytesIO(response.content), filename=filename)
+        if file_path.startswith(("http://", "https://")):
+            data = requests.get(file_path).content
+        else:
+            with open(file_path, "rb") as f:
+                data = f.read()
+        discord_file = discord.File(io.BytesIO(data), filename=filename)
         await self._channel.send(text, file=discord_file)
 
     async def history(self, limit: int, after=None, before=None, oldest_first=None) -> list[ChatMessage]:

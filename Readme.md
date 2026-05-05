@@ -54,7 +54,7 @@ The script uses the following environment variables (* indicates required):
 | FEATURE_RANDOM_CHAT | Enabling/disabling random chat feature | False | "true" |
 | FEATURE_HORROR_CHAT | Enabling/disabling horror chat feature | False | "true" |
 | CHAT_IMAGE_ENABLED | Enabling/disabling chat image generation | False | "true" |
-| IMAGE_PROVIDER | Image generation API provider | "replicate" | "replicate" or "fal" |
+| IMAGE_PROVIDER | Image generation API provider | "replicate" | "replicate", "fal", or "openai" |
 | IMAGE_MODEL | Override image model for user-requested images | Random | "openai/gpt-image-1.5" |
 | CHAT_IMAGE_MODEL | Override image model for daily chat image (falls back to IMAGE_MODEL) | IMAGE_MODEL | "black-forest-labs/flux-2-pro" |
 | SENTRY_AUTH_TOKEN | Sentry API authentication | - | "your-sentry-auth-token" |
