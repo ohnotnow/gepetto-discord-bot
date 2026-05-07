@@ -59,11 +59,11 @@ async def test_generate_writes_png_with_correct_extension(tmp_path, monkeypatch)
     call_kwargs = mocked.await_args.kwargs
     assert call_kwargs["model"] == "gpt-image-2"
     assert call_kwargs["prompt"] == "a cat in a hat"
-    # Thinking budget is what gives us gpt-5.5-style prompt rewriting on this
-    # path — losing it would silently degrade output quality.
-    assert call_kwargs["thinking"] == "medium"
     assert call_kwargs["size"] == "1536x1024"
     assert call_kwargs["quality"] == "high"
+    # `thinking` was suggested by some scraped API docs but the Python SDK
+    # rejects it as an unexpected kwarg — keep it out of the call.
+    assert "thinking" not in call_kwargs
 
 
 @pytest.mark.asyncio

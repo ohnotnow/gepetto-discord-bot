@@ -87,6 +87,24 @@ The script uses the following environment variables (* indicates required):
 | ENABLE_REMINDERS | Enable the reminders feature | False | "true" |
 | REMINDER_FREQUENCY | How often (in minutes) to check for due reminders | 5 | "5" |
 
+### Image model selection
+
+Three env vars combine to pick the image model. They behave differently depending on which provider you've chosen with `IMAGE_PROVIDER`.
+
+| Variable | When it's used |
+|---|---|
+| `IMAGE_PROVIDER` | Picks the backend: `"replicate"` (default), `"fal"`, or `"openai"`. |
+| `IMAGE_MODEL` | The model used for **user-requested images** (e.g. `@Gepetto create an image of...`). |
+| `CHAT_IMAGE_MODEL` | The model used for the **daily `make_chat_image()` task**. Falls back to `IMAGE_MODEL` if unset. |
+
+How each provider treats the model name:
+
+- **`replicate`** — `IMAGE_MODEL` / `CHAT_IMAGE_MODEL` pick a specific entry from `MODEL_CONFIGS` in `src/media/replicate.py` (e.g. `"black-forest-labs/flux-2-pro"`). If unset, a random model is picked from the configured pool — handy for variety on the daily image.
+- **`fal`** — same behaviour as Replicate, against the FAL `MODEL_CONFIGS` pool.
+- **`openai`** — there's only one model (`gpt-image-2` via the direct images endpoint), so `IMAGE_MODEL` and `CHAT_IMAGE_MODEL` only affect the display label in Discord. You can leave them unset.
+
+For the daily chat image, you can also tune `CHAT_IMAGE_ENABLED`, `CHAT_IMAGE_HOUR`, and the VLM hop that extracts themes/reasoning (`VLM_PROVIDER`, `VLM_OPENAI_MODEL`).
+
 ## Running the Script
 
 To run the bot:

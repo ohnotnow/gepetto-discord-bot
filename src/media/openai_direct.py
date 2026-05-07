@@ -17,6 +17,10 @@ from openai import AsyncOpenAI
 # exposes, so themes/reasoning now have to come from the VLM caption hop
 # in main.py (vlm.caption_image, which can route to vlm_openai when
 # VLM_PROVIDER=openai).
+#
+# Note: some scraped/leaked API docs mention a `thinking="medium"` kwarg
+# (gpt-5.5-style prompt rewriting). The Python SDK rejects it as an
+# unexpected keyword — don't add it back without checking the SDK source.
 MODEL = "gpt-image-2"
 DISPLAY_NAME = "openai/gpt-image-2"
 
@@ -29,7 +33,6 @@ PARAMS = {
     "output_format": "webp",
     "output_compression": 80,
     "moderation": "low",
-    "thinking": "medium",
 }
 
 _client = AsyncOpenAI()
