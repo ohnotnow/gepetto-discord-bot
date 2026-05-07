@@ -29,7 +29,7 @@ COST = 0.10
 
 PARAMS = {
     "size": "1536x1024",
-    "quality": "high",
+    "quality": "medium",
     "output_format": "webp",
     "output_compression": 80,
     "moderation": "low",
