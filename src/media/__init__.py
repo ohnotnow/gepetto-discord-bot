@@ -5,8 +5,9 @@ from . import images_direct
 from . import replicate
 from . import sora
 from . import vlm
+from . import vlm_openai
 
-__all__ = ['images', 'images_direct', 'replicate', 'sora', 'vlm', 'get_image_model']
+__all__ = ['images', 'images_direct', 'replicate', 'sora', 'vlm', 'vlm_openai', 'get_image_model']
 
 
 def get_image_model(model_name=None):

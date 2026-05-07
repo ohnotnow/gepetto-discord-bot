@@ -57,6 +57,8 @@ The script uses the following environment variables (* indicates required):
 | IMAGE_PROVIDER | Image generation API provider | "replicate" | "replicate", "fal", or "openai" |
 | IMAGE_MODEL | Override image model for user-requested images | Random | "openai/gpt-image-1.5" |
 | CHAT_IMAGE_MODEL | Override image model for daily chat image (falls back to IMAGE_MODEL) | IMAGE_MODEL | "black-forest-labs/flux-2-pro" |
+| VLM_PROVIDER | Backend used to caption generated images for themes/reasoning | "replicate" | "replicate" or "openai" |
+| VLM_OPENAI_MODEL | OpenAI model used when VLM_PROVIDER="openai" | "gpt-4.1" | "gpt-4.1" |
 | SENTRY_AUTH_TOKEN | Sentry API authentication | - | "your-sentry-auth-token" |
 | BOT_OMNILISTENS | Enabling/disabling omnilistens feature | "false" | "true" |
 | MET_OFFICE_API_KEY | Weather API authentication | - | "your-met-office-api-key" |

@@ -5,13 +5,14 @@ actually got drawn (rather than what we asked for). This preserves the
 previous-themes dedup loop and the "chosen themes" UX when using the
 "direct" image pipeline, which skips the LLM-prompt-distillation step.
 
-Runs google/gemini-3-flash on Replicate. Cost is well under 1p per call.
-Typical latency ~5s when passing a public URL (which is the real-world
-case — image providers return CDN URLs).
+Default backend is google/gemini-3-flash on Replicate (well under 1p per
+call, ~5s with a public URL). Set VLM_PROVIDER=openai to instead route
+through OpenAI's Responses API — see vlm_openai.py.
 """
 
 import json
 import logging
+import os
 
 import replicate as replicate_client
 
@@ -52,9 +53,16 @@ async def caption_image(image_url: str) -> dict:
     Any failure (network, rate limit, JSON parse) is caught and logged —
     the caller gets an empty-fields dict back so the image can still be
     posted. The dedup loop will just miss one datapoint.
+
+    Routes to OpenAI's Responses API when VLM_PROVIDER=openai (handy when
+    images_direct hands us a local file path rather than a CDN URL).
     """
     if not image_url:
         return dict(EMPTY_CAPTION)
+
+    if os.getenv("VLM_PROVIDER", "replicate") == "openai":
+        from . import vlm_openai
+        return await vlm_openai.caption_image(image_url)
 
     chunks: list[str] = []
     try:

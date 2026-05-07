@@ -1,4 +1,5 @@
 import base64
+import logging
 import os
 import tempfile
 import uuid
@@ -6,12 +7,17 @@ import uuid
 from openai import AsyncOpenAI
 
 
-# The Responses API hosts the image_generation tool. ORCHESTRATOR_MODEL picks
-# what to draw and how to interpret the prompt; the tool itself routes through
-# OpenAI's gpt-image-* family to do the actual rendering. We surface the
-# underlying model name (DISPLAY_NAME) for cost reporting since that's what
-# users care about.
-ORCHESTRATOR_MODEL = "gpt-5.5"
+# We talk to OpenAI's dedicated images.generate endpoint and request gpt-image-2
+# directly. The Responses API + image_generation tool route still pins to
+# gpt-image-1 under the hood (as of 2026-05) and produces noticeably weaker
+# results than gpt-image-2; until OpenAI lets the orchestrator pick gpt-image-2,
+# the direct endpoint is the only way to get the better model.
+#
+# Trade-off: we lose the `revised_prompt` field that the Responses API
+# exposes, so themes/reasoning now have to come from the VLM caption hop
+# in main.py (vlm.caption_image, which can route to vlm_openai when
+# VLM_PROVIDER=openai).
+MODEL = "gpt-image-2"
 DISPLAY_NAME = "openai/gpt-image-2"
 
 # Rough cost for high-quality 1536x1024 — tune as real billing data lands.
@@ -23,9 +29,25 @@ PARAMS = {
     "output_format": "webp",
     "output_compression": 80,
     "moderation": "low",
+    "thinking": "medium",
 }
 
 _client = AsyncOpenAI()
+logger = logging.getLogger(__name__)
+
+
+def _detect_extension(image_bytes: bytes) -> str:
+    """Sniff magic bytes to pick the right file extension.
+
+    gpt-image-2 ignores `output_format=webp` and returns PNG bytes anyway
+    (confirmed empirically — the response object cheerfully claims webp).
+    Trusting the bytes keeps downstream uploads honest.
+    """
+    if image_bytes.startswith(b"\x89PNG\r\n\x1a\n"):
+        return "png"
+    if image_bytes[:4] == b"RIFF" and image_bytes[8:12] == b"WEBP":
+        return "webp"
+    return "bin"
 
 
 class ImageModel:
@@ -50,25 +72,24 @@ class ImageModel:
         return self.name
 
     async def generate(self, prompt: str) -> str:
-        print(f"Using OpenAI image model: {self.name} via {ORCHESTRATOR_MODEL}")
-        response = await _client.responses.create(
-            model=ORCHESTRATOR_MODEL,
-            input=prompt,
-            tools=[{"type": "image_generation", **PARAMS}],
+        logger.info(f"Using OpenAI image model: {self.name}")
+        result = await _client.images.generate(
+            model=MODEL,
+            prompt=prompt,
+            **PARAMS,
         )
-        image_b64 = next(
-            (out.result for out in response.output if out.type == "image_generation_call"),
-            None,
-        )
+        image_b64 = result.data[0].b64_json if result.data else None
         if not image_b64:
-            raise RuntimeError("OpenAI image_generation tool returned no image")
+            raise RuntimeError("OpenAI images.generate returned no image bytes")
 
+        image_bytes = base64.b64decode(image_b64)
+        ext = _detect_extension(image_bytes)
         path = os.path.join(
             tempfile.gettempdir(),
-            f"openai_{uuid.uuid4().hex}.{PARAMS['output_format']}",
+            f"openai_{uuid.uuid4().hex}.{ext}",
         )
         with open(path, "wb") as f:
-            f.write(base64.b64decode(image_b64))
+            f.write(image_bytes)
         return path
 
 
