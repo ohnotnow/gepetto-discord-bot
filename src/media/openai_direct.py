@@ -14,9 +14,11 @@ from openai import AsyncOpenAI
 # the direct endpoint is the only way to get the better model.
 #
 # Trade-off: we lose the `revised_prompt` field that the Responses API
-# exposes, so themes/reasoning now have to come from the VLM caption hop
-# in main.py (vlm.caption_image, which can route to vlm_openai when
-# VLM_PROVIDER=openai).
+# exposes. Not a problem on the default "distill" strategy (the LLM that
+# crafts the prompt also returns themes/reasoning). If you flip strategy
+# back to "direct" for a future model, themes/reasoning have to come from
+# the VLM caption hop in main.py (vlm.caption_image, which can route to
+# vlm_openai when VLM_PROVIDER=openai).
 #
 # Note: some scraped/leaked API docs mention a `thinking="medium"` kwarg
 # (gpt-5.5-style prompt rewriting). The Python SDK rejects it as an
@@ -64,7 +66,7 @@ class ImageModel:
     def __init__(self, name: str = DISPLAY_NAME):
         self.name = name
         self._cost = COST
-        self.strategy = "direct"
+        self.strategy = "distill"
 
     @property
     def cost(self) -> float:

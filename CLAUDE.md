@@ -39,7 +39,9 @@ response = await chatbot.chat(messages)
 The model string format is `{provider}/{model}` (e.g., "openai/gpt-4o-mini"). You can pass a full LiteLLM model string directly to `chat()`.
 
 ### Image Generation (`src/media/`)
-Dual-provider system — `IMAGE_PROVIDER` env var selects between `"replicate"` (default) and `"fal"`. Both providers expose the same `ImageModel` interface via a routing function:
+> **Before changing anything here:** run `ant show gepettodiscordbot-AkRXV` for the full flow notes — `create_image` vs `make_chat_image`, distill vs direct strategy, and which traps to avoid. This is the most-tinkered-with part of the bot; the note will save you re-deriving it.
+
+`IMAGE_PROVIDER` env var selects between `"replicate"` (default), `"fal"`, and `"openai"` (gpt-image-2 via the dedicated images.generate endpoint). All three expose the same `ImageModel` interface via a routing function:
 ```python
 from src.media import get_image_model
 model = get_image_model()  # Random from enabled models on the active provider
