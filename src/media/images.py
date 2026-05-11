@@ -19,10 +19,10 @@ def get_initial_chat_image_prompt(chat_history: str, previous_image_themes: str,
 STEP 1 - READ AND ABSORB:
 Read the entire chat history. Don't take notes. Just absorb the vibe.
 
-STEP 2 - PICK ONE THING:
-From everything you read, choose ONE single detail — the smaller
+STEP 2 - PICK DETAILS:
+From everything you read, choose ONE or TWO details — the smaller
 and more unexpected, the better. A texture, a mood, a passing
-comment about weather, a food someone mentioned. Just one.
+comment about weather, a pun, a food someone mentioned. Just one or two.
 
 If nothing stands out, use the overall emotional temperature
 of the day (frantic? lazy? celebratory? grumpy?).
@@ -32,7 +32,7 @@ Seriously. Everything else from the chat — ignore it.
 Do not reference it. Do not "weave it in." It's gone.
 
 STEP 4 - MAKE ART:
-Take that one detail and build a visually stunning composition
+Take the details and build a visually stunning composition
 around it. You have creative freedom on style, medium, and setting.
 
 Important: the result should be an image that makes someone smile
