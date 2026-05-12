@@ -13,6 +13,7 @@ from typing import List, Optional
 logger = logging.getLogger(__name__)
 
 MAX_ENTRIES_PER_SERVER = 10
+MAX_RECENT_SLOTS_PER_KIND = 30
 
 
 @dataclass
@@ -67,6 +68,19 @@ class ImageStore:
             conn.execute("""
                 CREATE INDEX IF NOT EXISTS idx_server_id
                 ON image_history(server_id, id DESC)
+            """)
+            conn.execute("""
+                CREATE TABLE IF NOT EXISTS image_recent_slots (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    server_id TEXT NOT NULL,
+                    slot_kind TEXT NOT NULL,
+                    value TEXT NOT NULL,
+                    used_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+                )
+            """)
+            conn.execute("""
+                CREATE INDEX IF NOT EXISTS idx_recent_slots
+                ON image_recent_slots(server_id, slot_kind, id DESC)
             """)
             conn.commit()
 
@@ -221,6 +235,45 @@ class ImageStore:
             return ""
 
         return "\n".join(entry.themes_str for entry in entries)
+
+    def save_recent_slot(self, server_id: str, slot_kind: str, value: str) -> None:
+        """Record a value used for a given slot kind. Auto-prunes per (server, kind)."""
+        value = (value or "").strip()
+        if not value:
+            return
+        with self._get_connection() as conn:
+            conn.execute(
+                "INSERT INTO image_recent_slots (server_id, slot_kind, value) VALUES (?, ?, ?)",
+                (server_id, slot_kind, value)
+            )
+            conn.execute(
+                """
+                DELETE FROM image_recent_slots
+                WHERE server_id = ? AND slot_kind = ?
+                AND id NOT IN (
+                    SELECT id FROM image_recent_slots
+                    WHERE server_id = ? AND slot_kind = ?
+                    ORDER BY id DESC
+                    LIMIT ?
+                )
+                """,
+                (server_id, slot_kind, server_id, slot_kind, MAX_RECENT_SLOTS_PER_KIND)
+            )
+            conn.commit()
+
+    def get_recent_slots(self, server_id: str, slot_kind: str, limit: int = 20) -> List[str]:
+        """Return recent values for a slot kind, newest first."""
+        with self._get_connection() as conn:
+            cursor = conn.execute(
+                """
+                SELECT value FROM image_recent_slots
+                WHERE server_id = ? AND slot_kind = ?
+                ORDER BY id DESC
+                LIMIT ?
+                """,
+                (server_id, slot_kind, limit)
+            )
+            return [row[0] for row in cursor.fetchall()]
 
     def _row_to_entry(self, row: tuple) -> ImageEntry:
         """Convert a database row tuple to an ImageEntry."""

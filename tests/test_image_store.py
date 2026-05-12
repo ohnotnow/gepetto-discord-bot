@@ -117,3 +117,61 @@ class TestImageStore:
         entries = store.get_recent('server1')
         assert entries[0].image_url == 'http://example.com/img.png'
         assert entries[1].image_url is None
+
+
+class TestRecentSlots:
+    """Tests for the recently-used slot helpers used by the corpse pipeline."""
+
+    def test_save_and_get_round_trip(self, temp_dir):
+        store = ImageStore(os.path.join(temp_dir, 'test.db'))
+        store.save_recent_slot('server1', 'detail', 'a wonky kettle')
+        store.save_recent_slot('server1', 'detail', 'rain on a window')
+
+        slots = store.get_recent_slots('server1', 'detail')
+        assert slots == ['rain on a window', 'a wonky kettle']
+
+    def test_kinds_are_isolated(self, temp_dir):
+        store = ImageStore(os.path.join(temp_dir, 'test.db'))
+        store.save_recent_slot('server1', 'detail', 'a kettle')
+        store.save_recent_slot('server1', 'mood', 'gentle melancholy')
+
+        assert store.get_recent_slots('server1', 'detail') == ['a kettle']
+        assert store.get_recent_slots('server1', 'mood') == ['gentle melancholy']
+
+    def test_servers_are_isolated(self, temp_dir):
+        store = ImageStore(os.path.join(temp_dir, 'test.db'))
+        store.save_recent_slot('server1', 'detail', 'a kettle')
+        store.save_recent_slot('server2', 'detail', 'a teacup')
+
+        assert store.get_recent_slots('server1', 'detail') == ['a kettle']
+        assert store.get_recent_slots('server2', 'detail') == ['a teacup']
+
+    def test_empty_returns_empty_list(self, temp_dir):
+        store = ImageStore(os.path.join(temp_dir, 'test.db'))
+        assert store.get_recent_slots('server1', 'detail') == []
+
+    def test_blank_values_ignored(self, temp_dir):
+        store = ImageStore(os.path.join(temp_dir, 'test.db'))
+        store.save_recent_slot('server1', 'detail', '')
+        store.save_recent_slot('server1', 'detail', '   ')
+        assert store.get_recent_slots('server1', 'detail') == []
+
+    def test_values_are_trimmed(self, temp_dir):
+        store = ImageStore(os.path.join(temp_dir, 'test.db'))
+        store.save_recent_slot('server1', 'detail', '  a kettle  ')
+        assert store.get_recent_slots('server1', 'detail') == ['a kettle']
+
+    def test_auto_prunes_per_kind(self, temp_dir):
+        store = ImageStore(os.path.join(temp_dir, 'test.db'))
+        for i in range(35):
+            store.save_recent_slot('server1', 'detail', f'detail-{i}')
+        slots = store.get_recent_slots('server1', 'detail', limit=100)
+        assert len(slots) == 30
+        assert 'detail-34' in slots
+        assert 'detail-4' not in slots
+
+    def test_limit_respected(self, temp_dir):
+        store = ImageStore(os.path.join(temp_dir, 'test.db'))
+        for i in range(10):
+            store.save_recent_slot('server1', 'mood', f'mood-{i}')
+        assert len(store.get_recent_slots('server1', 'mood', limit=3)) == 3

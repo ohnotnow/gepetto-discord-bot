@@ -23,7 +23,7 @@ from src.tools import calculator, ToolDispatcher, ToolResult
 from src.tools.definitions import tool_list, search_url_history_tool, catch_up_tool, twitter_search_tool, set_reminder_tool, manage_memories_tool, search_discogs_tool, explore_discogs_artist_tool
 
 # Media
-from src.media import images, images_direct, replicate, sora, vlm, get_image_model
+from src.media import images, images_direct, image_prompt_corpse, replicate, sora, vlm, get_image_model
 
 # Content
 from src.content import summary, weather, sentry, discogs
@@ -1056,9 +1056,24 @@ async def make_chat_image():
         else:
             if quiet_day:
                 combined_chat = images.get_creative_image_prompt(previous_themes_text, bios_text)
+                decoded_response = await images.get_image_response(combined_chat, chatbot)
             else:
-                combined_chat = images.get_initial_chat_image_prompt(chat_text, previous_themes_text, bios_text)
-            decoded_response = await images.get_image_response(combined_chat, chatbot)
+                # Blind-pass "exquisite corpse" pipeline — see
+                # src/media/image_prompt_corpse.py and ant note gepettodiscordbot-AkRXV.
+                # To revert to the legacy single-pass distill, comment out the
+                # corpse call and uncomment the two lines beneath it.
+                decoded_response = await image_prompt_corpse.build(
+                    chat_text=chat_text,
+                    previous_themes_text=previous_themes_text,
+                    bios_text=bios_text,
+                    user_locations=os.getenv("USER_LOCATIONS", "").strip(),
+                    cat_descriptions=os.getenv("CAT_DESCRIPTIONS", "").strip(),
+                    server_id=server_id,
+                    image_store=image_store,
+                    chatbot=chatbot,
+                )
+                # combined_chat = images.get_initial_chat_image_prompt(chat_text, previous_themes_text, bios_text)
+                # decoded_response = await images.get_image_response(combined_chat, chatbot)
             logger.info(f"Decoded response: {decoded_response}")
 
             display_prompt = decoded_response.get("prompt", "") or str(decoded_response)
