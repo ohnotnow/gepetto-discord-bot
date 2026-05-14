@@ -99,10 +99,10 @@ async def _pick(
 
 async def _pick_detail(chatbot, chat_text: str, exclude: list[str]) -> str:
     system = (
-        "You read a chat conversation and pick ONE small concrete detail from it — "
+        "You read a chat conversation and pick ONE OR TWO small concrete details from it — "
         "a word, an object, a sensation, a passing reference, a texture, a moment. "
-        "The smaller and more unexpected the better. AVOID picking the obvious main "
-        "topic of the chat. Reply with the detail as a short phrase (max 10 words), "
+        "AVOID picking the obvious main "
+        "topic of the chat. Reply with the details as a short phrase (max 12 words), "
         "and nothing else. No quotes, no preamble, no 'Detail:'."
     )
     user = f"<chat>\n{chat_text}\n</chat>"
@@ -113,7 +113,7 @@ async def _pick_detail(chatbot, chat_text: str, exclude: list[str]) -> str:
 async def _pick_second_detail(chatbot, chat_text: str, first_detail: str, exclude: list[str]) -> str:
     system = (
         "You read a chat conversation and pick ONE more small detail — but it must "
-        "involve a DIFFERENT SENSE OR REGISTER than the detail already chosen. If the "
+        "involve a DIFFERENT SENSE OR REGISTER than the detail(s) already chosen. If the "
         "first was visual, pick something auditory, tactile, olfactory, gustatory, or "
         "emotional. If the first was a thing, pick a feeling. If the first was a feeling, "
         "pick a texture. Reply with the detail as a short phrase (max 10 words), and "
@@ -177,9 +177,8 @@ def _assembly_system() -> str:
         "Your job:\n"
         "1. Use the STYLE wholeheartedly and let it dominate the visual language.\n"
         "2. Use the MOOD to set the emotional temperature of the scene.\n"
-        "3. Weave the DETAILS in as small atmospheric or compositional elements — not as "
-        "the literal subject of the image. A 'wonky kettle' detail should not produce a "
-        "still life of a kettle.\n"
+        "3. Weave and celebrate the DETAILS in as atmospheric or compositional elements — not too literal"
+        "A 'wonky kettle' detail should not produce a still life of a kettle.\n"
         "4. If a DECOY subject is provided, that becomes the main subject of the image, "
         "rendered through the style and mood, with the details as background flavour.\n"
         "5. If no decoy is provided, invent a subject suggested by the mood — but it must "
@@ -188,13 +187,11 @@ def _assembly_system() -> str:
         "Hard rules:\n"
         "- DO NOT produce a 'flat-lay' arrangement of objects on a desk/table/floor.\n"
         "- DO NOT produce a corporate stock photo, infographic, or product shot.\n"
-        "- DO NOT include screens, laptops, monitors, keyboards, or mobile phones unless "
-        "absolutely demanded by the style.\n"
-        "- DO NOT include text, logos, or version numbers in the image.\n"
+        "- DO NOT label objects in the image - it's lazy like bad political cartoons that need explained.\n"
         "- DO NOT explain or justify the connections between ingredients. The viewer never "
         "sees the ingredients list.\n\n"
         "Call the generate_image tool with:\n"
-        "- prompt: a vivid, concrete prompt for a Stable-Diffusion-style image model. "
+        "- prompt: a vivid, concrete prompt for a state-of-the-art Stable-Diffusion-style image model. "
         "Describe the scene, the lighting, the composition, the style. 60–180 words.\n"
         "- themes: 3–6 short tag-like phrases describing the key elements / style.\n"
         "- reasoning: 1–3 sentences on how the ingredients shaped the image."
