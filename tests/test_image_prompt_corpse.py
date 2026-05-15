@@ -353,6 +353,44 @@ class TestBuild:
         assert "poisoned" in assembler_system
         assert "never appear cruel or tone-deaf" in assembler_system
 
+    async def test_liz_truss_cameo_fires_when_probability_hits(self, store, force_decoy):
+        """The main Discord server adopted Liz Truss as its ironic patron saint a
+        week before she became PM. The legacy images.py prompt fired a cameo at
+        LIZ_TRUSS_PROBABILITY (0.05) and the corpse refactor silently dropped it
+        — same failure mode as the pain-guard regression. Restored 2026-05-15.
+        Do not delete this test without re-checking the cameo wiring."""
+        chatbot = FakeChat([
+            "a wonky kettle", "the smell of damp coats",
+            "a tin of antique fishhooks", "gentle Tuesday melancholy",
+            "Edward Hopper diner-light oil painting",
+            _final_payload(),
+        ])
+        await image_prompt_corpse.build(
+            chat_text=CHAT, previous_themes_text="", bios_text="",
+            user_locations="", cat_descriptions="",
+            server_id="srv1", image_store=store, chatbot=chatbot,
+        )
+        assembler_user = chatbot.calls[5]["messages"][1]["content"]
+        assert "Liz Truss" in assembler_user
+        assert "grotesque reference" in assembler_user
+
+    async def test_liz_truss_cameo_skipped_when_probability_misses(self, store, skip_decoy):
+        """skip_decoy fixture forces random.random() to 0.99 — above
+        LIZ_TRUSS_PROBABILITY (0.05) — so the cameo must not appear."""
+        chatbot = FakeChat([
+            "a wonky kettle", "the smell of damp coats",
+            "gentle Tuesday melancholy", "Edward Hopper diner-light oil painting",
+            _final_payload(),
+        ])
+        await image_prompt_corpse.build(
+            chat_text=CHAT, previous_themes_text="", bios_text="",
+            user_locations="", cat_descriptions="",
+            server_id="srv1", image_store=store, chatbot=chatbot,
+        )
+        # Decoy is skipped, so the assembler call index shifts from 5 to 4.
+        assembler_user = chatbot.calls[-1]["messages"][1]["content"]
+        assert "Liz Truss" not in assembler_user
+
     async def test_falls_back_when_tool_call_missing(self, store, force_decoy):
         chatbot = FakeChat([
             "a wonky kettle", "the smell of damp coats",

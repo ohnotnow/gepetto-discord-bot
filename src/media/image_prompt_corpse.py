@@ -22,9 +22,20 @@ import random
 from datetime import datetime
 from typing import Optional
 
+from src.utils.constants import LIZ_TRUSS_PROBABILITY
+
 logger = logging.getLogger("discord")
 
 DECOY_PROBABILITY = 0.05
+
+# Patron-saint cameo. The main Discord server was founded about a week
+# before Liz Truss became PM and adopted her as its (ironic) patron saint.
+# Same legacy phrasing as src/media/images.py:161. Was silently dropped in
+# the corpse refactor; restored 2026-05-15.
+LIZ_TRUSS_CAMEO = (
+    "If you can somehow shoehorn a grotesque reference to UK Politician "
+    "Liz Truss into the image, please do so."
+)
 
 # Stylistic hand-brake: the LLM has clear favourites here and will return them
 # every time unless told otherwise. These are stitched into the style anti-list
@@ -415,6 +426,7 @@ def _assembly_user(
     cat_descriptions: str,
     bios_text: str,
     previous_themes_text: str,
+    liz_truss_cameo: Optional[str] = None,
 ) -> str:
     parts = ["INGREDIENTS:\n"]
     parts.append(f"- Mood: {mood}")
@@ -446,6 +458,8 @@ def _assembly_user(
             f"- The viewers' nationalities/hobbies/quirks (for subtle flavour only, "
             f"not depiction): {bios_text}"
         )
+    if liz_truss_cameo:
+        parts.append(f"- {liz_truss_cameo}")
     if previous_themes_text:
         parts.append(
             f"\nRECENT IMAGE THEMES TO AVOID REPEATING:\n{previous_themes_text}"
@@ -497,6 +511,7 @@ async def _assemble(
     cat_descriptions: str,
     bios_text: str,
     previous_themes_text: str,
+    liz_truss_cameo: Optional[str] = None,
 ) -> dict:
     messages = [
         {"role": "system", "content": _assembly_system()},
@@ -505,6 +520,7 @@ async def _assemble(
             "content": _assembly_user(
                 detail_1, reason_1, detail_2, reason_2, decoy, mood, style,
                 user_locations, cat_descriptions, bios_text, previous_themes_text,
+                liz_truss_cameo=liz_truss_cameo,
             ),
         },
     ]
@@ -577,6 +593,13 @@ async def build(
     mood = await _pick_mood(chatbot, chat_text, recent_moods)
     style = await _pick_style(chatbot, recent_styles)
 
+    liz_truss_cameo: Optional[str] = None
+    if random.random() < LIZ_TRUSS_PROBABILITY:
+        liz_truss_cameo = LIZ_TRUSS_CAMEO
+        logger.info("[corpse:liz] cameo fires this run (probability %.2f)", LIZ_TRUSS_PROBABILITY)
+    else:
+        logger.info("[corpse:liz] skipped this run (probability %.2f)", LIZ_TRUSS_PROBABILITY)
+
     result = await _assemble(
         chatbot,
         detail_1=detail_1,
@@ -590,6 +613,7 @@ async def build(
         cat_descriptions=cat_descriptions,
         bios_text=bios_text,
         previous_themes_text=previous_themes_text,
+        liz_truss_cameo=liz_truss_cameo,
     )
 
     # Persist picks for future anti-lists. Done after assembly so a failure
@@ -661,6 +685,13 @@ async def build_quiet(
     mood = await _pick_date_mood(chatbot, today_string, recent_moods)
     style = await _pick_style(chatbot, recent_styles)
 
+    liz_truss_cameo: Optional[str] = None
+    if random.random() < LIZ_TRUSS_PROBABILITY:
+        liz_truss_cameo = LIZ_TRUSS_CAMEO
+        logger.info("[corpse:liz] cameo fires this run (probability %.2f)", LIZ_TRUSS_PROBABILITY)
+    else:
+        logger.info("[corpse:liz] skipped this run (probability %.2f)", LIZ_TRUSS_PROBABILITY)
+
     result = await _assemble(
         chatbot,
         detail_1=detail_1,
@@ -674,6 +705,7 @@ async def build_quiet(
         cat_descriptions=cat_descriptions,
         bios_text=bios_text,
         previous_themes_text=previous_themes_text,
+        liz_truss_cameo=liz_truss_cameo,
     )
 
     if detail_1:
