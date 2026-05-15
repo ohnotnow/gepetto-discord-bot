@@ -97,27 +97,85 @@ async def _pick(
     return pick
 
 
-async def _pick_detail(chatbot, chat_text: str, exclude: list[str]) -> str:
+def _split_detail_and_reason(raw: str) -> tuple[str, str]:
+    """Parse a 'DETAIL: x / REASON: y' reply, falling back gracefully.
+
+    If the LLM ignored the structure and returned a single phrase, treat the
+    whole thing as the detail with no reason.
+    """
+    if not raw:
+        return "", ""
+    detail = ""
+    reason = ""
+    for line in raw.strip().splitlines():
+        stripped = line.strip()
+        low = stripped.lower()
+        if low.startswith("detail:"):
+            detail = stripped.split(":", 1)[1].strip()
+        elif low.startswith(("reason:", "because:", "why:")):
+            reason = stripped.split(":", 1)[1].strip()
+    if not detail:
+        # Fallback: no labels at all — use the first non-empty line.
+        lines = [l.strip() for l in raw.strip().splitlines() if l.strip()]
+        if lines:
+            detail = lines[0]
+    return _clean_pick(detail), _clean_pick(reason)
+
+
+async def _pick_detail_with_reason(
+    chatbot,
+    system: str,
+    user: str,
+    *,
+    stage: str,
+    temperature: float = 1.0,
+) -> tuple[str, str]:
+    """Ask for a detail AND a one-sentence reason. Returns (detail, reason)."""
+    messages = [
+        {"role": "system", "content": system},
+        {"role": "user", "content": user},
+    ]
+    model_override = os.getenv("IMAGE_PROMPT_MODEL", None)
+    if model_override:
+        response = await chatbot.chat(messages, temperature=temperature, model=model_override)
+    else:
+        response = await chatbot.chat(messages, temperature=temperature)
+    raw = getattr(response, "message", str(response))
+    detail, reason = _split_detail_and_reason(raw)
+    logger.info(
+        "[corpse:%s] detail=%r reason=%r (raw: %r)",
+        stage, detail, reason, raw[:240],
+    )
+    return detail, reason
+
+
+async def _pick_detail(chatbot, chat_text: str, exclude: list[str]) -> tuple[str, str]:
     system = (
-        "You read a chat conversation and pick ONE OR TWO small concrete details from it — "
+        "You read a chat conversation and pick ONE small concrete detail from it — "
         "a word, an object, a sensation, a passing reference, a texture, a moment. "
-        "AVOID picking the obvious main "
-        "topic of the chat. Reply with the details as a short phrase (max 12 words), "
-        "and nothing else. No quotes, no preamble, no 'Detail:'."
+        "AVOID picking the obvious main topic of the chat. "
+        "Reply on TWO lines, exactly in this format:\n"
+        "DETAIL: <short phrase, max 12 words>\n"
+        "REASON: <one sentence (max 25 words) on why you picked it — what in the "
+        "chat made it interesting, evocative, or worth noticing>"
     )
     user = f"<chat>\n{chat_text}\n</chat>"
     user += _exclude_clause("Recently picked details to avoid (pick something different)", exclude)
-    return await _pick(chatbot, system, user, stage="detail_1")
+    return await _pick_detail_with_reason(chatbot, system, user, stage="detail_1")
 
 
-async def _pick_second_detail(chatbot, chat_text: str, first_detail: str, exclude: list[str]) -> str:
+async def _pick_second_detail(
+    chatbot, chat_text: str, first_detail: str, exclude: list[str]
+) -> tuple[str, str]:
     system = (
         "You read a chat conversation and pick ONE more small detail — but it must "
-        "involve a DIFFERENT SENSE OR REGISTER than the detail(s) already chosen. If the "
+        "involve a DIFFERENT SENSE OR REGISTER than the detail already chosen. If the "
         "first was visual, pick something auditory, tactile, olfactory, gustatory, or "
         "emotional. If the first was a thing, pick a feeling. If the first was a feeling, "
-        "pick a texture. Reply with the detail as a short phrase (max 10 words), and "
-        "nothing else. No quotes, no preamble."
+        "pick a texture. Reply on TWO lines, exactly in this format:\n"
+        "DETAIL: <short phrase, max 10 words>\n"
+        "REASON: <one sentence (max 25 words) on why you picked it and how it "
+        "complements the first detail by a different sense/register>"
     )
     user = (
         f"<chat>\n{chat_text}\n</chat>\n\n"
@@ -125,7 +183,7 @@ async def _pick_second_detail(chatbot, chat_text: str, first_detail: str, exclud
         f"Pick a second detail in a DIFFERENT sense/register from the first."
     )
     user += _exclude_clause("Recently picked details to avoid", exclude)
-    return await _pick(chatbot, system, user, stage="detail_2")
+    return await _pick_detail_with_reason(chatbot, system, user, stage="detail_2")
 
 
 async def _pick_decoy(chatbot, exclude: list[str]) -> str:
@@ -171,14 +229,18 @@ async def _pick_style(chatbot, exclude: list[str]) -> str:
 def _assembly_system() -> str:
     return (
         "You are designing a single visually striking image. You will be given a handful of "
-        "raw ingredients — a mood, a style, one or two small details, and possibly a "
-        "completely unrelated 'decoy' subject. The ingredients came from different sources "
-        "and may not seem to go together. That is intentional.\n\n"
+        "raw ingredients — a mood, a style, one or two small details (each with a brief note "
+        "on why it was picked), and possibly a completely unrelated 'decoy' subject. The "
+        "ingredients came from different sources and may not seem to go together. That is "
+        "intentional.\n\n"
         "Your job:\n"
         "1. Use the STYLE wholeheartedly and let it dominate the visual language.\n"
         "2. Use the MOOD to set the emotional temperature of the scene.\n"
         "3. Weave and celebrate the DETAILS in as atmospheric or compositional elements — not too literal"
-        "A 'wonky kettle' detail should not produce a still life of a kettle.\n"
+        "A 'wonky kettle' detail should not produce a still life of a kettle. "
+        "Use each detail's accompanying reason as a hint to the surrounding narrative — "
+        "it tells you why that detail mattered, so you can render it with the right texture "
+        "of feeling rather than as a bare object.\n"
         "4. If a DECOY subject is provided, that becomes the main subject of the image, "
         "rendered through the style and mood, with the details as background flavour.\n"
         "5. If no decoy is provided, invent a subject suggested by the mood — but it must "
@@ -189,7 +251,9 @@ def _assembly_system() -> str:
         "- DO NOT produce a corporate stock photo, infographic, or product shot.\n"
         "- DO NOT label objects in the image - it's lazy like bad political cartoons that need explained.\n"
         "- DO NOT explain or justify the connections between ingredients. The viewer never "
-        "sees the ingredients list.\n\n"
+        "sees the ingredients list.\n"
+        "- DO NOT quote or paraphrase the reasons in the image. They are private context "
+        "for you, not text to render.\n\n"
         "Call the generate_image tool with:\n"
         "- prompt: a vivid, concrete prompt for a state-of-the-art Stable-Diffusion-style image model. "
         "Describe the scene, the lighting, the composition, the style. 60–180 words.\n"
@@ -198,9 +262,17 @@ def _assembly_system() -> str:
     )
 
 
+def _format_detail(label: str, detail: str, reason: str) -> str:
+    if reason:
+        return f"- {label}: {detail}\n  (picked because: {reason})"
+    return f"- {label}: {detail}"
+
+
 def _assembly_user(
     detail_1: str,
+    reason_1: str,
     detail_2: str,
+    reason_2: str,
     decoy: Optional[str],
     mood: str,
     style: str,
@@ -212,8 +284,8 @@ def _assembly_user(
     parts = ["INGREDIENTS:\n"]
     parts.append(f"- Mood: {mood}")
     parts.append(f"- Style: {style}")
-    parts.append(f"- Detail 1: {detail_1}")
-    parts.append(f"- Detail 2: {detail_2}")
+    parts.append(_format_detail("Detail 1", detail_1, reason_1))
+    parts.append(_format_detail("Detail 2", detail_2, reason_2))
     if decoy:
         parts.append(f"- Decoy subject (use as the main subject): {decoy}")
     else:
@@ -278,7 +350,9 @@ def _generate_image_tool() -> dict:
 async def _assemble(
     chatbot,
     detail_1: str,
+    reason_1: str,
     detail_2: str,
+    reason_2: str,
     decoy: Optional[str],
     mood: str,
     style: str,
@@ -292,7 +366,7 @@ async def _assemble(
         {
             "role": "user",
             "content": _assembly_user(
-                detail_1, detail_2, decoy, mood, style,
+                detail_1, reason_1, detail_2, reason_2, decoy, mood, style,
                 user_locations, cat_descriptions, bios_text, previous_themes_text,
             ),
         },
@@ -352,8 +426,8 @@ async def build(
         server_id, len(recent_details), len(recent_decoys), len(recent_moods), len(recent_styles),
     )
 
-    detail_1 = await _pick_detail(chatbot, chat_text, recent_details)
-    detail_2 = await _pick_second_detail(
+    detail_1, reason_1 = await _pick_detail(chatbot, chat_text, recent_details)
+    detail_2, reason_2 = await _pick_second_detail(
         chatbot, chat_text, detail_1, recent_details + [detail_1] if detail_1 else recent_details
     )
 
@@ -369,7 +443,9 @@ async def build(
     result = await _assemble(
         chatbot,
         detail_1=detail_1,
+        reason_1=reason_1,
         detail_2=detail_2,
+        reason_2=reason_2,
         decoy=decoy,
         mood=mood,
         style=style,

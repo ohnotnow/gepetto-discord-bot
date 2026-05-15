@@ -66,8 +66,8 @@ def _final_payload():
 class TestBuild:
     async def test_returns_assembler_output_shape(self, store, force_decoy):
         chatbot = FakeChat([
-            "a wonky kettle",
-            "the smell of damp coats",
+            "DETAIL: a wonky kettle\nREASON: alice mentioned tomatoes and the kitchen feels lived-in.",
+            "DETAIL: the smell of damp coats\nREASON: bob's 404 joke had a soggy, indoor texture to it.",
             "a tin of antique fishhooks",
             "gentle Tuesday melancholy",
             "Edward Hopper diner-light oil painting",
@@ -89,8 +89,8 @@ class TestBuild:
 
     async def test_persists_picks_for_future_exclusion(self, store, force_decoy):
         chatbot = FakeChat([
-            "a wonky kettle",
-            "the smell of damp coats",
+            "DETAIL: a wonky kettle\nREASON: alice mentioned tomatoes and the kitchen feels lived-in.",
+            "DETAIL: the smell of damp coats\nREASON: bob's 404 joke had a soggy, indoor texture to it.",
             "a tin of antique fishhooks",
             "gentle Tuesday melancholy",
             "Edward Hopper diner-light oil painting",
@@ -262,6 +262,52 @@ class TestBuild:
         assert "Dutch Golden Age" in style_user
         assert "De Chirico" in style_user
 
+    async def test_detail_reasons_reach_the_assembler(self, store, force_decoy):
+        chatbot = FakeChat([
+            "DETAIL: a wonky kettle\nREASON: alice's tomato remark hinted at a homely kitchen mood.",
+            "DETAIL: the smell of damp coats\nREASON: bob's 404 joke had a soggy indoor texture.",
+            "a tin of antique fishhooks",
+            "gentle Tuesday melancholy",
+            "Edward Hopper diner-light oil painting",
+            _final_payload(),
+        ])
+        await image_prompt_corpse.build(
+            chat_text=CHAT, previous_themes_text="", bios_text="",
+            user_locations="", cat_descriptions="",
+            server_id="srv1", image_store=store, chatbot=chatbot,
+        )
+        assembler_user = chatbot.calls[5]["messages"][1]["content"]
+        assert "a wonky kettle" in assembler_user
+        assert "the smell of damp coats" in assembler_user
+        assert "alice's tomato remark" in assembler_user
+        assert "soggy indoor texture" in assembler_user
+        # Only the detail itself goes into the anti-list, not the reason.
+        saved = store.get_recent_slots("srv1", "detail")
+        assert "a wonky kettle" in saved
+        assert "the smell of damp coats" in saved
+        assert not any("tomato remark" in s for s in saved)
+
+    async def test_detail_picker_falls_back_when_unstructured(self, store, force_decoy):
+        # Bare-string replies (no DETAIL:/REASON:) should still produce a usable
+        # detail with an empty reason — graceful fallback.
+        chatbot = FakeChat([
+            "a wonky kettle",
+            "the smell of damp coats",
+            "a tin of antique fishhooks", "gentle Tuesday melancholy",
+            "Edward Hopper diner-light oil painting",
+            _final_payload(),
+        ])
+        await image_prompt_corpse.build(
+            chat_text=CHAT, previous_themes_text="", bios_text="",
+            user_locations="", cat_descriptions="",
+            server_id="srv1", image_store=store, chatbot=chatbot,
+        )
+        assembler_user = chatbot.calls[5]["messages"][1]["content"]
+        assert "a wonky kettle" in assembler_user
+        assert "the smell of damp coats" in assembler_user
+        # No "(picked because: ...)" line when the reason was empty.
+        assert "picked because" not in assembler_user
+
     async def test_falls_back_when_tool_call_missing(self, store, force_decoy):
         chatbot = FakeChat([
             "a wonky kettle", "the smell of damp coats",
@@ -292,3 +338,31 @@ class TestCleanPick:
     def test_empty_safe(self):
         assert image_prompt_corpse._clean_pick("") == ""
         assert image_prompt_corpse._clean_pick("   ") == ""
+
+
+class TestSplitDetailAndReason:
+    def test_parses_two_line_format(self):
+        raw = "DETAIL: a wonky kettle\nREASON: alice's tomato remark felt homely."
+        detail, reason = image_prompt_corpse._split_detail_and_reason(raw)
+        assert detail == "a wonky kettle"
+        assert reason == "alice's tomato remark felt homely."
+
+    def test_is_label_case_insensitive(self):
+        raw = "detail: a kettle\nreason: it felt warm."
+        detail, reason = image_prompt_corpse._split_detail_and_reason(raw)
+        assert detail == "a kettle"
+        assert reason == "it felt warm."
+
+    def test_accepts_because_or_why_as_reason_label(self):
+        raw = "DETAIL: a kettle\nBecause: it felt warm."
+        _, reason = image_prompt_corpse._split_detail_and_reason(raw)
+        assert reason == "it felt warm."
+
+    def test_falls_back_to_first_line_when_unlabeled(self):
+        detail, reason = image_prompt_corpse._split_detail_and_reason("a wonky kettle")
+        assert detail == "a wonky kettle"
+        assert reason == ""
+
+    def test_handles_empty(self):
+        assert image_prompt_corpse._split_detail_and_reason("") == ("", "")
+        assert image_prompt_corpse._split_detail_and_reason("   ") == ("", "")
