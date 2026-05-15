@@ -15,3 +15,6 @@ data/
 .beads*
 .ait*
 .ant/
+
+# Local outputs from scripts/try_chat_image.py — keep the dir, ignore runs.
+samples/output/

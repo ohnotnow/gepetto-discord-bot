@@ -22,6 +22,10 @@ uv run python main.py                        # Run the bot
 uv run pytest                                # Run all tests (56 tests)
 uv run pytest tests/test_helpers.py          # Run single test file
 uv run pytest tests/test_helpers.py::test_function_name -v  # Run single test
+
+# Iterate on the corpse image-prompt pipeline without waiting for the daily cron:
+uv run python scripts/try_chat_image.py samples/sample_chat.txt           # dry-run, free
+uv run python scripts/try_chat_image.py samples/sample_chat.txt --image   # actually generate
 ```
 
 ## Architecture
