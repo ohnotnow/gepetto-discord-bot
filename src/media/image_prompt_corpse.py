@@ -24,7 +24,7 @@ from typing import Optional
 
 logger = logging.getLogger("discord")
 
-DECOY_PROBABILITY = 0.3
+DECOY_PROBABILITY = 0.05
 
 # Stylistic hand-brake: the LLM has clear favourites here and will return them
 # every time unless told otherwise. These are stitched into the style anti-list
@@ -228,35 +228,48 @@ async def _pick_style(chatbot, exclude: list[str]) -> str:
 
 def _assembly_system() -> str:
     return (
-        "You are designing a single visually striking image. You will be given a handful of "
-        "raw ingredients — a mood, a style, one or two small details (each with a brief note "
-        "on why it was picked), and possibly a completely unrelated 'decoy' subject. The "
-        "ingredients came from different sources and may not seem to go together. That is "
-        "intentional.\n\n"
-        "Your job:\n"
-        "1. Use the STYLE wholeheartedly and let it dominate the visual language.\n"
-        "2. Use the MOOD to set the emotional temperature of the scene.\n"
-        "3. Weave and celebrate the DETAILS in as atmospheric or compositional elements — not too literal"
-        "A 'wonky kettle' detail should not produce a still life of a kettle. "
-        "Use each detail's accompanying reason as a hint to the surrounding narrative — "
-        "it tells you why that detail mattered, so you can render it with the right texture "
-        "of feeling rather than as a bare object.\n"
-        "4. If a DECOY subject is provided, that becomes the main subject of the image, "
-        "rendered through the style and mood, with the details as background flavour.\n"
-        "5. If no decoy is provided, invent a subject suggested by the mood — but it must "
-        "be an inhabited scene with depth and environment, never a single object on a "
-        "plain background.\n\n"
+        "You are designing a single visually striking image. You will be given a handful "
+        "of raw ingredients — a mood, a style, one or two small details (each with a "
+        "brief note on why it was picked from a conversation), and occasionally an "
+        "unrelated 'decoy' element. The ingredients came from different sources and "
+        "may not seem to go together. That is intentional.\n\n"
+        "Your job is to build a scene that makes the details feel inevitable. A viewer "
+        "who was part of the original conversation should be able to think back over "
+        "it and recognise, on reflection, why those details became this image — without "
+        "anyone having to caption it. Use the REASONS as your narrative engine: each "
+        "reason describes a situation or feeling around its detail, and the scene you "
+        "invent should inhabit that situation, rendered through the mood and the style.\n\n"
+        "How to use each ingredient:\n"
+        "1. STYLE — dominate the visual language with it. Commit wholeheartedly: if it's "
+        "a printmaker, a film movement, a textile tradition, lean all the way in.\n"
+        "2. MOOD — set the emotional temperature. Let it govern lighting, posture, weather, "
+        "tempo, the air of the room.\n"
+        "3. DETAILS + their reasons — these are the heart of the scene. The reasons tell "
+        "you what each detail meant in context; let them suggest the surrounding moment "
+        "the image inhabits. The details can appear directly — as things people are "
+        "doing, holding, eating, surrounded by — folded naturally into the scene. Avoid "
+        "presenting them as itemised symbols on a desk; render them as part of lived "
+        "action.\n"
+        "4. DECOY (only sometimes provided) — an unexpected element that appears WITHIN "
+        "the scene, not the subject of it. A strange object glimpsed in a corner, an "
+        "impossible event through a window, a creature that does not belong. The scene "
+        "is still driven by the details and their reasons; the decoy is a visual "
+        "interruption, not a takeover.\n\n"
         "Hard rules:\n"
-        "- DO NOT produce a 'flat-lay' arrangement of objects on a desk/table/floor.\n"
-        "- DO NOT produce a corporate stock photo, infographic, or product shot.\n"
-        "- DO NOT label objects in the image - it's lazy like bad political cartoons that need explained.\n"
-        "- DO NOT explain or justify the connections between ingredients. The viewer never "
-        "sees the ingredients list.\n"
-        "- DO NOT quote or paraphrase the reasons in the image. They are private context "
-        "for you, not text to render.\n\n"
+        "- DO NOT produce a 'flat-lay' arrangement of objects on a desk, table, or floor.\n"
+        "- DO NOT produce a corporate stock photo, infographic, product shot, or labelled "
+        "diagram.\n"
+        "- DO NOT label objects in the image — it's lazy, like a bad political cartoon.\n"
+        "- DO NOT render screens, captions, speech bubbles, or signage that spell out what "
+        "the image is 'about'. The image should be about it, not describe it.\n"
+        "- DO NOT quote, caption, or paraphrase the chat or the reasons inside the image. "
+        "The reasons are private context for you, not text to render.\n"
+        "- DO NOT explain or justify the connections between ingredients in your output. "
+        "The viewer never sees the ingredients list.\n\n"
         "Call the generate_image tool with:\n"
-        "- prompt: a vivid, concrete prompt for a state-of-the-art Stable-Diffusion-style image model. "
-        "Describe the scene, the lighting, the composition, the style. 60–180 words.\n"
+        "- prompt: a vivid, concrete prompt for a state-of-the-art Stable-Diffusion-style "
+        "image model. Describe the scene, the lighting, the composition, the style. "
+        "60–180 words.\n"
         "- themes: 3–6 short tag-like phrases describing the key elements / style.\n"
         "- reasoning: 1–3 sentences on how the ingredients shaped the image."
     )
@@ -287,9 +300,11 @@ def _assembly_user(
     parts.append(_format_detail("Detail 1", detail_1, reason_1))
     parts.append(_format_detail("Detail 2", detail_2, reason_2))
     if decoy:
-        parts.append(f"- Decoy subject (use as the main subject): {decoy}")
+        parts.append(
+            f"- Decoy element (an unexpected presence WITHIN the scene, not its subject): {decoy}"
+        )
     else:
-        parts.append("- (No decoy — invent a subject suggested by the mood.)")
+        parts.append("- (No decoy this run — the scene is fully driven by the details and their reasons.)")
 
     today_string = datetime.now().strftime("%Y-%m-%d")
     parts.append("\nCONTEXT (optional flavour — do not depict specific real people):")
