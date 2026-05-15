@@ -22,7 +22,7 @@ import random
 from datetime import datetime
 from typing import Optional
 
-logger = logging.getLogger(__name__)
+logger = logging.getLogger("discord")
 
 DECOY_PROBABILITY = 0.3
 
