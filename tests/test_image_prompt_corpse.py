@@ -308,6 +308,51 @@ class TestBuild:
         # No "(picked because: ...)" line when the reason was empty.
         assert "picked because" not in assembler_user
 
+    async def test_sensitive_topics_guard_present_in_chat_facing_pickers(self, store, force_decoy):
+        """The detail and mood picker system prompts must carry the sensitive-topics
+        guard. History: the original images.py prompt had this guard and it was lost
+        in the corpse refactor — once produced a miscarriage-themed image. Restoring
+        it is a hard requirement, not a polish item."""
+        chatbot = FakeChat([
+            "a wonky kettle", "the smell of damp coats",
+            "a tin of antique fishhooks", "gentle Tuesday melancholy",
+            "Edward Hopper diner-light oil painting",
+            _final_payload(),
+        ])
+        await image_prompt_corpse.build(
+            chat_text=CHAT, previous_themes_text="", bios_text="",
+            user_locations="", cat_descriptions="",
+            server_id="srv1", image_store=store, chatbot=chatbot,
+        )
+        # detail_1 (call 0), detail_2 (call 1), mood (call 3) — each must contain
+        # the sensitive-topics guidance in the *system* prompt.
+        for call_index, label in [(0, "detail_1"), (1, "detail_2"), (3, "mood")]:
+            system_prompt = chatbot.calls[call_index]["messages"][0]["content"]
+            assert "painful or sensitive life events" in system_prompt, (
+                f"Sensitive-topics guard missing from {label} system prompt"
+            )
+            assert "miscarriage" in system_prompt, (
+                f"Sensitive-topics skip list missing miscarriage in {label} prompt"
+            )
+
+    async def test_assembler_has_belt_and_braces_pain_guard(self, store, force_decoy):
+        """Even if a poisoned ingredient slips past the picker, the assembler must
+        be told not to reflect serious pain back into the image."""
+        chatbot = FakeChat([
+            "a wonky kettle", "the smell of damp coats",
+            "a tin of antique fishhooks", "gentle Tuesday melancholy",
+            "Edward Hopper diner-light oil painting",
+            _final_payload(),
+        ])
+        await image_prompt_corpse.build(
+            chat_text=CHAT, previous_themes_text="", bios_text="",
+            user_locations="", cat_descriptions="",
+            server_id="srv1", image_store=store, chatbot=chatbot,
+        )
+        assembler_system = chatbot.calls[5]["messages"][0]["content"]
+        assert "poisoned" in assembler_system
+        assert "never appear cruel or tone-deaf" in assembler_system
+
     async def test_falls_back_when_tool_call_missing(self, store, force_decoy):
         chatbot = FakeChat([
             "a wonky kettle", "the smell of damp coats",
@@ -323,6 +368,210 @@ class TestBuild:
         assert "prose instead of a tool call" in result["prompt"]
         assert result["themes"] == []
         assert result["reasoning"] == ""
+
+
+class TestBuildQuiet:
+    """Quiet-day variant: pickers source from bios + memories, mood from date."""
+
+    def _bios(self):
+        from src.persistence.memory_store import UserBio
+        from datetime import datetime
+        return [
+            UserBio(server_id="srv1", user_id="u1", user_name="Mike",
+                    bio="Collects vintage typewriters. Based in Bath.",
+                    updated_at=datetime.now()),
+            UserBio(server_id="srv1", user_id="u2", user_name="Alice",
+                    bio="German heritage, lives in Madrid. Plays the cello.",
+                    updated_at=datetime.now()),
+        ]
+
+    def _memories(self):
+        from src.persistence.memory_store import Memory
+        from datetime import datetime
+        return [
+            Memory(id=1, server_id="srv1", user_id="u1", user_name="Mike",
+                   memory="recently took up sourdough baking", category="interest",
+                   created_at=datetime.now(), expires_at=None,
+                   last_referenced_at=None, reference_count=0),
+            Memory(id=2, server_id="srv1", user_id="u2", user_name="Alice",
+                   memory="has a new kitten named Whiskers", category="pet_new",
+                   created_at=datetime.now(), expires_at=None,
+                   last_referenced_at=None, reference_count=0),
+        ]
+
+    async def test_returns_assembler_output_shape(self, store, force_decoy):
+        chatbot = FakeChat([
+            "DETAIL: a vintage typewriter collection\nREASON: evocative of slow, deliberate craft.",
+            "DETAIL: the warm tang of sourdough rising\nREASON: tactile, gustatory counterpoint.",
+            "a tin of antique fishhooks",
+            "soft Friday-afternoon stillness",
+            "Edward Hopper diner-light oil painting",
+            _final_payload(),
+        ])
+        result = await image_prompt_corpse.build_quiet(
+            bios=self._bios(), memories=self._memories(),
+            previous_themes_text="", bios_text="",
+            user_locations="", cat_descriptions="",
+            server_id="srv1", image_store=store, chatbot=chatbot,
+        )
+        assert result["prompt"].startswith("A long descriptive scene")
+        assert result["themes"] == ["mood", "style", "detail-1"]
+
+    async def test_pickers_receive_facts_blob_not_chat(self, store, force_decoy):
+        chatbot = FakeChat([
+            "DETAIL: a vintage typewriter collection\nREASON: r1.",
+            "DETAIL: a kitten named Whiskers\nREASON: r2.",
+            "a tin of antique fishhooks",
+            "soft Friday-afternoon stillness",
+            "Edward Hopper diner-light oil painting",
+            _final_payload(),
+        ])
+        await image_prompt_corpse.build_quiet(
+            bios=self._bios(), memories=self._memories(),
+            previous_themes_text="", bios_text="",
+            user_locations="", cat_descriptions="",
+            server_id="srv1", image_store=store, chatbot=chatbot,
+        )
+        # detail_1 (call 0) and detail_2 (call 1) user messages must contain
+        # bio + memory fragments wrapped in <facts>...</facts>.
+        for call_index in (0, 1):
+            facts_user = chatbot.calls[call_index]["messages"][1]["content"]
+            assert "<facts>" in facts_user
+            assert "vintage typewriters" in facts_user
+            assert "sourdough" in facts_user
+
+    async def test_quiet_pickers_carry_sensitive_topics_guard(self, store, force_decoy):
+        chatbot = FakeChat([
+            "DETAIL: a vintage typewriter collection\nREASON: r1.",
+            "DETAIL: a kitten named Whiskers\nREASON: r2.",
+            "a tin of antique fishhooks",
+            "soft Friday-afternoon stillness",
+            "Edward Hopper diner-light oil painting",
+            _final_payload(),
+        ])
+        await image_prompt_corpse.build_quiet(
+            bios=self._bios(), memories=self._memories(),
+            previous_themes_text="", bios_text="",
+            user_locations="", cat_descriptions="",
+            server_id="srv1", image_store=store, chatbot=chatbot,
+        )
+        for call_index, label in [(0, "quiet_detail_1"), (1, "quiet_detail_2")]:
+            system = chatbot.calls[call_index]["messages"][0]["content"]
+            assert "painful or sensitive life events" in system, f"guard missing from {label}"
+            assert "miscarriage" in system
+
+    async def test_quiet_pickers_told_not_to_name_people(self, store, force_decoy):
+        chatbot = FakeChat([
+            "DETAIL: a vintage typewriter collection\nREASON: r1.",
+            "DETAIL: a kitten named Whiskers\nREASON: r2.",
+            "a tin of antique fishhooks",
+            "soft Friday-afternoon stillness",
+            "Edward Hopper diner-light oil painting",
+            _final_payload(),
+        ])
+        await image_prompt_corpse.build_quiet(
+            bios=self._bios(), memories=self._memories(),
+            previous_themes_text="", bios_text="",
+            user_locations="", cat_descriptions="",
+            server_id="srv1", image_store=store, chatbot=chatbot,
+        )
+        for call_index in (0, 1):
+            system = chatbot.calls[call_index]["messages"][0]["content"]
+            assert "WITHOUT naming" in system or "without naming" in system.lower()
+
+    async def test_mood_picker_uses_date_not_chat(self, store, force_decoy):
+        chatbot = FakeChat([
+            "DETAIL: a vintage typewriter collection\nREASON: r1.",
+            "DETAIL: a kitten named Whiskers\nREASON: r2.",
+            "a tin of antique fishhooks",
+            "soft Friday-afternoon stillness",
+            "Edward Hopper diner-light oil painting",
+            _final_payload(),
+        ])
+        await image_prompt_corpse.build_quiet(
+            bios=self._bios(), memories=self._memories(),
+            previous_themes_text="", bios_text="",
+            user_locations="", cat_descriptions="",
+            server_id="srv1", image_store=store, chatbot=chatbot,
+        )
+        # Mood is call index 3 (after detail_1, detail_2, decoy).
+        mood_messages = chatbot.calls[3]["messages"]
+        system = mood_messages[0]["content"]
+        user = mood_messages[1]["content"]
+        assert "No chat" in system or "no chat to read" in system.lower()
+        assert "Date:" in user
+
+    async def test_persists_picks_for_future_exclusion(self, store, force_decoy):
+        chatbot = FakeChat([
+            "DETAIL: a vintage typewriter collection\nREASON: r1.",
+            "DETAIL: a kitten named Whiskers\nREASON: r2.",
+            "a tin of antique fishhooks",
+            "soft Friday-afternoon stillness",
+            "Edward Hopper diner-light oil painting",
+            _final_payload(),
+        ])
+        await image_prompt_corpse.build_quiet(
+            bios=self._bios(), memories=self._memories(),
+            previous_themes_text="", bios_text="",
+            user_locations="", cat_descriptions="",
+            server_id="srv1", image_store=store, chatbot=chatbot,
+        )
+        details_saved = store.get_recent_slots("srv1", "detail")
+        assert "a vintage typewriter collection" in details_saved
+        assert "a kitten named Whiskers" in details_saved
+        assert store.get_recent_slots("srv1", "decoy") == ["a tin of antique fishhooks"]
+        assert store.get_recent_slots("srv1", "mood") == ["soft Friday-afternoon stillness"]
+
+    async def test_handles_empty_bios_and_memories(self, store, force_decoy):
+        """build_quiet still runs with empty inputs; caller is responsible for fallback."""
+        chatbot = FakeChat([
+            "DETAIL: inventing something\nREASON: nothing to grip on.",
+            "DETAIL: a vague feeling\nREASON: same.",
+            "a tin of antique fishhooks",
+            "soft Friday-afternoon stillness",
+            "Edward Hopper diner-light oil painting",
+            _final_payload(),
+        ])
+        result = await image_prompt_corpse.build_quiet(
+            bios=[], memories=[],
+            previous_themes_text="", bios_text="",
+            user_locations="", cat_descriptions="",
+            server_id="srv1", image_store=store, chatbot=chatbot,
+        )
+        assert result["prompt"]
+        facts_user = chatbot.calls[0]["messages"][1]["content"]
+        assert "<facts>" in facts_user  # tag present even if body is empty
+
+
+class TestFormatQuietFacts:
+    def test_deduplicates_case_insensitively(self):
+        from src.persistence.memory_store import UserBio, Memory
+        from datetime import datetime
+        bios = [
+            UserBio(server_id="s", user_id="u1", user_name="A",
+                    bio="Plays the cello", updated_at=datetime.now()),
+            UserBio(server_id="s", user_id="u2", user_name="B",
+                    bio="plays the cello", updated_at=datetime.now()),  # dup
+        ]
+        out = image_prompt_corpse.format_quiet_facts(bios, [])
+        assert out.lower().count("plays the cello") == 1
+
+    def test_handles_empty(self):
+        assert image_prompt_corpse.format_quiet_facts([], []) == ""
+        assert image_prompt_corpse.format_quiet_facts(None, None) == ""
+
+    def test_mixes_bios_and_memories(self):
+        from src.persistence.memory_store import UserBio, Memory
+        from datetime import datetime
+        bios = [UserBio(server_id="s", user_id="u1", user_name="A",
+                        bio="German heritage", updated_at=datetime.now())]
+        mems = [Memory(id=1, server_id="s", user_id="u1", user_name="A",
+                       memory="has a new kitten", category="pet_new",
+                       created_at=datetime.now(), expires_at=None,
+                       last_referenced_at=None, reference_count=0)]
+        out = image_prompt_corpse.format_quiet_facts(bios, mems)
+        assert "German heritage" in out
+        assert "has a new kitten" in out
 
 
 class TestCleanPick:

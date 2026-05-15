@@ -51,6 +51,27 @@ EVERGREEN_DECOY_BANS = [
     "a hot air balloon",
 ]
 
+# Belt-and-braces guard inserted into every stage that reads chat. The
+# extraction-time guard in src/tasks/memories.py is the front door; this is
+# the bouncer at the corpse pipeline. Worded to match EXTRACTION_PROMPT so
+# both filters agree on what "sensitive" means.
+#
+# History: the original (pre-corpse) image prompt in src/media/images.py had a
+# similar guard. It once produced an image themed around someone's miscarriage
+# — caught and deleted before the user saw it. The corpse refactor dropped the
+# guard. Do not drop it again.
+SENSITIVE_TOPICS_GUARD = (
+    "\n\nNEVER pick anything referencing painful or sensitive life events. "
+    "Skip: death or serious illness of a loved one (person or pet), bereavement, "
+    "miscarriage or pregnancy loss, abuse or assault, trauma, mental health "
+    "crises, breakups or divorce or family estrangement, job loss, financial "
+    "hardship, legal trouble, serious medical diagnoses. If a cheerful bot "
+    "surfacing this in an image later would be cruel or tone-deaf, skip it and "
+    "pick something else from the chat. Mundane grumbles (a cold, a bad day, "
+    "tech problems, minor annoyances) are fine — the rule is about serious "
+    "pain, not everyday friction."
+)
+
 
 def _exclude_clause(label: str, items: list[str]) -> str:
     if not items:
@@ -158,6 +179,7 @@ async def _pick_detail(chatbot, chat_text: str, exclude: list[str]) -> tuple[str
         "DETAIL: <short phrase, max 12 words>\n"
         "REASON: <one sentence (max 25 words) on why you picked it — what in the "
         "chat made it interesting, evocative, or worth noticing>"
+        + SENSITIVE_TOPICS_GUARD
     )
     user = f"<chat>\n{chat_text}\n</chat>"
     user += _exclude_clause("Recently picked details to avoid (pick something different)", exclude)
@@ -176,6 +198,7 @@ async def _pick_second_detail(
         "DETAIL: <short phrase, max 10 words>\n"
         "REASON: <one sentence (max 25 words) on why you picked it and how it "
         "complements the first detail by a different sense/register>"
+        + SENSITIVE_TOPICS_GUARD
     )
     user = (
         f"<chat>\n{chat_text}\n</chat>\n\n"
@@ -206,10 +229,103 @@ async def _pick_mood(chatbot, chat_text: str, exclude: list[str]) -> str:
         "Examples: 'a small Tuesday triumph', 'gentle Sunday melancholy', 'caffeinated "
         "bickering', 'companionable silence', 'the lull before a deadline'. Reply with just "
         "the mood phrase (max 12 words), no preamble."
+        + SENSITIVE_TOPICS_GUARD
+        + " If the chat is dominated by a painful event, pick a gentle, unrelated mood "
+        "(quiet attention, a soft Wednesday, companionable stillness) rather than naming "
+        "the heaviness — the image must not echo someone's pain back at them."
     )
     user = f"<chat>\n{chat_text}\n</chat>"
     user += _exclude_clause("Recently picked moods to avoid", exclude)
     return await _pick(chatbot, system, user, stage="mood")
+
+
+def format_quiet_facts(bios, memories) -> str:
+    """Flatten bios + memories into an anonymised facts blob for the quiet-day picker.
+
+    Bios and memories may contain user names; the picker is also told not to use
+    them, but stripping at the input layer is the cheaper guard. Returns a
+    deduplicated, bulleted list of fact-phrases — empty string if nothing to feed.
+    """
+    fragments: list[str] = []
+    for bio in bios or []:
+        text = getattr(bio, "bio", "") or ""
+        text = text.strip()
+        if text:
+            fragments.append(text)
+    for mem in memories or []:
+        text = getattr(mem, "memory", "") or ""
+        text = text.strip()
+        if text:
+            fragments.append(text)
+
+    seen: set[str] = set()
+    unique: list[str] = []
+    for frag in fragments:
+        key = frag.lower()
+        if key in seen:
+            continue
+        seen.add(key)
+        unique.append(frag)
+    return "\n".join(f"- {f}" for f in unique)
+
+
+async def _pick_quiet_detail(chatbot, facts_text: str, exclude: list[str]) -> tuple[str, str]:
+    system = (
+        "You read a list of small, anonymised facts about members of a Discord server "
+        "(hobbies, heritage, recent events, quirks, locations). Pick ONE concrete "
+        "detail from the list — something visually evocative or texturally interesting "
+        "that an image could be built around. "
+        "Write the detail WITHOUT naming or implying any specific person: say "
+        "'a vintage typewriter collection' or 'recent sourdough adventures', not "
+        "'Mike's typewriters' or 'Alice's sourdough'. "
+        "Reply on TWO lines, exactly in this format:\n"
+        "DETAIL: <short phrase, max 12 words, no names>\n"
+        "REASON: <one sentence (max 25 words) on why you picked it — what about "
+        "this fact felt evocative, atmospheric, or worth building a scene around>"
+        + SENSITIVE_TOPICS_GUARD
+    )
+    user = f"<facts>\n{facts_text}\n</facts>"
+    user += _exclude_clause("Recently picked details to avoid (pick something different)", exclude)
+    return await _pick_detail_with_reason(chatbot, system, user, stage="quiet_detail_1")
+
+
+async def _pick_quiet_second_detail(
+    chatbot, facts_text: str, first_detail: str, exclude: list[str]
+) -> tuple[str, str]:
+    system = (
+        "You read a list of small, anonymised facts about members of a Discord server. "
+        "Pick ONE more detail — but it must involve a DIFFERENT SENSE OR REGISTER "
+        "than the detail already chosen. If the first was a thing, pick a feeling, "
+        "texture, or activity. If the first was visual, pick something auditory, "
+        "tactile, olfactory, or emotional. "
+        "Write the detail WITHOUT naming any specific person. "
+        "Reply on TWO lines, exactly in this format:\n"
+        "DETAIL: <short phrase, max 10 words, no names>\n"
+        "REASON: <one sentence (max 25 words) on why you picked it and how it "
+        "complements the first detail by a different sense/register>"
+        + SENSITIVE_TOPICS_GUARD
+    )
+    user = (
+        f"<facts>\n{facts_text}\n</facts>\n\n"
+        f"Already chosen first detail: {first_detail}\n"
+        f"Pick a second detail in a DIFFERENT sense/register from the first."
+    )
+    user += _exclude_clause("Recently picked details to avoid", exclude)
+    return await _pick_detail_with_reason(chatbot, system, user, stage="quiet_detail_2")
+
+
+async def _pick_date_mood(chatbot, date_string: str, exclude: list[str]) -> str:
+    system = (
+        "You are picking the EMOTIONAL TEMPERATURE for an image. There is no chat to "
+        "read today — just a date. Pick a mood that suits the day-of-week, the season, "
+        "and the time of year. Aim for something evocative and specific. Examples: "
+        "'a damp Sunday-evening calm', 'sharp Wednesday clarity', 'the soft exhaustion "
+        "of a Friday afternoon', 'small-hours stillness'. Reply with just the mood "
+        "phrase (max 12 words), no preamble."
+    )
+    user = f"Date: {date_string}"
+    user += _exclude_clause("Recently picked moods to avoid", exclude)
+    return await _pick(chatbot, system, user, stage="quiet_mood")
 
 
 async def _pick_style(chatbot, exclude: list[str]) -> str:
@@ -265,7 +381,13 @@ def _assembly_system() -> str:
         "- DO NOT quote, caption, or paraphrase the chat or the reasons inside the image. "
         "The reasons are private context for you, not text to render.\n"
         "- DO NOT explain or justify the connections between ingredients in your output. "
-        "The viewer never sees the ingredients list.\n\n"
+        "The viewer never sees the ingredients list.\n"
+        "- IF any detail, reason, or mood appears to reference serious personal pain "
+        "(death, bereavement, miscarriage, illness, abuse, breakup, mental health crisis, "
+        "job loss, financial hardship, etc.) treat that ingredient as poisoned: invent a "
+        "gentle, unrelated scene driven by the style and the remaining ingredients, and "
+        "do NOT reflect that pain back at the viewer in any form. The image must never "
+        "appear cruel or tone-deaf in retrospect.\n\n"
         "Call the generate_image tool with:\n"
         "- prompt: a vivid, concrete prompt for a state-of-the-art Stable-Diffusion-style "
         "image model. Describe the scene, the lighting, the composition, the style. "
@@ -472,6 +594,88 @@ async def build(
 
     # Persist picks for future anti-lists. Done after assembly so a failure
     # in assembly doesn't poison the exclusion lists.
+    if detail_1:
+        image_store.save_recent_slot(server_id, "detail", detail_1)
+    if detail_2:
+        image_store.save_recent_slot(server_id, "detail", detail_2)
+    if decoy:
+        image_store.save_recent_slot(server_id, "decoy", decoy)
+    if mood:
+        image_store.save_recent_slot(server_id, "mood", mood)
+    if style:
+        image_store.save_recent_slot(server_id, "style", style)
+
+    return result
+
+
+async def build_quiet(
+    *,
+    bios,
+    memories,
+    previous_themes_text: str,
+    bios_text: str,
+    user_locations: str,
+    cat_descriptions: str,
+    server_id: str,
+    image_store,
+    chatbot,
+) -> dict:
+    """
+    Quiet-day variant of build(). Sources detail material from anonymised user
+    bios + memories instead of chat, and derives mood from the date.
+
+    Shares the decoy, style, and assembler stages with build(), so the anti-list
+    and style rotation discipline carry over. Returns the same {prompt, themes,
+    reasoning} shape.
+
+    Caller is responsible for falling back to a chat-free path when bios and
+    memories are both empty — this function will still run, but the picker has
+    nothing to grip onto.
+    """
+    facts_text = format_quiet_facts(bios, memories)
+    today_string = datetime.now().strftime("%A %d %B %Y")
+
+    recent_details = image_store.get_recent_slots(server_id, "detail")
+    recent_decoys = image_store.get_recent_slots(server_id, "decoy")
+    recent_moods = image_store.get_recent_slots(server_id, "mood")
+    recent_styles = image_store.get_recent_slots(server_id, "style")
+
+    logger.info(
+        "[corpse:start:quiet] server=%s date=%r facts_lines=%d exclude_sizes detail=%d decoy=%d mood=%d style=%d",
+        server_id, today_string, len(facts_text.splitlines()) if facts_text else 0,
+        len(recent_details), len(recent_decoys), len(recent_moods), len(recent_styles),
+    )
+
+    detail_1, reason_1 = await _pick_quiet_detail(chatbot, facts_text, recent_details)
+    detail_2, reason_2 = await _pick_quiet_second_detail(
+        chatbot, facts_text, detail_1,
+        recent_details + [detail_1] if detail_1 else recent_details,
+    )
+
+    decoy: Optional[str] = None
+    if random.random() < DECOY_PROBABILITY:
+        decoy = await _pick_decoy(chatbot, recent_decoys)
+    else:
+        logger.info("[corpse:decoy] skipped this run (probability %.2f)", DECOY_PROBABILITY)
+
+    mood = await _pick_date_mood(chatbot, today_string, recent_moods)
+    style = await _pick_style(chatbot, recent_styles)
+
+    result = await _assemble(
+        chatbot,
+        detail_1=detail_1,
+        reason_1=reason_1,
+        detail_2=detail_2,
+        reason_2=reason_2,
+        decoy=decoy,
+        mood=mood,
+        style=style,
+        user_locations=user_locations,
+        cat_descriptions=cat_descriptions,
+        bios_text=bios_text,
+        previous_themes_text=previous_themes_text,
+    )
+
     if detail_1:
         image_store.save_recent_slot(server_id, "detail", detail_1)
     if detail_2:

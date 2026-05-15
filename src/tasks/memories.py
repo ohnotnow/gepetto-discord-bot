@@ -209,7 +209,13 @@ Rules:
 - If new info contradicts old info, prefer the new info
 - Drop anything too generic or speculative
 - Keep it factual and concise
-- Return ONLY the bio text, nothing else'''
+- Return ONLY the bio text, nothing else
+
+Safety: if any incoming fact references serious personal pain (death or bereavement,
+miscarriage or pregnancy loss, abuse or trauma, mental health crises, breakups or
+divorce, job loss, financial hardship, legal trouble, serious medical diagnoses),
+silently drop it from the bio. Such facts should have been filtered upstream; treat
+this as belt-and-braces. Mundane grumbles (a cold, a bad day) are fine.'''
 
 
 async def synthesise_bio(

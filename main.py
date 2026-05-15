@@ -1055,8 +1055,29 @@ async def make_chat_image():
             display_prompt = "Unknown"
         else:
             if quiet_day:
-                combined_chat = images.get_creative_image_prompt(previous_themes_text, bios_text)
-                decoded_response = await images.get_image_response(combined_chat, chatbot)
+                # Quiet-day corpse pipeline: pickers source detail material from
+                # anonymised bios + memories, mood comes from the date. Falls back
+                # to the legacy "make something up from nothing" path if the server
+                # has no bios or memories collected yet.
+                all_memories = []
+                for bio in all_bios:
+                    all_memories.extend(memory_store.get_user_memories(server_id, bio.user_id))
+                if all_bios or all_memories:
+                    decoded_response = await image_prompt_corpse.build_quiet(
+                        bios=all_bios,
+                        memories=all_memories,
+                        previous_themes_text=previous_themes_text,
+                        bios_text=bios_text,
+                        user_locations=os.getenv("USER_LOCATIONS", "").strip(),
+                        cat_descriptions=os.getenv("CAT_DESCRIPTIONS", "").strip(),
+                        server_id=server_id,
+                        image_store=image_store,
+                        chatbot=chatbot,
+                    )
+                else:
+                    logger.info("Quiet day with no bios/memories — falling back to legacy creative path")
+                    combined_chat = images.get_creative_image_prompt(previous_themes_text, bios_text)
+                    decoded_response = await images.get_image_response(combined_chat, chatbot)
             else:
                 # Blind-pass "exquisite corpse" pipeline — see
                 # src/media/image_prompt_corpse.py and ant note gepettodiscordbot-AkRXV.
