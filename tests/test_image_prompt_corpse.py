@@ -391,6 +391,87 @@ class TestBuild:
         assembler_user = chatbot.calls[-1]["messages"][1]["content"]
         assert "Liz Truss" not in assembler_user
 
+    async def test_news_decoy_fires_when_bulletins_available(self, store, force_decoy):
+        """When news_bulletins are passed AND the decoy probability fires, the
+        decoy is sourced from the news picker, not the random-thing picker.
+        See ant gepettodiscordbot-Ed6UZ."""
+        from src.content.news import Bulletin
+        bulletins = [
+            Bulletin(heading="UK politics", body="Burnham moves.", sources=[]),
+            Bulletin(heading="In tech", body="A Waymo goes for a swim.", sources=[]),
+        ]
+        chatbot = FakeChat([
+            "DETAIL: a wonky kettle\nREASON: r1.",
+            "DETAIL: the smell of damp coats\nREASON: r2.",
+            "a chancellor with tired eyes",  # news decoy pick
+            "gentle Tuesday melancholy",
+            "Edward Hopper diner-light oil painting",
+            _final_payload(),
+        ])
+        await image_prompt_corpse.build(
+            chat_text=CHAT, news_bulletins=bulletins,
+            previous_themes_text="", bios_text="",
+            user_locations="", cat_descriptions="",
+            server_id="srv1", image_store=store, chatbot=chatbot,
+        )
+        # The decoy call (index 2) must be the news picker — its user message
+        # contains the bulletin content, NOT the random-thing prompt.
+        decoy_user = chatbot.calls[2]["messages"][1]["content"]
+        assert "<news>" in decoy_user
+        assert "Burnham moves" in decoy_user
+        assert "Waymo" in decoy_user
+        # The picked decoy went into the decoy anti-list slot.
+        assert "a chancellor with tired eyes" in store.get_recent_slots("srv1", "decoy")
+
+    async def test_news_decoy_picker_carries_sensitive_topics_guard(self, store, force_decoy):
+        """Defence in depth: even though synthesis-time filtering already
+        removed grim items, the news decoy picker also carries the guard.
+        See ant gepettodiscordbot-sYVTv for why all chat/bio/news-reading
+        stages must carry it."""
+        from src.content.news import Bulletin
+        bulletins = [Bulletin(heading="x", body="y", sources=[])]
+        chatbot = FakeChat([
+            "DETAIL: a kettle\nREASON: r.",
+            "DETAIL: damp coats\nREASON: r.",
+            "a chancellor with tired eyes",
+            "gentle Tuesday melancholy",
+            "Edward Hopper diner-light oil painting",
+            _final_payload(),
+        ])
+        await image_prompt_corpse.build(
+            chat_text=CHAT, news_bulletins=bulletins,
+            previous_themes_text="", bios_text="",
+            user_locations="", cat_descriptions="",
+            server_id="srv1", image_store=store, chatbot=chatbot,
+        )
+        system = chatbot.calls[2]["messages"][0]["content"]
+        assert "painful or sensitive life events" in system
+        assert "miscarriage" in system
+
+    async def test_falls_back_to_random_decoy_when_bulletins_empty(self, store, force_decoy):
+        """An empty news_bulletins (network blip, empty cache) falls through to
+        the random-thing decoy picker — original build() behaviour preserved."""
+        chatbot = FakeChat([
+            "DETAIL: a kettle\nREASON: r.",
+            "DETAIL: damp coats\nREASON: r.",
+            "a tin of antique fishhooks",  # random-thing pick
+            "gentle Tuesday melancholy",
+            "Edward Hopper diner-light oil painting",
+            _final_payload(),
+        ])
+        await image_prompt_corpse.build(
+            chat_text=CHAT, news_bulletins=[],
+            previous_themes_text="", bios_text="",
+            user_locations="", cat_descriptions="",
+            server_id="srv1", image_store=store, chatbot=chatbot,
+        )
+        decoy_system = chatbot.calls[2]["messages"][0]["content"]
+        # Random-thing picker prompt, not the news one.
+        assert "wildly unrelated random thing" not in decoy_system or "random concrete thing" in decoy_system
+        decoy_user = chatbot.calls[2]["messages"][1]["content"]
+        assert "<news>" not in decoy_user
+        assert "wildly unrelated random thing" in decoy_user
+
     async def test_falls_back_when_tool_call_missing(self, store, force_decoy):
         chatbot = FakeChat([
             "a wonky kettle", "the smell of damp coats",
@@ -580,6 +661,39 @@ class TestBuildQuiet:
         facts_user = chatbot.calls[0]["messages"][1]["content"]
         assert "<facts>" in facts_user  # tag present even if body is empty
 
+    async def test_news_bulletins_reach_quiet_pickers(self, store, force_decoy):
+        """News bulletins passed via the news_bulletins kwarg show up in the
+        facts blob the quiet pickers see. The picker's system prompt has also
+        been broadened to mention news so the LLM knows what it's looking at.
+        See ant gepettodiscordbot-mjBCN."""
+        from src.content.news import Bulletin
+        bulletins = [
+            Bulletin(heading="UK politics", body="Burnham makes his move.", sources=[]),
+            Bulletin(heading="In tech", body="A Waymo goes for a swim.", sources=[]),
+        ]
+        chatbot = FakeChat([
+            "DETAIL: a chancellor with tired eyes\nREASON: news mood.",
+            "DETAIL: a robotaxi nosed into floodwater\nREASON: same news.",
+            "a tin of antique fishhooks",
+            "soft Friday-afternoon stillness",
+            "Edward Hopper diner-light oil painting",
+            _final_payload(),
+        ])
+        await image_prompt_corpse.build_quiet(
+            bios=self._bios(), memories=self._memories(),
+            news_bulletins=bulletins,
+            previous_themes_text="", bios_text="",
+            user_locations="", cat_descriptions="",
+            server_id="srv1", image_store=store, chatbot=chatbot,
+        )
+        for call_index in (0, 1):
+            user = chatbot.calls[call_index]["messages"][1]["content"]
+            assert "Burnham makes his move" in user
+            assert "Waymo goes for a swim" in user
+            assert "Today's news" in user
+            system = chatbot.calls[call_index]["messages"][0]["content"]
+            assert "news" in system.lower(), "picker framing should mention news"
+
 
 class TestFormatQuietFacts:
     def test_deduplicates_case_insensitively(self):
@@ -610,6 +724,30 @@ class TestFormatQuietFacts:
         out = image_prompt_corpse.format_quiet_facts(bios, mems)
         assert "German heritage" in out
         assert "has a new kitten" in out
+
+    def test_news_bulletins_included_with_label(self):
+        """Bulletins are mixed into the facts blob prefixed 'Today's news:' so
+        the picker can see them as a distinct category alongside server facts.
+        See ant gepettodiscordbot-mjBCN for the rationale."""
+        from src.content.news import Bulletin
+        bulletins = [
+            Bulletin(heading="UK politics", body="Burnham makes his move.", sources=[]),
+            Bulletin(heading="In tech", body="A Waymo goes for a swim.", sources=[]),
+        ]
+        out = image_prompt_corpse.format_quiet_facts([], [], news_bulletins=bulletins)
+        assert "Today's news (UK politics): Burnham makes his move." in out
+        assert "Today's news (In tech): A Waymo goes for a swim." in out
+
+    def test_news_bulletins_optional(self):
+        """Existing callers that don't pass news_bulletins must keep working."""
+        out = image_prompt_corpse.format_quiet_facts([], [])
+        assert out == ""
+
+    def test_bulletin_without_heading_still_included(self):
+        """A bulletin with only a body still gets a 'Today's news:' label."""
+        bulletin = SimpleNamespace(heading="", body="something happened")
+        out = image_prompt_corpse.format_quiet_facts([], [], news_bulletins=[bulletin])
+        assert "Today's news: something happened" in out
 
 
 class TestCleanPick:

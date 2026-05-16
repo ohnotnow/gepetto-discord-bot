@@ -23,6 +23,12 @@ HORROR_CHAT_COOLDOWN_HOURS = 8
 LIZ_TRUSS_PROBABILITY = 0.05
 ALTERNATE_PROMPT_PROBABILITY = 0.1
 
+# News bulletin cache TTL. The bulletins are global (server-agnostic) and the
+# fetch+synthesise pipeline is slow + LLM-costed, so we cache the latest fetch
+# and reuse it across all servers for this many hours before refreshing. See
+# ait gepetto-discord-bot-YHETx.
+NEWS_CACHE_TTL_HOURS = 3
+
 # Minimum messages required
 MIN_MESSAGES_FOR_RANDOM_CHAT = 5
 MIN_MESSAGES_FOR_CHAT_IMAGE = 2

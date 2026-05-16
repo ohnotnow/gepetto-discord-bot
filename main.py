@@ -26,14 +26,14 @@ from src.tools.definitions import tool_list, search_url_history_tool, catch_up_t
 from src.media import images, images_direct, image_prompt_corpse, replicate, sora, vlm, get_image_model
 
 # Content
-from src.content import summary, weather, sentry, discogs
+from src.content import summary, weather, sentry, discogs, news
 
 # Tasks
 from src.tasks import birthdays
 from src.tasks import memories as memory_tasks
 
 # Persistence
-from src.persistence import ImageStore, MemoryStore, UrlStore, ActivityStore, ReminderStore
+from src.persistence import ImageStore, MemoryStore, UrlStore, ActivityStore, ReminderStore, NewsStore
 from src.persistence.url_store import rerank
 
 # Embeddings
@@ -149,6 +149,7 @@ memory_store = MemoryStore()
 url_store = UrlStore()
 activity_store = ActivityStore()
 reminder_store = ReminderStore()
+news_store = NewsStore()
 
 # Reminders feature
 ENABLE_REMINDERS = os.getenv("ENABLE_REMINDERS", "false").lower() == "true"
@@ -1056,16 +1057,26 @@ async def make_chat_image():
         else:
             if quiet_day:
                 # Quiet-day corpse pipeline: pickers source detail material from
-                # anonymised bios + memories, mood comes from the date. Falls back
-                # to the legacy "make something up from nothing" path if the server
-                # has no bios or memories collected yet.
+                # anonymised bios + memories + today's news bulletins, mood comes
+                # from the date. Falls back to the legacy "make something up from
+                # nothing" path only if all three ingredient sources are empty.
+                # See ant gepettodiscordbot-mjBCN for the news-on-quiet-days decision.
                 all_memories = []
                 for bio in all_bios:
                     all_memories.extend(memory_store.get_user_memories(server_id, bio.user_id))
-                if all_bios or all_memories:
+
+                try:
+                    news_bulletins = await news.get_news_bulletins(chatbot, news_store=news_store)
+                    logger.info(f"Quiet-day news fetch: {len(news_bulletins)} bulletins")
+                except Exception as exc:
+                    logger.warning(f"Quiet-day news fetch failed ({exc}); proceeding without news")
+                    news_bulletins = []
+
+                if all_bios or all_memories or news_bulletins:
                     decoded_response = await image_prompt_corpse.build_quiet(
                         bios=all_bios,
                         memories=all_memories,
+                        news_bulletins=news_bulletins,
                         previous_themes_text=previous_themes_text,
                         bios_text=bios_text,
                         user_locations=os.getenv("USER_LOCATIONS", "").strip(),
@@ -1075,16 +1086,27 @@ async def make_chat_image():
                         chatbot=chatbot,
                     )
                 else:
-                    logger.info("Quiet day with no bios/memories — falling back to legacy creative path")
+                    logger.info("Quiet day with no bios/memories/news — falling back to legacy creative path")
                     combined_chat = images.get_creative_image_prompt(previous_themes_text, bios_text)
                     decoded_response = await images.get_image_response(combined_chat, chatbot)
             else:
                 # Blind-pass "exquisite corpse" pipeline — see
                 # src/media/image_prompt_corpse.py and ant note gepettodiscordbot-AkRXV.
+                # News bulletins go into the decoy slot when the probability
+                # fires (see ant gepettodiscordbot-Ed6UZ). Fetch wrapped in
+                # try/except so a fetch blip falls back to the random-thing
+                # decoy rather than killing the image.
                 # To revert to the legacy single-pass distill, comment out the
                 # corpse call and uncomment the two lines beneath it.
+                try:
+                    chat_news_bulletins = await news.get_news_bulletins(chatbot, news_store=news_store)
+                except Exception as exc:
+                    logger.warning(f"Chat-day news fetch failed ({exc}); proceeding without news")
+                    chat_news_bulletins = []
+
                 decoded_response = await image_prompt_corpse.build(
                     chat_text=chat_text,
+                    news_bulletins=chat_news_bulletins,
                     previous_themes_text=previous_themes_text,
                     bios_text=bios_text,
                     user_locations=os.getenv("USER_LOCATIONS", "").strip(),

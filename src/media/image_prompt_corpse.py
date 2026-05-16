@@ -233,6 +233,36 @@ async def _pick_decoy(chatbot, exclude: list[str]) -> str:
     return await _pick(chatbot, system, user, stage="decoy", temperature=1.2)
 
 
+async def _pick_news_decoy(chatbot, news_bulletins, exclude: list[str]) -> str:
+    """News-flavoured variant of _pick_decoy: picks one concrete phrase
+    inspired by today's news bulletins, abstracted to picker-shape so the
+    assembler can drop it into a scene as flavour rather than as a subject.
+
+    Shares slot_kind='decoy' with the random-thing picker — anti-list discipline
+    rotates news anchors and random decoys together. See ant
+    gepettodiscordbot-Ed6UZ for the design rationale.
+    """
+    full_exclude = EVERGREEN_DECOY_BANS + exclude
+    bulletins_text = "\n".join(
+        f"- {getattr(b, 'heading', '')}: {getattr(b, 'body', '')}"
+        for b in news_bulletins
+    )
+    system = (
+        "Today's news bulletins are below. Pick ONE short concrete visual phrase "
+        "inspired by them — an object, a moment, a posture, a scene-fragment, a "
+        "texture, a piece of weather. Evoke the news ABSTRACTLY rather than "
+        "depicting it literally: say 'a chancellor with tired eyes' or 'a robotaxi "
+        "nosed into floodwater', NOT 'Andy Burnham at the despatch box' or 'a "
+        "labelled news anchor'. The phrase will become an unexpected element WITHIN "
+        "a wider image — not the subject of it — so pick a single thing or moment, "
+        "not a whole scene. Reply with just the phrase (max 10 words), no preamble."
+        + SENSITIVE_TOPICS_GUARD
+    )
+    user = f"<news>\n{bulletins_text}\n</news>"
+    user += _exclude_clause("Forbidden (overused or recently used)", full_exclude)
+    return await _pick(chatbot, system, user, stage="news_decoy", temperature=1.0)
+
+
 async def _pick_mood(chatbot, chat_text: str, exclude: list[str]) -> str:
     system = (
         "You read a chat conversation and describe its EMOTIONAL TEMPERATURE in one short "
@@ -250,12 +280,17 @@ async def _pick_mood(chatbot, chat_text: str, exclude: list[str]) -> str:
     return await _pick(chatbot, system, user, stage="mood")
 
 
-def format_quiet_facts(bios, memories) -> str:
-    """Flatten bios + memories into an anonymised facts blob for the quiet-day picker.
+def format_quiet_facts(bios, memories, news_bulletins=None) -> str:
+    """Flatten bios + memories + optional news bulletins into an anonymised facts
+    blob for the quiet-day picker.
 
     Bios and memories may contain user names; the picker is also told not to use
-    them, but stripping at the input layer is the cheaper guard. Returns a
-    deduplicated, bulleted list of fact-phrases — empty string if nothing to feed.
+    them, but stripping at the input layer is the cheaper guard. News bulletins
+    are prefixed "Today's news:" so the picker can see them as a distinct
+    category alongside the server-flavoured items. Returns a deduplicated,
+    bulleted list of fact-phrases — empty string if nothing to feed.
+
+    See ant gepettodiscordbot-mjBCN for the news-on-quiet-path decision.
     """
     fragments: list[str] = []
     for bio in bios or []:
@@ -268,6 +303,12 @@ def format_quiet_facts(bios, memories) -> str:
         text = text.strip()
         if text:
             fragments.append(text)
+    for bulletin in news_bulletins or []:
+        heading = (getattr(bulletin, "heading", "") or "").strip()
+        body = (getattr(bulletin, "body", "") or "").strip()
+        if body:
+            label = f"Today's news ({heading}): {body}" if heading else f"Today's news: {body}"
+            fragments.append(label)
 
     seen: set[str] = set()
     unique: list[str] = []
@@ -282,13 +323,15 @@ def format_quiet_facts(bios, memories) -> str:
 
 async def _pick_quiet_detail(chatbot, facts_text: str, exclude: list[str]) -> tuple[str, str]:
     system = (
-        "You read a list of small, anonymised facts about members of a Discord server "
-        "(hobbies, heritage, recent events, quirks, locations). Pick ONE concrete "
-        "detail from the list — something visually evocative or texturally interesting "
+        "You read a list of small facts. Some are about members of a Discord server "
+        "(hobbies, heritage, recent events, quirks, locations). Some, prefixed "
+        "'Today's news:', summarise current events. Pick ONE concrete detail from "
+        "anywhere in the list — something visually evocative or texturally interesting "
         "that an image could be built around. "
         "Write the detail WITHOUT naming or implying any specific person: say "
-        "'a vintage typewriter collection' or 'recent sourdough adventures', not "
-        "'Mike's typewriters' or 'Alice's sourdough'. "
+        "'a vintage typewriter collection' or 'a chancellor with tired eyes' or "
+        "'a robotaxi nosed into floodwater', not 'Mike's typewriters' or "
+        "'Andy Burnham at the despatch box'. "
         "Reply on TWO lines, exactly in this format:\n"
         "DETAIL: <short phrase, max 12 words, no names>\n"
         "REASON: <one sentence (max 25 words) on why you picked it — what about "
@@ -304,7 +347,8 @@ async def _pick_quiet_second_detail(
     chatbot, facts_text: str, first_detail: str, exclude: list[str]
 ) -> tuple[str, str]:
     system = (
-        "You read a list of small, anonymised facts about members of a Discord server. "
+        "You read a list of small facts about members of a Discord server and "
+        "today's news (the latter prefixed 'Today's news:'). "
         "Pick ONE more detail — but it must involve a DIFFERENT SENSE OR REGISTER "
         "than the detail already chosen. If the first was a thing, pick a feeling, "
         "texture, or activity. If the first was visual, pick something auditory, "
@@ -559,12 +603,20 @@ async def build(
     server_id: str,
     image_store,
     chatbot,
+    news_bulletins=None,
 ) -> dict:
     """
     Run the blind-pass pipeline and return {prompt, themes, reasoning}.
 
     Matches the return shape of images.get_image_response() so the call site
     can swap one for the other with no other changes.
+
+    `news_bulletins` (optional): list of objects with .heading and .body
+    attributes (typically src.content.news.Bulletin). When the decoy
+    probability fires AND bulletins are available, the decoy is sourced
+    from the news instead of the random-thing picker. Same anti-list
+    (slot_kind='decoy'), same assembler framing — see ant
+    gepettodiscordbot-Ed6UZ for the design rationale.
 
     Persists each picked slot value via image_store.save_recent_slot() so future
     runs see them in their anti-lists.
@@ -586,7 +638,11 @@ async def build(
 
     decoy: Optional[str] = None
     if random.random() < DECOY_PROBABILITY:
-        decoy = await _pick_decoy(chatbot, recent_decoys)
+        if news_bulletins:
+            decoy = await _pick_news_decoy(chatbot, news_bulletins, recent_decoys)
+            logger.info("[corpse:decoy] news-anchored pick: %r", decoy)
+        else:
+            decoy = await _pick_decoy(chatbot, recent_decoys)
     else:
         logger.info("[corpse:decoy] skipped this run (probability %.2f)", DECOY_PROBABILITY)
 
@@ -636,6 +692,7 @@ async def build_quiet(
     *,
     bios,
     memories,
+    news_bulletins=None,
     previous_themes_text: str,
     bios_text: str,
     user_locations: str,
@@ -646,17 +703,23 @@ async def build_quiet(
 ) -> dict:
     """
     Quiet-day variant of build(). Sources detail material from anonymised user
-    bios + memories instead of chat, and derives mood from the date.
+    bios + memories (and optionally today's news bulletins) instead of chat,
+    and derives mood from the date.
 
     Shares the decoy, style, and assembler stages with build(), so the anti-list
     and style rotation discipline carry over. Returns the same {prompt, themes,
     reasoning} shape.
 
+    `news_bulletins` (optional): list of objects with .heading and .body
+    attributes (typically src.content.news.Bulletin). Mixed into the facts
+    blob alongside bios+memories so the pickers can choose from any of them.
+    See ant gepettodiscordbot-mjBCN for the design rationale.
+
     Caller is responsible for falling back to a chat-free path when bios and
-    memories are both empty — this function will still run, but the picker has
-    nothing to grip onto.
+    memories and bulletins are ALL empty — this function will still run, but
+    the picker has nothing to grip onto.
     """
-    facts_text = format_quiet_facts(bios, memories)
+    facts_text = format_quiet_facts(bios, memories, news_bulletins=news_bulletins)
     today_string = datetime.now().strftime("%A %d %B %Y")
 
     recent_details = image_store.get_recent_slots(server_id, "detail")
