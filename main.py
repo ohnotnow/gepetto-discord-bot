@@ -20,7 +20,7 @@ from src.providers import split_for_discord
 
 # Tools
 from src.tools import calculator, ToolDispatcher, ToolResult
-from src.tools.definitions import tool_list, search_url_history_tool, catch_up_tool, twitter_search_tool, set_reminder_tool, manage_memories_tool, search_discogs_tool, explore_discogs_artist_tool
+from src.tools.definitions import tool_list, search_url_history_tool, catch_up_tool, twitter_search_tool, set_reminder_tool, manage_memories_tool, search_discogs_tool, explore_discogs_artist_tool, get_news_bulletins_tool
 
 # Media
 from src.media import images, images_direct, image_prompt_corpse, replicate, sora, vlm, get_image_model
@@ -208,6 +208,7 @@ if ENABLE_USER_MEMORY:
 if ENABLE_DISCOGS:
     active_tool_list.append(search_discogs_tool)
     active_tool_list.append(explore_discogs_artist_tool)
+active_tool_list.append(get_news_bulletins_tool)
 
 location = os.getenv('BOT_LOCATION', 'dunno')
 chat_image_hour = int(os.getenv('CHAT_IMAGE_HOUR', 18))
@@ -652,6 +653,7 @@ if ENABLE_CATCH_UP:
     tool_dispatcher.register('catch_up', lambda msg, **args: handle_catch_up(msg, **args))
 if ENABLE_TWITTER_SEARCH:
     tool_dispatcher.register('twitter_search', lambda msg, **args: twitter_search(msg, args.get('query', '')))
+tool_dispatcher.register('get_news_bulletins', lambda msg, **args: handle_get_news_bulletins(msg))
 async def handle_discogs_search(message: ChatMessage, tool_call, arguments: dict, messages: list, temperature: float) -> None:
     """Handle search_discogs: search, then explore the top result, then let the LLM synthesise."""
     channel = platform.get_channel(message.channel_id)
@@ -671,6 +673,32 @@ async def handle_discogs_explore(message: ChatMessage, tool_call, arguments: dic
         messages.append({'role': 'user', 'content': f'[Discogs data — recommend specific artists, side-projects, and releases from this data. Include artists the user is unlikely to already know.]\n\n{explore_result}'})
         followup = await chatbot.chat(messages, temperature=temperature, tools=[])
         await reply_to_message(message, followup.message + '\n' + followup.usage_short)
+
+
+async def handle_get_news_bulletins(message: ChatMessage) -> None:
+    """Fetch today's news bulletins and post them to Discord. Reuses the
+    same cache as the daily image pipeline — see ait gepetto-discord-bot-PQNMc."""
+    channel = platform.get_channel(message.channel_id)
+    async with channel.typing():
+        try:
+            bulletins = await news.get_news_bulletins(chatbot, news_store=news_store)
+        except Exception as exc:
+            logger.warning(f"News tool fetch failed: {exc}")
+            await message.reply(
+                f"{message.author_mention} Couldn't fetch the news just now — try again in a bit.",
+                mention_author=True,
+            )
+            return
+
+        if not bulletins:
+            await message.reply(
+                f"{message.author_mention} Nothing fit to print today — the feeds came up empty.",
+                mention_author=True,
+            )
+            return
+
+        formatted = news.format_bulletins_for_discord(bulletins)
+        await reply_to_message(message, formatted)
 
 
 async def handle_catch_up(message: ChatMessage, hours: int = None) -> None:

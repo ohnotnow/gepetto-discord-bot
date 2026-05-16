@@ -250,6 +250,21 @@ twitter_search_tool = {
     }
 }
 
+# Tool for fetching today's news bulletins — always on; reuses the daily
+# image pipeline's news fetch + cache (see ait gepetto-discord-bot-PQNMc).
+get_news_bulletins_tool = {
+    "type": "function",
+    "function": {
+        "name": "get_news_bulletins",
+        "description": "Fetches today's news as a small handful of themed, slightly droll mini-bulletins (heading + 1-2 sentences each) in a 30-second-radio-slot voice — UK politics, tech, world, science/curiosities, culture — pitched for a Slashdot-era geeky audience and explicitly skipping sport, bereavement, war, and celebrity fluff. Call this when the user asks for today's news, the day's headlines, a news bulletin, what's going on in the world, 'catch me up on the news', or similar phrasings that clearly want a curated news digest. Do NOT call for generic 'what's new' / 'anything new with you' / 'what's happening' — those are conversational, not news requests.",
+        "parameters": {
+            "type": "object",
+            "properties": {},
+            "required": []
+        }
+    }
+}
+
 # Tool for managing user memories - conditionally added based on ENABLE_USER_MEMORY
 manage_memories_tool = {
     "type": "function",

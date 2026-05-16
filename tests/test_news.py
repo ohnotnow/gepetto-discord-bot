@@ -11,6 +11,7 @@ from src.content.news import (
     Item,
     clean_summary,
     dedupe,
+    format_bulletins_for_discord,
     get_news_bulletins,
     grim_match,
     synthesise_bulletins,
@@ -342,3 +343,37 @@ class TestGetNewsBulletinsWithCache:
             conn.commit()
         second = await get_news_bulletins(chatbot, news_store=store, max_age_hours=3)
         assert second[0].heading == "fresh"
+
+
+class TestFormatBulletinsForDiscord:
+    def _b(self, heading: str, body: str) -> Bulletin:
+        return Bulletin(heading=heading, body=body, sources=[])
+
+    def test_empty_returns_empty_string(self):
+        assert format_bulletins_for_discord([]) == ""
+
+    def test_single_bulletin_bolded_heading(self):
+        out = format_bulletins_for_discord([self._b("UK politics", "Stuff happened.")])
+        assert out == "**UK politics**\nStuff happened."
+
+    def test_multiple_bulletins_separated_by_blank_line(self):
+        out = format_bulletins_for_discord([
+            self._b("UK politics", "Stuff happened."),
+            self._b("In tech", "Robots, mostly."),
+        ])
+        assert out == "**UK politics**\nStuff happened.\n\n**In tech**\nRobots, mostly."
+
+    def test_drops_bulletins_from_end_when_over_limit(self):
+        bulletins = [
+            self._b("First", "x" * 100),
+            self._b("Second", "x" * 100),
+            self._b("Third", "x" * 100),
+        ]
+        out = format_bulletins_for_discord(bulletins, limit=150)
+        assert "**First**" in out
+        assert "**Third**" not in out
+        assert len(out) <= 150
+
+    def test_returns_empty_when_first_bulletin_already_too_big(self):
+        out = format_bulletins_for_discord([self._b("Huge", "x" * 200)], limit=50)
+        assert out == ""

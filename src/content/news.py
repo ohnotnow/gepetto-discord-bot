@@ -24,7 +24,7 @@ from dataclasses import dataclass
 
 import feedparser
 
-from src.utils.constants import NEWS_CACHE_TTL_HOURS
+from src.utils.constants import DISCORD_MESSAGE_LIMIT, NEWS_CACHE_TTL_HOURS
 
 logger = logging.getLogger("discord")
 
@@ -293,3 +293,22 @@ async def get_news_bulletins(
         news_store.save_bulletins(bulletins)
 
     return bulletins
+
+
+def format_bulletins_for_discord(
+    bulletins: list[Bulletin],
+    *,
+    limit: int = DISCORD_MESSAGE_LIMIT,
+) -> str:
+    """Format bulletins as a single Discord-ready string: bold heading then
+    body for each, separated by blank lines. If the total exceeds `limit`,
+    drop bulletins from the end rather than truncating mid-bulletin."""
+    if not bulletins:
+        return ""
+
+    blocks = [f"**{b.heading}**\n{b.body}" for b in bulletins]
+    out = "\n\n".join(blocks)
+    while blocks and len(out) > limit:
+        blocks.pop()
+        out = "\n\n".join(blocks)
+    return out
