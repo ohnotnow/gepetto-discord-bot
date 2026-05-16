@@ -653,7 +653,6 @@ if ENABLE_CATCH_UP:
     tool_dispatcher.register('catch_up', lambda msg, **args: handle_catch_up(msg, **args))
 if ENABLE_TWITTER_SEARCH:
     tool_dispatcher.register('twitter_search', lambda msg, **args: twitter_search(msg, args.get('query', '')))
-tool_dispatcher.register('get_news_bulletins', lambda msg, **args: handle_get_news_bulletins(msg))
 async def handle_discogs_search(message: ChatMessage, tool_call, arguments: dict, messages: list, temperature: float) -> None:
     """Handle search_discogs: search, then explore the top result, then let the LLM synthesise."""
     channel = platform.get_channel(message.channel_id)
@@ -675,9 +674,11 @@ async def handle_discogs_explore(message: ChatMessage, tool_call, arguments: dic
         await reply_to_message(message, followup.message + '\n' + followup.usage_short)
 
 
-async def handle_get_news_bulletins(message: ChatMessage) -> None:
-    """Fetch today's news bulletins and post them to Discord. Reuses the
-    same cache as the daily image pipeline — see ait gepetto-discord-bot-PQNMc."""
+async def handle_get_news_bulletins(message: ChatMessage, messages: list, temperature: float) -> None:
+    """Fetch today's news bulletins, then let the LLM relay them in its own
+    voice — by appending to the existing `messages` list, the bot's persona
+    system prompt stays in scope. Reuses the daily image pipeline's cache.
+    See ait gepetto-discord-bot-PQNMc."""
     channel = platform.get_channel(message.channel_id)
     async with channel.typing():
         try:
@@ -698,7 +699,18 @@ async def handle_get_news_bulletins(message: ChatMessage) -> None:
             return
 
         formatted = news.format_bulletins_for_discord(bulletins)
-        await reply_to_message(message, formatted)
+        messages.append({
+            'role': 'user',
+            'content': (
+                "[Today's news digest, pre-edited from the BBC News RSS feeds into "
+                "a handful of themed bulletins. Pass these on to the user as today's news. "
+                "Keep the substantive facts intact. Wrap any URLs in angle brackets "
+                "to suppress Discord link previews.]\n\n"
+                f"{formatted}"
+            )
+        })
+        followup = await chatbot.chat(messages, temperature=temperature, tools=[])
+        await reply_to_message(message, followup.message + '\n' + followup.usage_short)
 
 
 async def handle_catch_up(message: ChatMessage, hours: int = None) -> None:
@@ -929,6 +941,8 @@ async def handle_message(message: ChatMessage):
                     await handle_discogs_search(message, tool_call, arguments, messages, temperature)
                 elif fname == 'explore_discogs_artist':
                     await handle_discogs_explore(message, tool_call, arguments, messages, temperature)
+                elif fname == 'get_news_bulletins':
+                    await handle_get_news_bulletins(message, messages, temperature)
                 else:
                     logger.info(f'Unknown tool call: {fname}')
                     await message.reply(f'{message.author_mention} I am a silly sausage and don\'t know how to do that.', mention_author=True)
