@@ -486,7 +486,77 @@ class TestBuild:
         )
         assert "prose instead of a tool call" in result["prompt"]
         assert result["themes"] == []
-        assert result["reasoning"] == ""
+        # The assembler produced no reasoning sentence, but the ingredient
+        # log is still composed — handy for debugging exactly this failure.
+        assert result["reasoning"].startswith("Ingredients")
+        assert "a wonky kettle" in result["reasoning"]
+
+
+    async def test_reasoning_includes_ingredient_log(self, store, force_decoy):
+        """`--reasoning` shows the choices made along the way, not just the
+        assembler's 1-3 sentences — every pick (and the picker's stated
+        reason) is appended to the returned reasoning string."""
+        chatbot = FakeChat([
+            "DETAIL: a wonky kettle\nREASON: alice's tomato remark felt homely.",
+            "DETAIL: the smell of damp coats\nREASON: bob's 404 joke had a soggy indoor texture.",
+            "a tin of antique fishhooks",
+            "gentle Tuesday melancholy",
+            "Edward Hopper diner-light oil painting",
+            _final_payload(),
+        ])
+        result = await image_prompt_corpse.build(
+            chat_text=CHAT, previous_themes_text="", bios_text="",
+            user_locations="", cat_descriptions="",
+            server_id="srv1", image_store=store, chatbot=chatbot,
+        )
+        reasoning = result["reasoning"]
+        # Assembler's own sentence comes first...
+        assert reasoning.startswith("Used the mood as lighting")
+        # ...followed by every pick and the why behind it.
+        assert "Detail 1: a wonky kettle" in reasoning
+        assert "alice's tomato remark felt homely." in reasoning
+        assert "Detail 2: the smell of damp coats" in reasoning
+        assert "soggy indoor texture" in reasoning
+        assert "Mood: gentle Tuesday melancholy" in reasoning
+        assert "Style: Edward Hopper diner-light oil painting" in reasoning
+        assert "Decoy: a tin of antique fishhooks (random pick)" in reasoning
+        # force_decoy pins random() to 0.0, so the cameo fires too.
+        assert "Liz Truss cameo: fired" in reasoning
+
+    async def test_reasoning_log_when_decoy_and_cameo_skipped(self, store, skip_decoy):
+        chatbot = FakeChat([
+            "a wonky kettle", "the smell of damp coats",
+            "gentle Tuesday melancholy", "Edward Hopper diner-light oil painting",
+            _final_payload(),
+        ])
+        result = await image_prompt_corpse.build(
+            chat_text=CHAT, previous_themes_text="", bios_text="",
+            user_locations="", cat_descriptions="",
+            server_id="srv1", image_store=store, chatbot=chatbot,
+        )
+        assert "Decoy: none this run" in result["reasoning"]
+        assert "Liz Truss cameo: skipped" in result["reasoning"]
+        # Bare-string picks have no reason — no stray markdown emphasis.
+        assert "Detail 1: a wonky kettle\n" in result["reasoning"]
+
+    async def test_reasoning_log_labels_news_decoy(self, store, force_decoy):
+        from src.content.news import Bulletin
+        bulletins = [Bulletin(heading="In tech", body="A Waymo goes for a swim.", sources=[])]
+        chatbot = FakeChat([
+            "DETAIL: a kettle\nREASON: r.",
+            "DETAIL: damp coats\nREASON: r.",
+            "a robotaxi nosed into floodwater",
+            "gentle Tuesday melancholy",
+            "Edward Hopper diner-light oil painting",
+            _final_payload(),
+        ])
+        result = await image_prompt_corpse.build(
+            chat_text=CHAT, news_bulletins=bulletins,
+            previous_themes_text="", bios_text="",
+            user_locations="", cat_descriptions="",
+            server_id="srv1", image_store=store, chatbot=chatbot,
+        )
+        assert "Decoy: a robotaxi nosed into floodwater (from today's news)" in result["reasoning"]
 
 
 class TestBuildQuiet:
@@ -640,6 +710,30 @@ class TestBuildQuiet:
         assert "a kitten named Whiskers" in details_saved
         assert store.get_recent_slots("srv1", "decoy") == ["a tin of antique fishhooks"]
         assert store.get_recent_slots("srv1", "mood") == ["soft Friday-afternoon stillness"]
+
+    async def test_reasoning_includes_ingredient_log(self, store, force_decoy):
+        """The quiet-day path gets the same ingredient log, labelled so it's
+        obvious which path produced the image."""
+        chatbot = FakeChat([
+            "DETAIL: a vintage typewriter collection\nREASON: evocative of slow, deliberate craft.",
+            "DETAIL: the warm tang of sourdough rising\nREASON: tactile, gustatory counterpoint.",
+            "a tin of antique fishhooks",
+            "soft Friday-afternoon stillness",
+            "Edward Hopper diner-light oil painting",
+            _final_payload(),
+        ])
+        result = await image_prompt_corpse.build_quiet(
+            bios=self._bios(), memories=self._memories(),
+            previous_themes_text="", bios_text="",
+            user_locations="", cat_descriptions="",
+            server_id="srv1", image_store=store, chatbot=chatbot,
+        )
+        reasoning = result["reasoning"]
+        assert "quiet day" in reasoning
+        assert "Detail 1: a vintage typewriter collection" in reasoning
+        assert "evocative of slow, deliberate craft." in reasoning
+        assert "Mood: soft Friday-afternoon stillness" in reasoning
+        assert "Liz Truss cameo: fired" in reasoning
 
     async def test_handles_empty_bios_and_memories(self, store, force_decoy):
         """build_quiet still runs with empty inputs; caller is responsible for fallback."""

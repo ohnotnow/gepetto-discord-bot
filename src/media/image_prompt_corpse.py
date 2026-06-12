@@ -511,6 +511,50 @@ def _assembly_user(
     return "\n".join(parts)
 
 
+def _compose_reasoning(
+    assembler_reasoning: str,
+    *,
+    detail_1: str,
+    reason_1: str,
+    detail_2: str,
+    reason_2: str,
+    decoy: Optional[str],
+    decoy_label: str,
+    mood: str,
+    style: str,
+    cameo_fired: bool,
+    source_label: str,
+) -> str:
+    """Append the ingredient picks (and the pickers' stated reasons) to the
+    assembler's short reasoning, so `--reasoning` shows the choices made
+    along the way rather than just the final 1-3 sentences.
+
+    The slices are safe to surface in Discord: locations, cat descriptions,
+    bios, and the raw prompt only enter at the assembler stage and never
+    appear here. Stored verbatim in image_history.reasoning.
+    """
+
+    def detail_line(label: str, detail: str, reason: str) -> str:
+        if not detail:
+            return f"• {label}: (none)"
+        if reason:
+            return f"• {label}: {detail} — *{reason}*"
+        return f"• {label}: {detail}"
+
+    lines = [
+        detail_line("Detail 1", detail_1, reason_1),
+        detail_line("Detail 2", detail_2, reason_2),
+        f"• Mood: {mood or '(none)'}",
+        f"• Style: {style or '(none)'}",
+        f"• Decoy: {decoy} ({decoy_label})" if decoy else "• Decoy: none this run",
+        f"• Liz Truss cameo: {'fired' if cameo_fired else 'skipped'}",
+    ]
+    log = f"Ingredients ({source_label}):\n" + "\n".join(lines)
+    if assembler_reasoning and assembler_reasoning.strip():
+        return f"{assembler_reasoning.strip()}\n\n{log}"
+    return log
+
+
 def _generate_image_tool() -> dict:
     return {
         "type": "function",
@@ -637,12 +681,15 @@ async def build(
     )
 
     decoy: Optional[str] = None
+    decoy_label = ""
     if random.random() < DECOY_PROBABILITY:
         if news_bulletins:
             decoy = await _pick_news_decoy(chatbot, news_bulletins, recent_decoys)
+            decoy_label = "from today's news"
             logger.info("[corpse:decoy] news-anchored pick: %r", decoy)
         else:
             decoy = await _pick_decoy(chatbot, recent_decoys)
+            decoy_label = "random pick"
     else:
         logger.info("[corpse:decoy] skipped this run (probability %.2f)", DECOY_PROBABILITY)
 
@@ -684,6 +731,20 @@ async def build(
         image_store.save_recent_slot(server_id, "mood", mood)
     if style:
         image_store.save_recent_slot(server_id, "style", style)
+
+    result["reasoning"] = _compose_reasoning(
+        result.get("reasoning", ""),
+        detail_1=detail_1,
+        reason_1=reason_1,
+        detail_2=detail_2,
+        reason_2=reason_2,
+        decoy=decoy,
+        decoy_label=decoy_label,
+        mood=mood,
+        style=style,
+        cameo_fired=liz_truss_cameo is not None,
+        source_label="details picked from chat",
+    )
 
     return result
 
@@ -781,5 +842,19 @@ async def build_quiet(
         image_store.save_recent_slot(server_id, "mood", mood)
     if style:
         image_store.save_recent_slot(server_id, "style", style)
+
+    result["reasoning"] = _compose_reasoning(
+        result.get("reasoning", ""),
+        detail_1=detail_1,
+        reason_1=reason_1,
+        detail_2=detail_2,
+        reason_2=reason_2,
+        decoy=decoy,
+        decoy_label="random pick",
+        mood=mood,
+        style=style,
+        cameo_fired=liz_truss_cameo is not None,
+        source_label="quiet day — details picked from bios/memories/news",
+    )
 
     return result
