@@ -403,6 +403,53 @@ class ImageStore:
             conn.commit()
             return cursor.rowcount
 
+    def get_occasion_by_id(self, occasion_id: int) -> Optional[dict]:
+        """Return a single occasion by its row id, or None if it doesn't exist.
+
+        Used by the add_occasion helper's --edit flow to pre-fill the editor.
+        """
+        with self._get_connection() as conn:
+            cursor = conn.execute(
+                """
+                SELECT id, server_id, match_key, directive, created_at
+                FROM image_occasions WHERE id = ?
+                """,
+                (occasion_id,),
+            )
+            row = cursor.fetchone()
+            if not row:
+                return None
+            return {
+                "id": row[0], "server_id": row[1], "match_key": row[2],
+                "directive": row[3], "created_at": row[4],
+            }
+
+    def update_occasion(self, occasion_id: int, server_id: str, match_key: str, directive: str) -> bool:
+        """Update an existing occasion in place by row id. Returns True if a row changed.
+
+        Unlike add_occasion (which is keyed on server_id+match_key and so would
+        leave a stray row behind if the date changed), this edits the identified
+        row directly — so the date and scope can be corrected without duplicating.
+
+        Raises ValueError if match_key or directive is blank.
+        """
+        match_key = (match_key or "").strip()
+        directive = (directive or "").strip()
+        if not match_key or not directive:
+            raise ValueError("update_occasion requires a non-empty match_key and directive")
+
+        with self._get_connection() as conn:
+            cursor = conn.execute(
+                """
+                UPDATE image_occasions
+                SET server_id = ?, match_key = ?, directive = ?
+                WHERE id = ?
+                """,
+                (server_id, match_key, directive, occasion_id),
+            )
+            conn.commit()
+            return cursor.rowcount > 0
+
     def _row_to_entry(self, row: tuple) -> ImageEntry:
         """Convert a database row tuple to an ImageEntry."""
         id_, server_id, themes_json, reasoning, prompt, image_url, created_at = row

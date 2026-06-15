@@ -123,13 +123,17 @@ uv run python scripts/add_occasion.py --server-id 123456789012345678 \
 uv run python scripts/add_occasion.py --global --date 12-25 \
     --directive "It is Christmas Day. Give the scene a warm, festive glow."
 
-# List / delete:
+# List (shows each occasion's id) / delete:
 uv run python scripts/add_occasion.py --server-id 123456789012345678 --list
 uv run python scripts/add_occasion.py --global --date 12-25 --delete
+
+# Edit an existing occasion in $EDITOR (find its id with --list):
+uv run python scripts/add_occasion.py --edit 4
 ```
 
 - **`--date`** takes either `YYYY-MM-DD` (fires once, on that exact date) or `MM-DD` (fires every year). An exact date beats an annual key for the same day, and a server's own occasion beats a global one.
 - Pass `--server-id`, `--date`, and `--directive` together to skip the editor entirely; omit any of them to open `$EDITOR` on a pre-filled, git-commit-style template.
+- **`--edit <id>`** opens the same template pre-filled with an existing occasion (get the id from `--list`) and updates it in place — handy for fixing a typo or a wrong date without dropping into SQLite.
 
 Preview an occasion image before its date without waiting for the daily cron:
 

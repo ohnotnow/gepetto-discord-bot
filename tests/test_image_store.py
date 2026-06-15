@@ -257,3 +257,53 @@ class TestImageOccasions:
         deleted = store.delete_occasion('server1', '06-23')
         assert deleted == 1
         assert store.get_occasion('server1', '2026-06-23') is None
+
+    def test_get_occasion_by_id(self, temp_dir):
+        store = ImageStore(os.path.join(temp_dir, 'test.db'))
+        row_id = store.add_occasion('server1', '06-23', 'brexit')
+        row = store.get_occasion_by_id(row_id)
+        assert row['id'] == row_id
+        assert row['server_id'] == 'server1'
+        assert row['match_key'] == '06-23'
+        assert row['directive'] == 'brexit'
+
+    def test_get_occasion_by_id_returns_none_when_missing(self, temp_dir):
+        store = ImageStore(os.path.join(temp_dir, 'test.db'))
+        assert store.get_occasion_by_id(999) is None
+
+    def test_update_occasion_in_place(self, temp_dir):
+        store = ImageStore(os.path.join(temp_dir, 'test.db'))
+        row_id = store.add_occasion('server1', '06-23', 'first wording')
+        changed = store.update_occasion(row_id, 'server1', '06-23', 'fixed wording')
+        assert changed is True
+        assert store.get_occasion('server1', '2026-06-23') == 'fixed wording'
+        # Edited in place — no extra row.
+        assert len(store.list_occasions('server1')) == 1
+
+    def test_update_occasion_can_change_date_without_duplicating(self, temp_dir):
+        store = ImageStore(os.path.join(temp_dir, 'test.db'))
+        row_id = store.add_occasion('server1', '2026-06-23', 'wrong date')
+        store.update_occasion(row_id, 'server1', '2026-06-24', 'right date')
+        # The old date no longer matches and there's still only one row.
+        assert store.get_occasion('server1', '2026-06-23') is None
+        assert store.get_occasion('server1', '2026-06-24') == 'right date'
+        assert len(store.list_occasions('server1')) == 1
+
+    def test_update_occasion_can_change_scope(self, temp_dir):
+        store = ImageStore(os.path.join(temp_dir, 'test.db'))
+        row_id = store.add_occasion('server1', '12-25', 'christmas')
+        store.update_occasion(row_id, GLOBAL_SERVER_ID, '12-25', 'christmas')
+        assert store.list_occasions('server1') == []
+        assert store.get_occasion('server2', '2026-12-25') == 'christmas'
+
+    def test_update_occasion_unknown_id_returns_false(self, temp_dir):
+        store = ImageStore(os.path.join(temp_dir, 'test.db'))
+        assert store.update_occasion(999, 'server1', '06-23', 'directive') is False
+
+    def test_update_occasion_blank_rejected(self, temp_dir):
+        store = ImageStore(os.path.join(temp_dir, 'test.db'))
+        row_id = store.add_occasion('server1', '06-23', 'brexit')
+        with pytest.raises(ValueError):
+            store.update_occasion(row_id, 'server1', '06-23', '   ')
+        with pytest.raises(ValueError):
+            store.update_occasion(row_id, 'server1', '', 'directive')

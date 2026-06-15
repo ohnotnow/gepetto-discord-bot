@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Add (or list/delete) an "on this day" chat-image occasion.
+"""Add (or list/edit/delete) an "on this day" chat-image occasion.
 
 An occasion is a per-server (or global) directive injected into the daily
 chat-image assembler on a given date — e.g. "reference the Brexit anniversary".
@@ -25,6 +25,9 @@ Examples:
 
     uv run python scripts/add_occasion.py --server-id 123 --list
     uv run python scripts/add_occasion.py --global --date 12-25 --delete
+
+    # Edit an existing occasion in $EDITOR (find its id with --list):
+    uv run python scripts/add_occasion.py --edit 4
 
 Env loading:
     Reads `.env` from the project root if present (KEY=value lines, # comments
@@ -192,12 +195,21 @@ def _kind(match_key: str) -> str:
     return "annual" if len(match_key) == 5 else "one-off"
 
 
-def _insert(store: ImageStore, server_id: str, match_key: str, directive: str) -> None:
-    store.add_occasion(server_id, match_key, directive)
+def _report(verb: str, server_id: str, match_key: str, directive: str) -> None:
     scope = "GLOBAL (all servers)" if server_id == GLOBAL_SERVER_ID else f"server {server_id}"
     gist = directive if len(directive) <= 200 else directive[:197] + "…"
-    print(f"✓ Occasion saved for {scope}: {match_key} ({_kind(match_key)})")
+    print(f"✓ Occasion {verb} for {scope}: {match_key} ({_kind(match_key)})")
     print(f"  {gist}")
+
+
+def _insert(store: ImageStore, server_id: str, match_key: str, directive: str) -> None:
+    store.add_occasion(server_id, match_key, directive)
+    _report("saved", server_id, match_key, directive)
+
+
+def _update(store: ImageStore, occasion_id: int, server_id: str, match_key: str, directive: str) -> None:
+    store.update_occasion(occasion_id, server_id, match_key, directive)
+    _report("updated", server_id, match_key, directive)
 
 
 def _print_rows(title: str, rows: list[dict]) -> None:
@@ -209,14 +221,14 @@ def _print_rows(title: str, rows: list[dict]) -> None:
         gist = " ".join(row["directive"].split())
         if len(gist) > 80:
             gist = gist[:77] + "…"
-        print(f"  [{row['match_key']}] ({_kind(row['match_key'])}) {gist}")
+        print(f"  #{row['id']:<4} [{row['match_key']}] ({_kind(row['match_key'])}) {gist}")
 
 
 def main() -> int:
     _load_dotenv_if_present()
 
     parser = argparse.ArgumentParser(
-        description="Add/list/delete an 'on this day' chat-image occasion.",
+        description="Add/list/edit/delete an 'on this day' chat-image occasion.",
         epilog="Reads .env from the project root if present. Existing shell env wins.",
     )
     scope = parser.add_mutually_exclusive_group()
@@ -231,7 +243,9 @@ def main() -> int:
     parser.add_argument("--date", default=None, help="match_key: YYYY-MM-DD (once) or MM-DD (annual).")
     parser.add_argument("--directive", default=None, help="The directive text. Omit to open an editor.")
     parser.add_argument("--db", default="./data/gepetto.db", help="Sqlite DB path (default: ./data/gepetto.db).")
-    parser.add_argument("--list", action="store_true", help="List occasions for the scope and exit.")
+    parser.add_argument("--list", action="store_true", help="List occasions (with ids) for the scope and exit.")
+    parser.add_argument("--edit", type=int, default=None, metavar="ID",
+                        help="Edit the occasion with this id (from --list) in $EDITOR, then update it in place.")
     parser.add_argument("--delete", action="store_true", help="Delete the occasion for --date in the scope and exit.")
     args = parser.parse_args()
 
@@ -247,6 +261,18 @@ def main() -> int:
             else:
                 print("(no --server-id given; showing globals only)")
             _print_rows("Global occasions (apply to all servers)", store.list_occasions(GLOBAL_SERVER_ID))
+        return 0
+
+    if args.edit is not None:
+        existing = store.get_occasion_by_id(args.edit)
+        if not existing:
+            print(f"No occasion with id {args.edit}. Run --list to see ids.", file=sys.stderr)
+            return 1
+        result = _edit_loop(existing["server_id"], existing["match_key"], existing["directive"])
+        if not result:
+            return 1
+        sid, match_key, directive = result
+        _update(store, args.edit, sid, match_key, directive)
         return 0
 
     if args.delete:
