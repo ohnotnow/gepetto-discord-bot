@@ -105,6 +105,39 @@ How each provider treats the model name:
 
 For the daily chat image, you can also tune `CHAT_IMAGE_ENABLED`, `CHAT_IMAGE_HOUR`, and the VLM hop that extracts themes/reasoning (`VLM_PROVIDER`, `VLM_OPENAI_MODEL`).
 
+### "On this day" image occasions
+
+You can nudge the daily chat image to reference a specific event on a given date — an anniversary, a holiday, etc. An *occasion* is a free-text directive stored against a date; on a matching day it's injected into the image-prompt assembler as a high-priority theme (the image still draws on the day's chat, but is guided to reference the occasion). Occasions live in the `image_occasions` table in the bot's SQLite DB (so they stay private — the directive text never goes into the repo).
+
+Manage them with the helper script:
+
+```bash
+# Open $VISUAL / $EDITOR on a pre-filled template (you write the date + directive):
+uv run python scripts/add_occasion.py --server-id 123456789012345678
+
+# Fully non-interactive (skips the editor):
+uv run python scripts/add_occasion.py --server-id 123456789012345678 \
+    --date 2026-06-23 --directive "Reference the Brexit anniversary, wistfully."
+
+# A GLOBAL occasion applies to every server (e.g. Christmas):
+uv run python scripts/add_occasion.py --global --date 12-25 \
+    --directive "It is Christmas Day. Give the scene a warm, festive glow."
+
+# List / delete:
+uv run python scripts/add_occasion.py --server-id 123456789012345678 --list
+uv run python scripts/add_occasion.py --global --date 12-25 --delete
+```
+
+- **`--date`** takes either `YYYY-MM-DD` (fires once, on that exact date) or `MM-DD` (fires every year). An exact date beats an annual key for the same day, and a server's own occasion beats a global one.
+- Pass `--server-id`, `--date`, and `--directive` together to skip the editor entirely; omit any of them to open `$EDITOR` on a pre-filled, git-commit-style template.
+
+Preview an occasion image before its date without waiting for the daily cron:
+
+```bash
+uv run python scripts/try_chat_image.py samples/sample_chat.txt \
+    --occasion "Reference the Brexit anniversary, wistfully." --image
+```
+
 ## Running the Script
 
 To run the bot:

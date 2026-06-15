@@ -558,6 +558,69 @@ class TestBuild:
         )
         assert "Decoy: a robotaxi nosed into floodwater (from today's news)" in result["reasoning"]
 
+    async def test_occasion_reaches_assembler_and_reasoning(self, store, force_decoy):
+        """An occasion directive must land in the assembler prompt as a high-priority
+        instruction (not a peripheral decoy) and be surfaced in the reasoning log.
+        See ant gepettodiscordbot-VXQvH."""
+        chatbot = FakeChat([
+            "DETAIL: a kettle\nREASON: r.",
+            "DETAIL: damp coats\nREASON: r.",
+            "a tin of antique fishhooks",
+            "gentle Tuesday melancholy",
+            "Edward Hopper diner-light oil painting",
+            _final_payload(),
+        ])
+        result = await image_prompt_corpse.build(
+            chat_text=CHAT, previous_themes_text="", bios_text="",
+            user_locations="", cat_descriptions="",
+            server_id="srv1", image_store=store, chatbot=chatbot,
+            occasion="It is the Brexit anniversary; reference it wistfully.",
+        )
+        assembler_user = chatbot.calls[-1]["messages"][1]["content"]
+        assert "SPECIAL OCCASION" in assembler_user
+        assert "Brexit anniversary" in assembler_user
+        assert "Occasion:" in result["reasoning"]
+        assert "Brexit anniversary" in result["reasoning"]
+
+    async def test_no_occasion_section_when_absent(self, store, force_decoy):
+        chatbot = FakeChat([
+            "DETAIL: a kettle\nREASON: r.",
+            "DETAIL: damp coats\nREASON: r.",
+            "a tin of antique fishhooks",
+            "gentle Tuesday melancholy",
+            "Edward Hopper diner-light oil painting",
+            _final_payload(),
+        ])
+        result = await image_prompt_corpse.build(
+            chat_text=CHAT, previous_themes_text="", bios_text="",
+            user_locations="", cat_descriptions="",
+            server_id="srv1", image_store=store, chatbot=chatbot,
+        )
+        assembler_user = chatbot.calls[-1]["messages"][1]["content"]
+        assert "SPECIAL OCCASION" not in assembler_user
+        assert "Occasion:" not in result["reasoning"]
+
+    async def test_occasion_logged_as_corpse_stage(self, store, force_decoy, caplog):
+        """The occasion must announce itself with a [corpse:occasion] INFO line so
+        a tailed log shows it next to the other ingredient picks."""
+        import logging
+        chatbot = FakeChat([
+            "DETAIL: a kettle\nREASON: r.",
+            "DETAIL: damp coats\nREASON: r.",
+            "a tin of antique fishhooks",
+            "gentle Tuesday melancholy",
+            "Edward Hopper diner-light oil painting",
+            _final_payload(),
+        ])
+        with caplog.at_level(logging.INFO, logger="discord"):
+            await image_prompt_corpse.build(
+                chat_text=CHAT, previous_themes_text="", bios_text="",
+                user_locations="", cat_descriptions="",
+                server_id="srv1", image_store=store, chatbot=chatbot,
+                occasion="It is the Brexit anniversary.",
+            )
+        assert "[corpse:occasion] active" in caplog.text
+
 
 class TestBuildQuiet:
     """Quiet-day variant: pickers source from bios + memories, mood from date."""
@@ -628,6 +691,28 @@ class TestBuildQuiet:
             assert "<facts>" in facts_user
             assert "vintage typewriters" in facts_user
             assert "sourdough" in facts_user
+
+    async def test_occasion_reaches_assembler(self, store, force_decoy):
+        """Occasions must fire on quiet days too (e.g. if Christmas is a quiet day)."""
+        chatbot = FakeChat([
+            "DETAIL: a vintage typewriter collection\nREASON: r1.",
+            "DETAIL: the warm tang of sourdough\nREASON: r2.",
+            "a tin of antique fishhooks",
+            "soft Friday-afternoon stillness",
+            "Edward Hopper diner-light oil painting",
+            _final_payload(),
+        ])
+        result = await image_prompt_corpse.build_quiet(
+            bios=self._bios(), memories=self._memories(),
+            previous_themes_text="", bios_text="",
+            user_locations="", cat_descriptions="",
+            server_id="srv1", image_store=store, chatbot=chatbot,
+            occasion="It is Christmas Day; give the scene a warm festive glow.",
+        )
+        assembler_user = chatbot.calls[-1]["messages"][1]["content"]
+        assert "SPECIAL OCCASION" in assembler_user
+        assert "Christmas Day" in assembler_user
+        assert "Occasion:" in result["reasoning"]
 
     async def test_quiet_pickers_carry_sensitive_topics_guard(self, store, force_decoy):
         chatbot = FakeChat([

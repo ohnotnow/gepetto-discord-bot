@@ -151,6 +151,7 @@ async def _run(args: argparse.Namespace) -> int:
         server_id=server_id,
         image_store=image_store,
         chatbot=chatbot,
+        occasion=args.occasion,
     )
 
     prompt_text = decoded.get("prompt", "")
@@ -217,6 +218,12 @@ def main() -> int:
     parser.add_argument(
         "--output-dir", default="./samples/output",
         help="Parent directory for timestamped run outputs (default: ./samples/output).",
+    )
+    parser.add_argument(
+        "--occasion", default=None,
+        help="An 'on this day' directive to inject into the assembler (e.g. a "
+             "Brexit-anniversary instruction). Lets you preview an occasion image "
+             "without waiting for the date. Free text.",
     )
     parser.add_argument("-v", "--verbose", action="store_true", help="DEBUG-level logging.")
     args = parser.parse_args()

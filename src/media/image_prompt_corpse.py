@@ -91,6 +91,16 @@ def _exclude_clause(label: str, items: list[str]) -> str:
     return f"\n\n{label}: {rendered}"
 
 
+def _log_occasion(occasion: Optional[str]) -> None:
+    """Log the occasion alongside the other [corpse:*] ingredient stages, so a
+    tailed log shows it next to the picks. The occasion is passed in rather than
+    picked, so it has no pick stage of its own — this is its stand-in."""
+    if occasion:
+        logger.info("[corpse:occasion] active: %r", occasion[:160])
+    else:
+        logger.info("[corpse:occasion] none this run")
+
+
 def _clean_pick(raw: str) -> str:
     """Strip the usual LLM preamble noise from a one-shot pick."""
     if not raw:
@@ -425,7 +435,13 @@ def _assembly_system() -> str:
         "the scene, not the subject of it. A strange object glimpsed in a corner, an "
         "impossible event through a window, a creature that does not belong. The scene "
         "is still driven by the details and their reasons; the decoy is a visual "
-        "interruption, not a takeover.\n\n"
+        "interruption, not a takeover.\n"
+        "5. OCCASION (only sometimes provided) — a high-priority real-world theme for "
+        "the day (e.g. an anniversary or holiday). Unlike the decoy, this is NOT "
+        "peripheral: it MUST be clearly and integrally present in the image, woven "
+        "through the scene and rendered in the chosen style. Honour any tone the "
+        "occasion specifies. Still obey the hard rules below — evoke it through the "
+        "imagery, never via labels, captions, or text in the picture.\n\n"
         "Hard rules:\n"
         "- DO NOT produce a 'flat-lay' arrangement of objects on a desk, table, or floor.\n"
         "- DO NOT produce a corporate stock photo, infographic, product shot, or labelled "
@@ -471,6 +487,7 @@ def _assembly_user(
     bios_text: str,
     previous_themes_text: str,
     liz_truss_cameo: Optional[str] = None,
+    occasion: Optional[str] = None,
 ) -> str:
     parts = ["INGREDIENTS:\n"]
     parts.append(f"- Mood: {mood}")
@@ -483,6 +500,14 @@ def _assembly_user(
         )
     else:
         parts.append("- (No decoy this run — the scene is fully driven by the details and their reasons.)")
+
+    if occasion:
+        parts.append(
+            "\nSPECIAL OCCASION (high priority — this MUST be clearly and integrally "
+            "reflected in the image, woven into the scene alongside the details rather "
+            "than tacked on; evoke it through imagery only, never text or labels):\n"
+            f"{occasion}"
+        )
 
     today_string = datetime.now().strftime("%Y-%m-%d")
     parts.append("\nCONTEXT (optional flavour — do not depict specific real people):")
@@ -524,6 +549,7 @@ def _compose_reasoning(
     style: str,
     cameo_fired: bool,
     source_label: str,
+    occasion: Optional[str] = None,
 ) -> str:
     """Append the ingredient picks (and the pickers' stated reasons) to the
     assembler's short reasoning, so `--reasoning` shows the choices made
@@ -541,14 +567,22 @@ def _compose_reasoning(
             return f"• {label}: {detail} — *{reason}*"
         return f"• {label}: {detail}"
 
-    lines = [
+    lines = []
+    if occasion:
+        # The directive can be long; show a trimmed single-line gist as the
+        # headline, since on occasion days it's the most notable ingredient.
+        gist = " ".join(occasion.split())
+        if len(gist) > 160:
+            gist = gist[:157] + "..."
+        lines.append(f"• Occasion: {gist}")
+    lines.extend([
         detail_line("Detail 1", detail_1, reason_1),
         detail_line("Detail 2", detail_2, reason_2),
         f"• Mood: {mood or '(none)'}",
         f"• Style: {style or '(none)'}",
         f"• Decoy: {decoy} ({decoy_label})" if decoy else "• Decoy: none this run",
         f"• Liz Truss cameo: {'fired' if cameo_fired else 'skipped'}",
-    ]
+    ])
     log = f"Ingredients ({source_label}):\n" + "\n".join(lines)
     if assembler_reasoning and assembler_reasoning.strip():
         return f"{assembler_reasoning.strip()}\n\n{log}"
@@ -600,6 +634,7 @@ async def _assemble(
     bios_text: str,
     previous_themes_text: str,
     liz_truss_cameo: Optional[str] = None,
+    occasion: Optional[str] = None,
 ) -> dict:
     messages = [
         {"role": "system", "content": _assembly_system()},
@@ -609,6 +644,7 @@ async def _assemble(
                 detail_1, reason_1, detail_2, reason_2, decoy, mood, style,
                 user_locations, cat_descriptions, bios_text, previous_themes_text,
                 liz_truss_cameo=liz_truss_cameo,
+                occasion=occasion,
             ),
         },
     ]
@@ -648,6 +684,7 @@ async def build(
     image_store,
     chatbot,
     news_bulletins=None,
+    occasion: Optional[str] = None,
 ) -> dict:
     """
     Run the blind-pass pipeline and return {prompt, themes, reasoning}.
@@ -662,6 +699,11 @@ async def build(
     (slot_kind='decoy'), same assembler framing — see ant
     gepettodiscordbot-Ed6UZ for the design rationale.
 
+    `occasion` (optional): an "on this day" directive (e.g. a Brexit-anniversary
+    instruction) injected into the assembler as a high-priority theme, on the
+    same wire as the Liz Truss cameo but unconditional and stronger. Sourced from
+    image_store.get_occasion() at the call site. See ant gepettodiscordbot-VXQvH.
+
     Persists each picked slot value via image_store.save_recent_slot() so future
     runs see them in their anti-lists.
     """
@@ -674,6 +716,7 @@ async def build(
         "[corpse:start] server=%s exclude_sizes detail=%d decoy=%d mood=%d style=%d",
         server_id, len(recent_details), len(recent_decoys), len(recent_moods), len(recent_styles),
     )
+    _log_occasion(occasion)
 
     detail_1, reason_1 = await _pick_detail(chatbot, chat_text, recent_details)
     detail_2, reason_2 = await _pick_second_detail(
@@ -717,6 +760,7 @@ async def build(
         bios_text=bios_text,
         previous_themes_text=previous_themes_text,
         liz_truss_cameo=liz_truss_cameo,
+        occasion=occasion,
     )
 
     # Persist picks for future anti-lists. Done after assembly so a failure
@@ -744,6 +788,7 @@ async def build(
         style=style,
         cameo_fired=liz_truss_cameo is not None,
         source_label="details picked from chat",
+        occasion=occasion,
     )
 
     return result
@@ -761,6 +806,7 @@ async def build_quiet(
     server_id: str,
     image_store,
     chatbot,
+    occasion: Optional[str] = None,
 ) -> dict:
     """
     Quiet-day variant of build(). Sources detail material from anonymised user
@@ -775,6 +821,10 @@ async def build_quiet(
     attributes (typically src.content.news.Bulletin). Mixed into the facts
     blob alongside bios+memories so the pickers can choose from any of them.
     See ant gepettodiscordbot-mjBCN for the design rationale.
+
+    `occasion` (optional): same "on this day" directive as build() — injected
+    into the assembler as a high-priority theme so anniversaries/holidays still
+    land on a quiet day. See ant gepettodiscordbot-VXQvH.
 
     Caller is responsible for falling back to a chat-free path when bios and
     memories and bulletins are ALL empty — this function will still run, but
@@ -793,6 +843,7 @@ async def build_quiet(
         server_id, today_string, len(facts_text.splitlines()) if facts_text else 0,
         len(recent_details), len(recent_decoys), len(recent_moods), len(recent_styles),
     )
+    _log_occasion(occasion)
 
     detail_1, reason_1 = await _pick_quiet_detail(chatbot, facts_text, recent_details)
     detail_2, reason_2 = await _pick_quiet_second_detail(
@@ -830,6 +881,7 @@ async def build_quiet(
         bios_text=bios_text,
         previous_themes_text=previous_themes_text,
         liz_truss_cameo=liz_truss_cameo,
+        occasion=occasion,
     )
 
     if detail_1:
@@ -855,6 +907,7 @@ async def build_quiet(
         style=style,
         cameo_fired=liz_truss_cameo is not None,
         source_label="quiet day — details picked from bios/memories/news",
+        occasion=occasion,
     )
 
     return result

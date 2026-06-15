@@ -15,6 +15,21 @@ logger = logging.getLogger(__name__)
 MAX_ENTRIES_PER_SERVER = 10
 MAX_RECENT_SLOTS_PER_KIND = 30
 
+# Sentinel server_id for "global" occasions that apply to every server (e.g.
+# Christmas, Liz Truss's birthday). A real Discord server_id is a 19-digit
+# number, so this literal can never collide with one.
+#
+# Why a sentinel string rather than a NULL server_id: NULL never matches `=`
+# or `IN`, so it'd force IS NULL special-casing throughout. The sentinel keeps
+# the column NOT NULL like every other table and the lookup query simple.
+#
+# Why "__global__" rather than "*": the value is only ever a bound parameter
+# compared with `=`/`IN` (never string-interpolated, never LIKE), so "*" would
+# have been functionally safe — but "*" is a wildcard in SELECT and in SQLite's
+# GLOB operator, so it reads as dangerous and would become a real foot-gun if a
+# query ever switched to GLOB. A self-documenting literal avoids all of that.
+GLOBAL_SERVER_ID = "__global__"
+
 
 @dataclass
 class ImageEntry:
@@ -81,6 +96,19 @@ class ImageStore:
             conn.execute("""
                 CREATE INDEX IF NOT EXISTS idx_recent_slots
                 ON image_recent_slots(server_id, slot_kind, id DESC)
+            """)
+            conn.execute("""
+                CREATE TABLE IF NOT EXISTS image_occasions (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    server_id TEXT NOT NULL,
+                    match_key TEXT NOT NULL,
+                    directive TEXT NOT NULL,
+                    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+                )
+            """)
+            conn.execute("""
+                CREATE INDEX IF NOT EXISTS idx_occasions
+                ON image_occasions(server_id, match_key)
             """)
             conn.commit()
 
@@ -274,6 +302,106 @@ class ImageStore:
                 (server_id, slot_kind, limit)
             )
             return [row[0] for row in cursor.fetchall()]
+
+    # ------------------------------------------------------------------
+    # "On this day" occasions — date-keyed prompt directives injected into
+    # the corpse assembler (see ant gepettodiscordbot-VXQvH). A match_key of
+    # "YYYY-MM-DD" fires once on that exact date; "MM-DD" fires every year.
+    # An occasion stored under server_id == GLOBAL_SERVER_ID applies to every
+    # server; a server's own occasion takes precedence over a global one for
+    # the same day.
+    # ------------------------------------------------------------------
+
+    def add_occasion(self, server_id: str, match_key: str, directive: str) -> int:
+        """Add (or replace) an occasion directive for a (server_id, match_key).
+
+        Re-adding the same (server, key) replaces the directive in place, so the
+        helper script can be re-run to edit an entry rather than duplicate it.
+
+        Raises ValueError if match_key or directive is blank.
+        Returns the new row id.
+        """
+        match_key = (match_key or "").strip()
+        directive = (directive or "").strip()
+        if not match_key or not directive:
+            raise ValueError("add_occasion requires a non-empty match_key and directive")
+
+        with self._get_connection() as conn:
+            conn.execute(
+                "DELETE FROM image_occasions WHERE server_id = ? AND match_key = ?",
+                (server_id, match_key),
+            )
+            cursor = conn.execute(
+                "INSERT INTO image_occasions (server_id, match_key, directive) VALUES (?, ?, ?)",
+                (server_id, match_key, directive),
+            )
+            conn.commit()
+            return cursor.lastrowid or 0
+
+    def get_occasion(self, server_id: str, date=None) -> Optional[str]:
+        """Return the occasion directive that applies on the given date, or None.
+
+        `date` may be a datetime/date, an ISO "YYYY-MM-DD" string, or None for
+        today. Considers both this server's occasions and GLOBAL_SERVER_ID
+        occasions, picking the single best match by this precedence:
+
+            this server, exact date  (YYYY-MM-DD)
+            this server, annual      (MM-DD)
+            global, exact date       (YYYY-MM-DD)
+            global, annual           (MM-DD)
+
+        i.e. a server's own occasion always beats a global one for the same
+        day, and within either scope an exact date beats an annual key.
+        """
+        if date is None:
+            date = datetime.now()
+        if isinstance(date, str):
+            date = datetime.fromisoformat(date)
+        exact = date.strftime("%Y-%m-%d")
+        annual = date.strftime("%m-%d")
+
+        with self._get_connection() as conn:
+            cursor = conn.execute(
+                """
+                SELECT directive FROM image_occasions
+                WHERE server_id IN (?, ?) AND match_key IN (?, ?)
+                ORDER BY
+                    (server_id = ?) DESC,   -- this server's rows before global
+                    length(match_key) DESC, -- exact date before annual
+                    id DESC
+                LIMIT 1
+                """,
+                (server_id, GLOBAL_SERVER_ID, exact, annual, server_id),
+            )
+            row = cursor.fetchone()
+            return row[0] if row else None
+
+    def list_occasions(self, server_id: str) -> List[dict]:
+        """Return all occasions for a server as dicts, ordered by match_key."""
+        with self._get_connection() as conn:
+            cursor = conn.execute(
+                """
+                SELECT id, match_key, directive, created_at
+                FROM image_occasions
+                WHERE server_id = ?
+                ORDER BY match_key
+                """,
+                (server_id,),
+            )
+            return [
+                {"id": r[0], "match_key": r[1], "directive": r[2], "created_at": r[3]}
+                for r in cursor.fetchall()
+            ]
+
+    def delete_occasion(self, server_id: str, match_key: str) -> int:
+        """Delete the occasion for a (server_id, match_key). Returns rows deleted."""
+        with self._get_connection() as conn:
+            cursor = conn.execute(
+                "DELETE FROM image_occasions WHERE server_id = ? AND match_key = ?",
+                (server_id, (match_key or "").strip()),
+            )
+            conn.commit()
+            return cursor.rowcount
 
     def _row_to_entry(self, row: tuple) -> ImageEntry:
         """Convert a database row tuple to an ImageEntry."""

@@ -1097,6 +1097,14 @@ async def make_chat_image():
             # derived from the generation pipeline.
             display_prompt = "Unknown"
         else:
+            # "On this day" occasion directive (e.g. the Brexit anniversary).
+            # get_occasion resolves the most specific match for today across this
+            # server and any global occasions; None on an ordinary day. Distill
+            # path only — see ant gepettodiscordbot-VXQvH.
+            occasion = image_store.get_occasion(server_id, datetime.now())
+            if occasion:
+                logger.info("Chat image occasion active: %r", occasion[:120])
+
             if quiet_day:
                 # Quiet-day corpse pipeline: pickers source detail material from
                 # anonymised bios + memories + today's news bulletins, mood comes
@@ -1126,6 +1134,7 @@ async def make_chat_image():
                         server_id=server_id,
                         image_store=image_store,
                         chatbot=chatbot,
+                        occasion=occasion,
                     )
                 else:
                     logger.info("Quiet day with no bios/memories/news — falling back to legacy creative path")
@@ -1156,6 +1165,7 @@ async def make_chat_image():
                     server_id=server_id,
                     image_store=image_store,
                     chatbot=chatbot,
+                    occasion=occasion,
                 )
                 # combined_chat = images.get_initial_chat_image_prompt(chat_text, previous_themes_text, bios_text)
                 # decoded_response = await images.get_image_response(combined_chat, chatbot)

@@ -4,7 +4,8 @@ Tests for src/persistence/image_store.py
 
 import pytest
 import os
-from src.persistence.image_store import ImageStore, ImageEntry
+from datetime import datetime
+from src.persistence.image_store import ImageStore, ImageEntry, GLOBAL_SERVER_ID
 
 
 class TestImageStore:
@@ -175,3 +176,84 @@ class TestRecentSlots:
         for i in range(10):
             store.save_recent_slot('server1', 'mood', f'mood-{i}')
         assert len(store.get_recent_slots('server1', 'mood', limit=3)) == 3
+
+
+class TestImageOccasions:
+    """Tests for the 'on this day' occasion directives (ant gepettodiscordbot-VXQvH)."""
+
+    def test_add_and_get_exact_date(self, temp_dir):
+        store = ImageStore(os.path.join(temp_dir, 'test.db'))
+        store.add_occasion('server1', '2026-06-23', 'reference the Brexit anniversary')
+        assert store.get_occasion('server1', '2026-06-23') == 'reference the Brexit anniversary'
+
+    def test_get_returns_none_when_no_match(self, temp_dir):
+        store = ImageStore(os.path.join(temp_dir, 'test.db'))
+        store.add_occasion('server1', '2026-06-23', 'brexit')
+        assert store.get_occasion('server1', '2026-06-24') is None
+
+    def test_annual_key_matches_any_year(self, temp_dir):
+        store = ImageStore(os.path.join(temp_dir, 'test.db'))
+        store.add_occasion('server1', '12-25', 'festive glow')
+        assert store.get_occasion('server1', '2026-12-25') == 'festive glow'
+        assert store.get_occasion('server1', '2031-12-25') == 'festive glow'
+
+    def test_exact_date_beats_annual(self, temp_dir):
+        store = ImageStore(os.path.join(temp_dir, 'test.db'))
+        store.add_occasion('server1', '12-25', 'generic christmas')
+        store.add_occasion('server1', '2026-12-25', 'tenth christmas')
+        assert store.get_occasion('server1', '2026-12-25') == 'tenth christmas'
+        # A different year falls back to the annual key.
+        assert store.get_occasion('server1', '2027-12-25') == 'generic christmas'
+
+    def test_accepts_datetime_object(self, temp_dir):
+        store = ImageStore(os.path.join(temp_dir, 'test.db'))
+        store.add_occasion('server1', '2026-06-23', 'brexit')
+        assert store.get_occasion('server1', datetime(2026, 6, 23)) == 'brexit'
+
+    def test_add_replaces_same_key(self, temp_dir):
+        store = ImageStore(os.path.join(temp_dir, 'test.db'))
+        store.add_occasion('server1', '06-23', 'first wording')
+        store.add_occasion('server1', '06-23', 'edited wording')
+        assert store.get_occasion('server1', '2026-06-23') == 'edited wording'
+        assert len(store.list_occasions('server1')) == 1
+
+    def test_blank_match_key_or_directive_rejected(self, temp_dir):
+        store = ImageStore(os.path.join(temp_dir, 'test.db'))
+        with pytest.raises(ValueError):
+            store.add_occasion('server1', '', 'directive')
+        with pytest.raises(ValueError):
+            store.add_occasion('server1', '06-23', '   ')
+
+    def test_server_isolation(self, temp_dir):
+        store = ImageStore(os.path.join(temp_dir, 'test.db'))
+        store.add_occasion('server1', '06-23', 'server1 only')
+        assert store.get_occasion('server2', '2026-06-23') is None
+
+    def test_global_occasion_applies_to_any_server(self, temp_dir):
+        store = ImageStore(os.path.join(temp_dir, 'test.db'))
+        store.add_occasion(GLOBAL_SERVER_ID, '12-25', 'global christmas')
+        assert store.get_occasion('server1', '2026-12-25') == 'global christmas'
+        assert store.get_occasion('server2', '2026-12-25') == 'global christmas'
+
+    def test_server_specific_beats_global(self, temp_dir):
+        store = ImageStore(os.path.join(temp_dir, 'test.db'))
+        store.add_occasion(GLOBAL_SERVER_ID, '12-25', 'global christmas')
+        store.add_occasion('server1', '12-25', 'server1 christmas')
+        # server1 sees its own; server2 falls through to the global one.
+        assert store.get_occasion('server1', '2026-12-25') == 'server1 christmas'
+        assert store.get_occasion('server2', '2026-12-25') == 'global christmas'
+
+    def test_list_occasions(self, temp_dir):
+        store = ImageStore(os.path.join(temp_dir, 'test.db'))
+        store.add_occasion('server1', '06-23', 'brexit')
+        store.add_occasion('server1', '2026-12-25', 'christmas')
+        rows = store.list_occasions('server1')
+        keys = [r['match_key'] for r in rows]
+        assert keys == ['06-23', '2026-12-25']  # ordered by match_key
+
+    def test_delete_occasion(self, temp_dir):
+        store = ImageStore(os.path.join(temp_dir, 'test.db'))
+        store.add_occasion('server1', '06-23', 'brexit')
+        deleted = store.delete_occasion('server1', '06-23')
+        assert deleted == 1
+        assert store.get_occasion('server1', '2026-06-23') is None
