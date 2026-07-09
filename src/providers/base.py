@@ -9,6 +9,8 @@ import time
 import logging
 
 logger = logging.getLogger('discord')  # Get the discord logger
+
+
 class BaseModel:
     uses_logs: bool = True
     default_model: str = os.getenv("BOT_MODEL", "gpt-4o-mini")
@@ -57,6 +59,8 @@ class BaseModel:
         if tools and self.model_supports_tools(model):
             params["tools"] = tools
             params["tool_choice"] = "auto"
+            if self.requires_disabled_reasoning_for_tools(model):
+                params["reasoning_effort"] = "none"
 
         if "gemini" in model:
             params["safety_settings"] = [
@@ -99,6 +103,14 @@ class BaseModel:
         models_with_tools = ["openai", "anthropic", "gemini", "google"]
         return any(m in model for m in models_with_tools)
 
+    def requires_disabled_reasoning_for_tools(self, model: str) -> bool:
+        provider, separator, model_name = model.partition("/")
+        return (
+            separator == "/"
+            and provider == "openai"
+            and (model_name == "gpt-5.6" or model_name.startswith("gpt-5.6-"))
+        )
+
     async def function_call(
         self,
         messages: List[Dict[str, str]] = [],
@@ -109,13 +121,17 @@ class BaseModel:
         """Generic function call implementation using LiteLLM"""
         model = self.get_model_string(model)
         print(f"Made a function call using {model}")
-        response = await acompletion(
-            model=model,
-            messages=messages,
-            tools=tools,
-            tool_choice={"type": "function", "function": {"name": tools[0]["function"]["name"]}},
-            temperature=temperature
-        )
+        params = {
+            "model": model,
+            "messages": messages,
+            "tools": tools,
+            "tool_choice": {"type": "function", "function": {"name": tools[0]["function"]["name"]}},
+            "temperature": temperature,
+        }
+        if self.requires_disabled_reasoning_for_tools(model):
+            params["reasoning_effort"] = "none"
+
+        response = await acompletion(**params)
 
         # Get cost from litellm response
         try:
