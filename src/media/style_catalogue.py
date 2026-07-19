@@ -22,9 +22,11 @@ Entries are (key, description):
   picker used to produce (5-20 words, committed and specific).
 
 Deliberately NOT included — the old evergreen bans, i.e. LLM/image-model
-clichés: Dutch Golden Age, Vermeer, Hieronymus Bosch, De Chirico, Salvador
-Dalí, generic surrealism, Studio Ghibli, Wes Anderson symmetry. There's a
-test for those too.
+clichés: Dutch Golden Age, Vermeer, Hieronymus Bosch, Salvador Dalí,
+generic surrealism, Studio Ghibli, Wes Anderson symmetry. There's a test
+for those too. De Chirico was banned under the LLM picker but re-admitted
+here (2026-07-19): the ban fought the LLM's obsession, and uniform
+sampling has no obsessions — at one entry in ~236 he's a treat, not a rut.
 """
 
 STYLE_CATALOGUE: list[tuple[str, str]] = [
@@ -77,6 +79,7 @@ STYLE_CATALOGUE: list[tuple[str, str]] = [
     ("Matisse", "Matisse's paper cut-outs, dancing cobalt and coral silhouettes"),
     ("Henri Rousseau", "Henri Rousseau's naïve jungles, moonlit tigers and impossible layered foliage"),
     ("Tamara de Lempicka", "Tamara de Lempicka's Art Deco portraits, polished chrome planes and icy theatrical glamour"),
+    ("De Chirico", "De Chirico's metaphysical piazzas, long shadows, empty arcades and enigmatic mannequins"),
     ("Remedios Varo", "Remedios Varo's alchemical dreamscapes, spindly hooded figures and clockwork contraptions"),
     ("Leonora Carrington", "Leonora Carrington's mythic tempera, pale beasts and hooded celebrants"),
     ("Frida Kahlo", "Frida Kahlo's votive portrait style, unflinching gazes amid symbolic flora and fauna"),
@@ -171,6 +174,7 @@ STYLE_CATALOGUE: list[tuple[str, str]] = [
     ("Quentin Blake", "Quentin Blake's scratchy pen-and-wash figures, gleeful wobbly energy"),
     ("Ronald Searle", "Ronald Searle's spidery satirical ink, crumbling institutions and magnificent cross-hatched chaos"),
     ("Heath Robinson", "Heath Robinson's absurd contraption illustrations, pulleys, string and deadpan Edwardian engineering"),
+    ("Punch cartoons", "Victorian Punch cartoons, dense crosshatched wood engraving and starchy satirical tableaux"),
     ("Edward Gorey", "Edward Gorey's gothic pen-and-ink illustration, crosshatched shadows and macabre Victorian whimsy"),
     ("Shrigley", "David Shrigley's deadpan crude drawings, wonky black outlines and blunt humour"),
     ("Ralph Steadman", "Ralph Steadman's splattered gonzo ink, flailing caricatures and furious blots"),

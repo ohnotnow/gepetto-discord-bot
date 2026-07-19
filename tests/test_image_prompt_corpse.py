@@ -821,8 +821,10 @@ class TestStyleChoice:
 
     def test_old_evergreen_cliches_stay_out_of_the_catalogue(self):
         # The LLM picker carried EVERGREEN_STYLE_BANS for these; the
-        # catalogue must not quietly reintroduce them.
-        banned = ["vermeer", "dutch golden age", "bosch", "de chirico",
+        # catalogue must not quietly reintroduce them. (De Chirico is
+        # deliberately absent from this list — re-admitted 2026-07-19 at
+        # catalogue dosage; see the style_catalogue docstring.)
+        banned = ["vermeer", "dutch golden age", "bosch",
                   "dalí", "ghibli", "wes anderson"]
         for _, text in STYLE_CATALOGUE:
             for cliche in banned:
