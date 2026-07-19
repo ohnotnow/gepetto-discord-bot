@@ -2,9 +2,11 @@
 Exquisite Corpse image prompt pipeline.
 
 Builds the daily chat-image prompt through a sequence of *blind* LLM calls.
-Each slice (detail, decoy, mood, style) sees only a sliver of context, and
-the final assembler sees no chat history at all — so it cannot reconstruct
-literal chat events as a "flat-lay product photo".
+Each slice (detail, decoy, mood) sees only a sliver of context, and the
+final assembler sees no chat history at all — so it cannot reconstruct
+literal chat events as a "flat-lay product photo". The style slice is not
+an LLM call at all: it is a random pick from the curated catalogue in
+style_catalogue.py, with a globally shared anti-list.
 
 Named after the surrealist parlour game / British "Consequences" — each
 contributor draws one panel without seeing the others.
@@ -22,11 +24,19 @@ import random
 from datetime import datetime
 from typing import Optional
 
+from src.media.style_catalogue import STYLE_CATALOGUE
+from src.persistence.image_store import GLOBAL_SERVER_ID
 from src.utils.constants import LIZ_TRUSS_PROBABILITY
 
 logger = logging.getLogger("discord")
 
 DECOY_PROBABILITY = 0.05
+
+# How many recent style picks (across ALL servers — style history is global,
+# see _choose_style) are excluded from the catalogue before choosing. Keep it
+# comfortably below len(STYLE_CATALOGUE) and no bigger than the store's
+# MAX_RECENT_SLOTS_PER_KIND.
+STYLE_EXCLUDE_WINDOW = 90
 
 # Patron-saint cameo. The main Discord server was founded about a week
 # before Liz Truss became PM and adopted her as its (ironic) patron saint.
@@ -37,20 +47,11 @@ LIZ_TRUSS_CAMEO = (
     "Liz Truss into the image, please do so."
 )
 
-# Stylistic hand-brake: the LLM has clear favourites here and will return them
-# every time unless told otherwise. These are stitched into the style anti-list
-# alongside whatever has been picked recently.
-EVERGREEN_STYLE_BANS = [
-    "Dutch Golden Age",
-    "Vermeer",
-    "Hieronymus Bosch",
-    "De Chirico",
-    "Salvador Dalí",
-    "surrealism in general",
-    "Studio Ghibli",
-    "Wes Anderson symmetry",
-]
-
+# Decoy hand-brake: the LLM has clear favourites here and will return them
+# every time unless told otherwise. These are stitched into the decoy anti-list
+# alongside whatever has been picked recently. (Styles had a matching
+# EVERGREEN_STYLE_BANS list until the curated catalogue replaced the LLM style
+# picker — the catalogue simply omits the clichés. See style_catalogue.py.)
 EVERGREEN_DECOY_BANS = [
     "a violin",
     "a teacup",
@@ -393,18 +394,36 @@ async def _pick_date_mood(chatbot, date_string: str, exclude: list[str]) -> str:
     return await _pick(chatbot, system, user, stage="quiet_mood")
 
 
-async def _pick_style(chatbot, exclude: list[str]) -> str:
-    full_exclude = EVERGREEN_STYLE_BANS + exclude
-    system = (
-        "Suggest a specific, committed visual artistic style for an image. Name a painter, "
-        "a film movement, a photographic technique, a printmaking method, a textile tradition, "
-        "a sculptural era, a video game era, an animation studio, an illustrator. Be specific "
-        "and unhedged — 'oil painting' is too vague, 'Edward Hopper's diner-light oil painting' "
-        "is right. Reply with just the style description (5–20 words), no preamble."
+def _available_styles(exclude: list[str]) -> list[str]:
+    """Catalogue descriptions whose key appears in none of the excluded values.
+
+    Substring matching, not equality: the pre-catalogue LLM picker stored
+    free-text styles ("Mary Blair’s Disney concept art, bold gouache…"), and
+    those rows still count against their catalogue counterparts.
+    """
+    lowered = [value.lower() for value in exclude]
+    return [
+        text for key, text in STYLE_CATALOGUE
+        if not any(key.lower() in value for value in lowered)
+    ]
+
+
+def _choose_style(exclude: list[str]) -> str:
+    """Pick a style from the curated catalogue, avoiding recently used ones.
+
+    Replaced the LLM style picker on 2026-07-19: production data showed the
+    LLM's effective repertoire was only ~50 favourites, so each one returned
+    within a run or two of falling off the old 20-item anti-list — and every
+    server cycled through the same names. A random pick from a big catalogue
+    is what the LLM call was pretending to be.
+    """
+    available = _available_styles(exclude) or [text for _, text in STYLE_CATALOGUE]
+    style = random.choice(available)
+    logger.info(
+        "[corpse:style] chose %r (%d of %d styles available)",
+        style, len(available), len(STYLE_CATALOGUE),
     )
-    user = "Pick a visual style."
-    user += _exclude_clause("Forbidden styles (overused or recently used)", full_exclude)
-    return await _pick(chatbot, system, user, stage="style", temperature=1.1)
+    return style
 
 
 def _assembly_system() -> str:
@@ -710,7 +729,12 @@ async def build(
     recent_details = image_store.get_recent_slots(server_id, "detail")
     recent_decoys = image_store.get_recent_slots(server_id, "decoy")
     recent_moods = image_store.get_recent_slots(server_id, "mood")
-    recent_styles = image_store.get_recent_slots(server_id, "style")
+    # Style history is deliberately GLOBAL, not per-server: per-server lists
+    # meant every server cycled through the same favourites in lockstep.
+    # Styles carry no chat content, so sharing them leaks nothing.
+    recent_styles = image_store.get_recent_slots(
+        GLOBAL_SERVER_ID, "style", limit=STYLE_EXCLUDE_WINDOW
+    )
 
     logger.info(
         "[corpse:start] server=%s exclude_sizes detail=%d decoy=%d mood=%d style=%d",
@@ -737,7 +761,7 @@ async def build(
         logger.info("[corpse:decoy] skipped this run (probability %.2f)", DECOY_PROBABILITY)
 
     mood = await _pick_mood(chatbot, chat_text, recent_moods)
-    style = await _pick_style(chatbot, recent_styles)
+    style = _choose_style(recent_styles)
 
     liz_truss_cameo: Optional[str] = None
     if random.random() < LIZ_TRUSS_PROBABILITY:
@@ -774,7 +798,7 @@ async def build(
     if mood:
         image_store.save_recent_slot(server_id, "mood", mood)
     if style:
-        image_store.save_recent_slot(server_id, "style", style)
+        image_store.save_recent_slot(GLOBAL_SERVER_ID, "style", style)
 
     result["reasoning"] = _compose_reasoning(
         result.get("reasoning", ""),
@@ -836,7 +860,10 @@ async def build_quiet(
     recent_details = image_store.get_recent_slots(server_id, "detail")
     recent_decoys = image_store.get_recent_slots(server_id, "decoy")
     recent_moods = image_store.get_recent_slots(server_id, "mood")
-    recent_styles = image_store.get_recent_slots(server_id, "style")
+    # Global, like build() — see the comment there.
+    recent_styles = image_store.get_recent_slots(
+        GLOBAL_SERVER_ID, "style", limit=STYLE_EXCLUDE_WINDOW
+    )
 
     logger.info(
         "[corpse:start:quiet] server=%s date=%r facts_lines=%d exclude_sizes detail=%d decoy=%d mood=%d style=%d",
@@ -858,7 +885,7 @@ async def build_quiet(
         logger.info("[corpse:decoy] skipped this run (probability %.2f)", DECOY_PROBABILITY)
 
     mood = await _pick_date_mood(chatbot, today_string, recent_moods)
-    style = await _pick_style(chatbot, recent_styles)
+    style = _choose_style(recent_styles)
 
     liz_truss_cameo: Optional[str] = None
     if random.random() < LIZ_TRUSS_PROBABILITY:
@@ -893,7 +920,7 @@ async def build_quiet(
     if mood:
         image_store.save_recent_slot(server_id, "mood", mood)
     if style:
-        image_store.save_recent_slot(server_id, "style", style)
+        image_store.save_recent_slot(GLOBAL_SERVER_ID, "style", style)
 
     result["reasoning"] = _compose_reasoning(
         result.get("reasoning", ""),

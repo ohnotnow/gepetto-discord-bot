@@ -13,7 +13,10 @@ from typing import List, Optional
 logger = logging.getLogger(__name__)
 
 MAX_ENTRIES_PER_SERVER = 10
-MAX_RECENT_SLOTS_PER_KIND = 30
+# Big enough to hold the corpse pipeline's global style window (see
+# STYLE_EXCLUDE_WINDOW in image_prompt_corpse.py) with headroom; the
+# per-server detail/mood/decoy readers still only ask for their last 20.
+MAX_RECENT_SLOTS_PER_KIND = 120
 
 # Sentinel server_id for "global" occasions that apply to every server (e.g.
 # Christmas, Liz Truss's birthday). A real Discord server_id is a 19-digit

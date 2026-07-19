@@ -10,7 +10,8 @@ from types import SimpleNamespace
 import pytest
 
 from src.media import image_prompt_corpse
-from src.persistence.image_store import ImageStore
+from src.media.style_catalogue import STYLE_CATALOGUE
+from src.persistence.image_store import GLOBAL_SERVER_ID, ImageStore
 
 
 CHAT = "alice: tomatoes from the market\nbob: also that 404 was hilarious"
@@ -64,14 +65,22 @@ def _final_payload():
 
 
 class TestBuild:
+    @pytest.fixture(autouse=True)
+    def fixed_style(self, monkeypatch):
+        """Style is a code-side catalogue pick, not an LLM call — pin it so the
+        scripted FakeChat replies stay aligned with the remaining LLM stages.
+        TestStyleChoice exercises the real chooser."""
+        monkeypatch.setattr(
+            image_prompt_corpse, "_choose_style",
+            lambda exclude: "Edward Hopper diner-light oil painting",
+        )
+
     async def test_returns_assembler_output_shape(self, store, force_decoy):
         chatbot = FakeChat([
             "DETAIL: a wonky kettle\nREASON: alice mentioned tomatoes and the kitchen feels lived-in.",
             "DETAIL: the smell of damp coats\nREASON: bob's 404 joke had a soggy, indoor texture to it.",
             "a tin of antique fishhooks",
-            "gentle Tuesday melancholy",
-            "Edward Hopper diner-light oil painting",
-            _final_payload(),
+            "gentle Tuesday melancholy",            _final_payload(),
         ])
         result = await image_prompt_corpse.build(
             chat_text=CHAT,
@@ -92,9 +101,7 @@ class TestBuild:
             "DETAIL: a wonky kettle\nREASON: alice mentioned tomatoes and the kitchen feels lived-in.",
             "DETAIL: the smell of damp coats\nREASON: bob's 404 joke had a soggy, indoor texture to it.",
             "a tin of antique fishhooks",
-            "gentle Tuesday melancholy",
-            "Edward Hopper diner-light oil painting",
-            _final_payload(),
+            "gentle Tuesday melancholy",            _final_payload(),
         ])
         await image_prompt_corpse.build(
             chat_text=CHAT, previous_themes_text="", bios_text="",
@@ -107,7 +114,9 @@ class TestBuild:
         ]
         assert store.get_recent_slots("srv1", "decoy") == ["a tin of antique fishhooks"]
         assert store.get_recent_slots("srv1", "mood") == ["gentle Tuesday melancholy"]
-        assert store.get_recent_slots("srv1", "style") == [
+        # Style history is global, not per-server.
+        assert store.get_recent_slots("srv1", "style") == []
+        assert store.get_recent_slots(GLOBAL_SERVER_ID, "style") == [
             "Edward Hopper diner-light oil painting"
         ]
 
@@ -115,17 +124,16 @@ class TestBuild:
         chatbot = FakeChat([
             "a wonky kettle",
             "the smell of damp coats",
-            "gentle Tuesday melancholy",
-            "Edward Hopper diner-light oil painting",
-            _final_payload(),
+            "gentle Tuesday melancholy",            _final_payload(),
         ])
         await image_prompt_corpse.build(
             chat_text=CHAT, previous_themes_text="", bios_text="",
             user_locations="", cat_descriptions="",
             server_id="srv1", image_store=store, chatbot=chatbot,
         )
-        # Only 5 LLM calls when decoy is skipped (no _pick_decoy call).
-        assert len(chatbot.calls) == 5
+        # Only 4 LLM calls when decoy is skipped (no _pick_decoy call, and
+        # style is not an LLM call).
+        assert len(chatbot.calls) == 4
         assert store.get_recent_slots("srv1", "decoy") == []
 
     async def test_exclude_lists_passed_into_pick_prompts(self, store, force_decoy):
@@ -133,13 +141,10 @@ class TestBuild:
         store.save_recent_slot("srv1", "detail", "previous-detail-x")
         store.save_recent_slot("srv1", "decoy", "previous-decoy-y")
         store.save_recent_slot("srv1", "mood", "previous-mood-z")
-        store.save_recent_slot("srv1", "style", "previous-style-q")
 
         chatbot = FakeChat([
             "a wonky kettle", "the smell of damp coats",
-            "a tin of antique fishhooks", "gentle Tuesday melancholy",
-            "Edward Hopper diner-light oil painting",
-            _final_payload(),
+            "a tin of antique fishhooks", "gentle Tuesday melancholy",            _final_payload(),
         ])
         await image_prompt_corpse.build(
             chat_text=CHAT, previous_themes_text="", bios_text="",
@@ -152,16 +157,14 @@ class TestBuild:
         # decoy (call 2) user message should mention the previous decoy.
         decoy_user = chatbot.calls[2]["messages"][1]["content"]
         assert "previous-decoy-y" in decoy_user
-        # mood (call 3) and style (call 4) similarly.
+        # mood (call 3) similarly. Style has no LLM call — its exclusion is
+        # covered by TestStyleChoice.
         assert "previous-mood-z" in chatbot.calls[3]["messages"][1]["content"]
-        assert "previous-style-q" in chatbot.calls[4]["messages"][1]["content"]
 
     async def test_second_detail_call_sees_first_detail(self, store, force_decoy):
         chatbot = FakeChat([
             "a wonky kettle", "the smell of damp coats",
-            "a tin of antique fishhooks", "gentle Tuesday melancholy",
-            "Edward Hopper diner-light oil painting",
-            _final_payload(),
+            "a tin of antique fishhooks", "gentle Tuesday melancholy",            _final_payload(),
         ])
         await image_prompt_corpse.build(
             chat_text=CHAT, previous_themes_text="", bios_text="",
@@ -175,9 +178,7 @@ class TestBuild:
     async def test_assembler_has_no_chat_history(self, store, force_decoy):
         chatbot = FakeChat([
             "a wonky kettle", "the smell of damp coats",
-            "a tin of antique fishhooks", "gentle Tuesday melancholy",
-            "Edward Hopper diner-light oil painting",
-            _final_payload(),
+            "a tin of antique fishhooks", "gentle Tuesday melancholy",            _final_payload(),
         ])
         secret_phrase = "tomatoes from the market"
         await image_prompt_corpse.build(
@@ -186,8 +187,8 @@ class TestBuild:
             user_locations="", cat_descriptions="",
             server_id="srv1", image_store=store, chatbot=chatbot,
         )
-        # The final call (index 5) is the assembler. It must NOT see the chat.
-        assembler_messages = chatbot.calls[5]["messages"]
+        # The final call (index 4) is the assembler. It must NOT see the chat.
+        assembler_messages = chatbot.calls[4]["messages"]
         full_text = "\n".join(m["content"] for m in assembler_messages)
         assert "secret_canary_phrase" not in full_text
         assert secret_phrase not in full_text
@@ -195,9 +196,7 @@ class TestBuild:
     async def test_assembler_receives_context_extras(self, store, force_decoy):
         chatbot = FakeChat([
             "a wonky kettle", "the smell of damp coats",
-            "a tin of antique fishhooks", "gentle Tuesday melancholy",
-            "Edward Hopper diner-light oil painting",
-            _final_payload(),
+            "a tin of antique fishhooks", "gentle Tuesday melancholy",            _final_payload(),
         ])
         await image_prompt_corpse.build(
             chat_text=CHAT, previous_themes_text="last week: a teal kitchen",
@@ -206,7 +205,7 @@ class TestBuild:
             cat_descriptions="Mango, a marmalade tabby",
             server_id="srv1", image_store=store, chatbot=chatbot,
         )
-        assembler_user = chatbot.calls[5]["messages"][1]["content"]
+        assembler_user = chatbot.calls[4]["messages"][1]["content"]
         assert "Bath and Manchester" in assembler_user
         assert "Mango" in assembler_user
         assert "cellist" in assembler_user
@@ -215,9 +214,7 @@ class TestBuild:
     async def test_decoy_call_does_not_see_chat(self, store, force_decoy):
         chatbot = FakeChat([
             "a wonky kettle", "the smell of damp coats",
-            "a tin of antique fishhooks", "gentle Tuesday melancholy",
-            "Edward Hopper diner-light oil painting",
-            _final_payload(),
+            "a tin of antique fishhooks", "gentle Tuesday melancholy",            _final_payload(),
         ])
         await image_prompt_corpse.build(
             chat_text="canary_chat_marker",
@@ -229,54 +226,19 @@ class TestBuild:
         full = "\n".join(m["content"] for m in decoy_messages)
         assert "canary_chat_marker" not in full
 
-    async def test_style_call_does_not_see_chat(self, store, force_decoy):
-        chatbot = FakeChat([
-            "a wonky kettle", "the smell of damp coats",
-            "a tin of antique fishhooks", "gentle Tuesday melancholy",
-            "Edward Hopper diner-light oil painting",
-            _final_payload(),
-        ])
-        await image_prompt_corpse.build(
-            chat_text="canary_chat_marker",
-            previous_themes_text="", bios_text="",
-            user_locations="", cat_descriptions="",
-            server_id="srv1", image_store=store, chatbot=chatbot,
-        )
-        style_messages = chatbot.calls[4]["messages"]
-        full = "\n".join(m["content"] for m in style_messages)
-        assert "canary_chat_marker" not in full
-
-    async def test_evergreen_style_bans_in_prompt(self, store, force_decoy):
-        chatbot = FakeChat([
-            "a wonky kettle", "the smell of damp coats",
-            "a tin of antique fishhooks", "gentle Tuesday melancholy",
-            "Edward Hopper diner-light oil painting",
-            _final_payload(),
-        ])
-        await image_prompt_corpse.build(
-            chat_text=CHAT, previous_themes_text="", bios_text="",
-            user_locations="", cat_descriptions="",
-            server_id="srv1", image_store=store, chatbot=chatbot,
-        )
-        style_user = chatbot.calls[4]["messages"][1]["content"]
-        assert "Dutch Golden Age" in style_user
-        assert "De Chirico" in style_user
-
     async def test_detail_reasons_reach_the_assembler(self, store, force_decoy):
         chatbot = FakeChat([
             "DETAIL: a wonky kettle\nREASON: alice's tomato remark hinted at a homely kitchen mood.",
             "DETAIL: the smell of damp coats\nREASON: bob's 404 joke had a soggy indoor texture.",
             "a tin of antique fishhooks",
-            "gentle Tuesday melancholy",
-            "Edward Hopper diner-light oil painting",
-            _final_payload(),
+            "gentle Tuesday melancholy",            _final_payload(),
         ])
         await image_prompt_corpse.build(
             chat_text=CHAT, previous_themes_text="", bios_text="",
             user_locations="", cat_descriptions="",
             server_id="srv1", image_store=store, chatbot=chatbot,
         )
-        assembler_user = chatbot.calls[5]["messages"][1]["content"]
+        assembler_user = chatbot.calls[4]["messages"][1]["content"]
         assert "a wonky kettle" in assembler_user
         assert "the smell of damp coats" in assembler_user
         assert "alice's tomato remark" in assembler_user
@@ -293,16 +255,14 @@ class TestBuild:
         chatbot = FakeChat([
             "a wonky kettle",
             "the smell of damp coats",
-            "a tin of antique fishhooks", "gentle Tuesday melancholy",
-            "Edward Hopper diner-light oil painting",
-            _final_payload(),
+            "a tin of antique fishhooks", "gentle Tuesday melancholy",            _final_payload(),
         ])
         await image_prompt_corpse.build(
             chat_text=CHAT, previous_themes_text="", bios_text="",
             user_locations="", cat_descriptions="",
             server_id="srv1", image_store=store, chatbot=chatbot,
         )
-        assembler_user = chatbot.calls[5]["messages"][1]["content"]
+        assembler_user = chatbot.calls[4]["messages"][1]["content"]
         assert "a wonky kettle" in assembler_user
         assert "the smell of damp coats" in assembler_user
         # No "(picked because: ...)" line when the reason was empty.
@@ -315,9 +275,7 @@ class TestBuild:
         it is a hard requirement, not a polish item."""
         chatbot = FakeChat([
             "a wonky kettle", "the smell of damp coats",
-            "a tin of antique fishhooks", "gentle Tuesday melancholy",
-            "Edward Hopper diner-light oil painting",
-            _final_payload(),
+            "a tin of antique fishhooks", "gentle Tuesday melancholy",            _final_payload(),
         ])
         await image_prompt_corpse.build(
             chat_text=CHAT, previous_themes_text="", bios_text="",
@@ -340,16 +298,14 @@ class TestBuild:
         be told not to reflect serious pain back into the image."""
         chatbot = FakeChat([
             "a wonky kettle", "the smell of damp coats",
-            "a tin of antique fishhooks", "gentle Tuesday melancholy",
-            "Edward Hopper diner-light oil painting",
-            _final_payload(),
+            "a tin of antique fishhooks", "gentle Tuesday melancholy",            _final_payload(),
         ])
         await image_prompt_corpse.build(
             chat_text=CHAT, previous_themes_text="", bios_text="",
             user_locations="", cat_descriptions="",
             server_id="srv1", image_store=store, chatbot=chatbot,
         )
-        assembler_system = chatbot.calls[5]["messages"][0]["content"]
+        assembler_system = chatbot.calls[4]["messages"][0]["content"]
         assert "poisoned" in assembler_system
         assert "never appear cruel or tone-deaf" in assembler_system
 
@@ -361,16 +317,14 @@ class TestBuild:
         Do not delete this test without re-checking the cameo wiring."""
         chatbot = FakeChat([
             "a wonky kettle", "the smell of damp coats",
-            "a tin of antique fishhooks", "gentle Tuesday melancholy",
-            "Edward Hopper diner-light oil painting",
-            _final_payload(),
+            "a tin of antique fishhooks", "gentle Tuesday melancholy",            _final_payload(),
         ])
         await image_prompt_corpse.build(
             chat_text=CHAT, previous_themes_text="", bios_text="",
             user_locations="", cat_descriptions="",
             server_id="srv1", image_store=store, chatbot=chatbot,
         )
-        assembler_user = chatbot.calls[5]["messages"][1]["content"]
+        assembler_user = chatbot.calls[4]["messages"][1]["content"]
         assert "Liz Truss" in assembler_user
         assert "grotesque reference" in assembler_user
 
@@ -379,7 +333,7 @@ class TestBuild:
         LIZ_TRUSS_PROBABILITY (0.05) — so the cameo must not appear."""
         chatbot = FakeChat([
             "a wonky kettle", "the smell of damp coats",
-            "gentle Tuesday melancholy", "Edward Hopper diner-light oil painting",
+            "gentle Tuesday melancholy",
             _final_payload(),
         ])
         await image_prompt_corpse.build(
@@ -387,7 +341,7 @@ class TestBuild:
             user_locations="", cat_descriptions="",
             server_id="srv1", image_store=store, chatbot=chatbot,
         )
-        # Decoy is skipped, so the assembler call index shifts from 5 to 4.
+        # Decoy is skipped, so the assembler call index shifts from 4 to 3.
         assembler_user = chatbot.calls[-1]["messages"][1]["content"]
         assert "Liz Truss" not in assembler_user
 
@@ -404,9 +358,7 @@ class TestBuild:
             "DETAIL: a wonky kettle\nREASON: r1.",
             "DETAIL: the smell of damp coats\nREASON: r2.",
             "a chancellor with tired eyes",  # news decoy pick
-            "gentle Tuesday melancholy",
-            "Edward Hopper diner-light oil painting",
-            _final_payload(),
+            "gentle Tuesday melancholy",            _final_payload(),
         ])
         await image_prompt_corpse.build(
             chat_text=CHAT, news_bulletins=bulletins,
@@ -434,9 +386,7 @@ class TestBuild:
             "DETAIL: a kettle\nREASON: r.",
             "DETAIL: damp coats\nREASON: r.",
             "a chancellor with tired eyes",
-            "gentle Tuesday melancholy",
-            "Edward Hopper diner-light oil painting",
-            _final_payload(),
+            "gentle Tuesday melancholy",            _final_payload(),
         ])
         await image_prompt_corpse.build(
             chat_text=CHAT, news_bulletins=bulletins,
@@ -455,9 +405,7 @@ class TestBuild:
             "DETAIL: a kettle\nREASON: r.",
             "DETAIL: damp coats\nREASON: r.",
             "a tin of antique fishhooks",  # random-thing pick
-            "gentle Tuesday melancholy",
-            "Edward Hopper diner-light oil painting",
-            _final_payload(),
+            "gentle Tuesday melancholy",            _final_payload(),
         ])
         await image_prompt_corpse.build(
             chat_text=CHAT, news_bulletins=[],
@@ -475,9 +423,7 @@ class TestBuild:
     async def test_falls_back_when_tool_call_missing(self, store, force_decoy):
         chatbot = FakeChat([
             "a wonky kettle", "the smell of damp coats",
-            "a tin of antique fishhooks", "gentle Tuesday melancholy",
-            "Edward Hopper diner-light oil painting",
-            "the model just replied with prose instead of a tool call",
+            "a tin of antique fishhooks", "gentle Tuesday melancholy",            "the model just replied with prose instead of a tool call",
         ])
         result = await image_prompt_corpse.build(
             chat_text=CHAT, previous_themes_text="", bios_text="",
@@ -500,9 +446,7 @@ class TestBuild:
             "DETAIL: a wonky kettle\nREASON: alice's tomato remark felt homely.",
             "DETAIL: the smell of damp coats\nREASON: bob's 404 joke had a soggy indoor texture.",
             "a tin of antique fishhooks",
-            "gentle Tuesday melancholy",
-            "Edward Hopper diner-light oil painting",
-            _final_payload(),
+            "gentle Tuesday melancholy",            _final_payload(),
         ])
         result = await image_prompt_corpse.build(
             chat_text=CHAT, previous_themes_text="", bios_text="",
@@ -526,7 +470,7 @@ class TestBuild:
     async def test_reasoning_log_when_decoy_and_cameo_skipped(self, store, skip_decoy):
         chatbot = FakeChat([
             "a wonky kettle", "the smell of damp coats",
-            "gentle Tuesday melancholy", "Edward Hopper diner-light oil painting",
+            "gentle Tuesday melancholy",
             _final_payload(),
         ])
         result = await image_prompt_corpse.build(
@@ -546,9 +490,7 @@ class TestBuild:
             "DETAIL: a kettle\nREASON: r.",
             "DETAIL: damp coats\nREASON: r.",
             "a robotaxi nosed into floodwater",
-            "gentle Tuesday melancholy",
-            "Edward Hopper diner-light oil painting",
-            _final_payload(),
+            "gentle Tuesday melancholy",            _final_payload(),
         ])
         result = await image_prompt_corpse.build(
             chat_text=CHAT, news_bulletins=bulletins,
@@ -566,9 +508,7 @@ class TestBuild:
             "DETAIL: a kettle\nREASON: r.",
             "DETAIL: damp coats\nREASON: r.",
             "a tin of antique fishhooks",
-            "gentle Tuesday melancholy",
-            "Edward Hopper diner-light oil painting",
-            _final_payload(),
+            "gentle Tuesday melancholy",            _final_payload(),
         ])
         result = await image_prompt_corpse.build(
             chat_text=CHAT, previous_themes_text="", bios_text="",
@@ -587,9 +527,7 @@ class TestBuild:
             "DETAIL: a kettle\nREASON: r.",
             "DETAIL: damp coats\nREASON: r.",
             "a tin of antique fishhooks",
-            "gentle Tuesday melancholy",
-            "Edward Hopper diner-light oil painting",
-            _final_payload(),
+            "gentle Tuesday melancholy",            _final_payload(),
         ])
         result = await image_prompt_corpse.build(
             chat_text=CHAT, previous_themes_text="", bios_text="",
@@ -608,9 +546,7 @@ class TestBuild:
             "DETAIL: a kettle\nREASON: r.",
             "DETAIL: damp coats\nREASON: r.",
             "a tin of antique fishhooks",
-            "gentle Tuesday melancholy",
-            "Edward Hopper diner-light oil painting",
-            _final_payload(),
+            "gentle Tuesday melancholy",            _final_payload(),
         ])
         with caplog.at_level(logging.INFO, logger="discord"):
             await image_prompt_corpse.build(
@@ -624,6 +560,14 @@ class TestBuild:
 
 class TestBuildQuiet:
     """Quiet-day variant: pickers source from bios + memories, mood from date."""
+
+    @pytest.fixture(autouse=True)
+    def fixed_style(self, monkeypatch):
+        """Same pinning as TestBuild — see there."""
+        monkeypatch.setattr(
+            image_prompt_corpse, "_choose_style",
+            lambda exclude: "Edward Hopper diner-light oil painting",
+        )
 
     def _bios(self):
         from src.persistence.memory_store import UserBio
@@ -656,9 +600,7 @@ class TestBuildQuiet:
             "DETAIL: a vintage typewriter collection\nREASON: evocative of slow, deliberate craft.",
             "DETAIL: the warm tang of sourdough rising\nREASON: tactile, gustatory counterpoint.",
             "a tin of antique fishhooks",
-            "soft Friday-afternoon stillness",
-            "Edward Hopper diner-light oil painting",
-            _final_payload(),
+            "soft Friday-afternoon stillness",            _final_payload(),
         ])
         result = await image_prompt_corpse.build_quiet(
             bios=self._bios(), memories=self._memories(),
@@ -674,9 +616,7 @@ class TestBuildQuiet:
             "DETAIL: a vintage typewriter collection\nREASON: r1.",
             "DETAIL: a kitten named Whiskers\nREASON: r2.",
             "a tin of antique fishhooks",
-            "soft Friday-afternoon stillness",
-            "Edward Hopper diner-light oil painting",
-            _final_payload(),
+            "soft Friday-afternoon stillness",            _final_payload(),
         ])
         await image_prompt_corpse.build_quiet(
             bios=self._bios(), memories=self._memories(),
@@ -698,9 +638,7 @@ class TestBuildQuiet:
             "DETAIL: a vintage typewriter collection\nREASON: r1.",
             "DETAIL: the warm tang of sourdough\nREASON: r2.",
             "a tin of antique fishhooks",
-            "soft Friday-afternoon stillness",
-            "Edward Hopper diner-light oil painting",
-            _final_payload(),
+            "soft Friday-afternoon stillness",            _final_payload(),
         ])
         result = await image_prompt_corpse.build_quiet(
             bios=self._bios(), memories=self._memories(),
@@ -719,9 +657,7 @@ class TestBuildQuiet:
             "DETAIL: a vintage typewriter collection\nREASON: r1.",
             "DETAIL: a kitten named Whiskers\nREASON: r2.",
             "a tin of antique fishhooks",
-            "soft Friday-afternoon stillness",
-            "Edward Hopper diner-light oil painting",
-            _final_payload(),
+            "soft Friday-afternoon stillness",            _final_payload(),
         ])
         await image_prompt_corpse.build_quiet(
             bios=self._bios(), memories=self._memories(),
@@ -739,9 +675,7 @@ class TestBuildQuiet:
             "DETAIL: a vintage typewriter collection\nREASON: r1.",
             "DETAIL: a kitten named Whiskers\nREASON: r2.",
             "a tin of antique fishhooks",
-            "soft Friday-afternoon stillness",
-            "Edward Hopper diner-light oil painting",
-            _final_payload(),
+            "soft Friday-afternoon stillness",            _final_payload(),
         ])
         await image_prompt_corpse.build_quiet(
             bios=self._bios(), memories=self._memories(),
@@ -758,9 +692,7 @@ class TestBuildQuiet:
             "DETAIL: a vintage typewriter collection\nREASON: r1.",
             "DETAIL: a kitten named Whiskers\nREASON: r2.",
             "a tin of antique fishhooks",
-            "soft Friday-afternoon stillness",
-            "Edward Hopper diner-light oil painting",
-            _final_payload(),
+            "soft Friday-afternoon stillness",            _final_payload(),
         ])
         await image_prompt_corpse.build_quiet(
             bios=self._bios(), memories=self._memories(),
@@ -780,9 +712,7 @@ class TestBuildQuiet:
             "DETAIL: a vintage typewriter collection\nREASON: r1.",
             "DETAIL: a kitten named Whiskers\nREASON: r2.",
             "a tin of antique fishhooks",
-            "soft Friday-afternoon stillness",
-            "Edward Hopper diner-light oil painting",
-            _final_payload(),
+            "soft Friday-afternoon stillness",            _final_payload(),
         ])
         await image_prompt_corpse.build_quiet(
             bios=self._bios(), memories=self._memories(),
@@ -795,6 +725,10 @@ class TestBuildQuiet:
         assert "a kitten named Whiskers" in details_saved
         assert store.get_recent_slots("srv1", "decoy") == ["a tin of antique fishhooks"]
         assert store.get_recent_slots("srv1", "mood") == ["soft Friday-afternoon stillness"]
+        # Style saves globally on the quiet path too.
+        assert store.get_recent_slots(GLOBAL_SERVER_ID, "style") == [
+            "Edward Hopper diner-light oil painting"
+        ]
 
     async def test_reasoning_includes_ingredient_log(self, store, force_decoy):
         """The quiet-day path gets the same ingredient log, labelled so it's
@@ -803,9 +737,7 @@ class TestBuildQuiet:
             "DETAIL: a vintage typewriter collection\nREASON: evocative of slow, deliberate craft.",
             "DETAIL: the warm tang of sourdough rising\nREASON: tactile, gustatory counterpoint.",
             "a tin of antique fishhooks",
-            "soft Friday-afternoon stillness",
-            "Edward Hopper diner-light oil painting",
-            _final_payload(),
+            "soft Friday-afternoon stillness",            _final_payload(),
         ])
         result = await image_prompt_corpse.build_quiet(
             bios=self._bios(), memories=self._memories(),
@@ -826,9 +758,7 @@ class TestBuildQuiet:
             "DETAIL: inventing something\nREASON: nothing to grip on.",
             "DETAIL: a vague feeling\nREASON: same.",
             "a tin of antique fishhooks",
-            "soft Friday-afternoon stillness",
-            "Edward Hopper diner-light oil painting",
-            _final_payload(),
+            "soft Friday-afternoon stillness",            _final_payload(),
         ])
         result = await image_prompt_corpse.build_quiet(
             bios=[], memories=[],
@@ -854,9 +784,7 @@ class TestBuildQuiet:
             "DETAIL: a chancellor with tired eyes\nREASON: news mood.",
             "DETAIL: a robotaxi nosed into floodwater\nREASON: same news.",
             "a tin of antique fishhooks",
-            "soft Friday-afternoon stillness",
-            "Edward Hopper diner-light oil painting",
-            _final_payload(),
+            "soft Friday-afternoon stillness",            _final_payload(),
         ])
         await image_prompt_corpse.build_quiet(
             bios=self._bios(), memories=self._memories(),
@@ -872,6 +800,88 @@ class TestBuildQuiet:
             assert "Today's news" in user
             system = chatbot.calls[call_index]["messages"][0]["content"]
             assert "news" in system.lower(), "picker framing should mention news"
+
+
+class TestStyleChoice:
+    """Style is a code-side random.choice over the curated catalogue with a
+    globally shared anti-list — the LLM's own style prior collapsed to ~50
+    favourites (Mary Blair on three servers inside a week), so the catalogue
+    replaced it. See the style_catalogue module docstring."""
+
+    def test_every_key_is_a_substring_of_its_own_description(self):
+        # A pick is stored as its description and exclusion matches
+        # key-in-value, so a key absent from its own description would
+        # never self-exclude.
+        for key, text in STYLE_CATALOGUE:
+            assert key.lower() in text.lower(), f"key {key!r} not in its own description"
+
+    def test_keys_are_unique(self):
+        keys = [key.lower() for key, _ in STYLE_CATALOGUE]
+        assert len(keys) == len(set(keys))
+
+    def test_old_evergreen_cliches_stay_out_of_the_catalogue(self):
+        # The LLM picker carried EVERGREEN_STYLE_BANS for these; the
+        # catalogue must not quietly reintroduce them.
+        banned = ["vermeer", "dutch golden age", "bosch", "de chirico",
+                  "dalí", "ghibli", "wes anderson"]
+        for _, text in STYLE_CATALOGUE:
+            for cliche in banned:
+                assert cliche not in text.lower(), f"{cliche!r} found in {text!r}"
+
+    def test_excludes_by_key_substring_against_free_text_history(self):
+        # Pre-catalogue rows were stored as LLM free text (curly apostrophe
+        # and all) — the key must still match them.
+        old_value = ("Mary Blair’s Disney concept art, bold gouache shapes "
+                     "and whimsical midcentury color harmonies")
+        available = image_prompt_corpse._available_styles([old_value])
+        assert available
+        assert not any("mary blair" in text.lower() for text in available)
+
+    def test_exclusion_is_case_insensitive(self):
+        first_text = STYLE_CATALOGUE[0][1]
+        available = image_prompt_corpse._available_styles([first_text.upper()])
+        assert first_text not in available
+
+    def test_falls_back_to_full_catalogue_when_everything_recent(self):
+        everything = [text for _, text in STYLE_CATALOGUE]
+        style = image_prompt_corpse._choose_style(everything)
+        assert style in everything
+
+    async def test_build_reads_and_saves_style_history_globally(self, store, monkeypatch):
+        monkeypatch.setattr(image_prompt_corpse.random, "random", lambda: 0.99)  # no decoy/cameo
+        monkeypatch.setattr(image_prompt_corpse.random, "choice", lambda seq: seq[0])
+        chatbot = FakeChat([
+            "a wonky kettle", "the smell of damp coats",
+            "gentle Tuesday melancholy",
+            _final_payload(),
+        ])
+        await image_prompt_corpse.build(
+            chat_text=CHAT, previous_themes_text="", bios_text="",
+            user_locations="", cat_descriptions="",
+            server_id="srv1", image_store=store, chatbot=chatbot,
+        )
+        # Saved under the global sentinel, not the server.
+        assert store.get_recent_slots(GLOBAL_SERVER_ID, "style") == [STYLE_CATALOGUE[0][1]]
+        assert store.get_recent_slots("srv1", "style") == []
+
+    async def test_build_excludes_globally_recent_styles(self, store, monkeypatch):
+        monkeypatch.setattr(image_prompt_corpse.random, "random", lambda: 0.99)
+        monkeypatch.setattr(image_prompt_corpse.random, "choice", lambda seq: seq[0])
+        # A style used by ANY server blocks it for every server.
+        store.save_recent_slot(GLOBAL_SERVER_ID, "style", STYLE_CATALOGUE[0][1])
+        chatbot = FakeChat([
+            "a wonky kettle", "the smell of damp coats",
+            "gentle Tuesday melancholy",
+            _final_payload(),
+        ])
+        await image_prompt_corpse.build(
+            chat_text=CHAT, previous_themes_text="", bios_text="",
+            user_locations="", cat_descriptions="",
+            server_id="srv-other", image_store=store, chatbot=chatbot,
+        )
+        # Catalogue entry 0 was globally recent, so seq[0] is now entry 1.
+        newest = store.get_recent_slots(GLOBAL_SERVER_ID, "style")[0]
+        assert newest == STYLE_CATALOGUE[1][1]
 
 
 class TestFormatQuietFacts:

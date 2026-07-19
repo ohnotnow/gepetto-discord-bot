@@ -164,11 +164,11 @@ class TestRecentSlots:
 
     def test_auto_prunes_per_kind(self, temp_dir):
         store = ImageStore(os.path.join(temp_dir, 'test.db'))
-        for i in range(35):
+        for i in range(125):
             store.save_recent_slot('server1', 'detail', f'detail-{i}')
-        slots = store.get_recent_slots('server1', 'detail', limit=100)
-        assert len(slots) == 30
-        assert 'detail-34' in slots
+        slots = store.get_recent_slots('server1', 'detail', limit=200)
+        assert len(slots) == 120
+        assert 'detail-124' in slots
         assert 'detail-4' not in slots
 
     def test_limit_respected(self, temp_dir):
