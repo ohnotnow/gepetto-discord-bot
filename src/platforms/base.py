@@ -15,6 +15,11 @@ class ChatMessage:
     server_id: str
     created_at: datetime
     raw: object = None
+    # Author id of the message this one replies to (platform reply feature),
+    # empty when it isn't a reply or the adapter can't resolve it. A Discord
+    # reply carries NO mention text in content, so this is the only way the
+    # guard can tell a reply-to-the-bot from ambient chat.
+    reply_to_author_id: str = ""
 
     async def reply(self, text: str, mention_author: bool = True) -> None:
         """Reply to this message. Implemented by platform adapter."""

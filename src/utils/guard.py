@@ -1,7 +1,22 @@
+import re
 from datetime import datetime, timedelta
 from collections import defaultdict
 
 from src.platforms.base import ChatMessage
+
+
+def extract_question(content: str, bot_user_id: str) -> str:
+    """Return the question text with any bot-mention tokens removed.
+
+    Messages that summon the bot contain "<@botid>" (or the nickname form
+    "<@!botid>") somewhere in the text. Replies to the bot's messages carry
+    no mention text at all, so the whole content is the question. This
+    replaces the old split-off-the-first-word approach, which assumed the
+    mention always came first and ate the first word of replies.
+    """
+    if bot_user_id:
+        content = re.sub(rf"<@!?{re.escape(bot_user_id)}>\s*", "", content)
+    return content.strip()[:500].replace('\r', ' ').replace('\n', ' ')
 
 
 class BotGuard:
@@ -39,11 +54,15 @@ class BotGuard:
             if chatbot.name.lower() in message.content.lower():
                 return True, False
         else:
-            # ignore messages where the bot is not mentioned
-            if bot_user_id not in message.content:
+            # ignore messages that neither mention the bot nor reply to one
+            # of its messages (a Discord reply has no mention in content —
+            # that's what reply_to_author_id carries)
+            if (bot_user_id not in message.content
+                    and message.reply_to_author_id != bot_user_id):
                 return True, False
         # ignore messages without content
-        if len(message.content.split(' ', 1)) == 1:
+        question = extract_question(message.content, bot_user_id)
+        if not question:
             return True, True
 
         # keep track of how many times a user has mentioned the bot recently
@@ -58,7 +77,6 @@ class BotGuard:
             return True, True
 
         # ignore when the message doesn't contain regular text (ie only contains mentions, emojis, spaces, etc)
-        question = message.content.split(' ', 1)[1][:500].replace('\r', ' ').replace('\n', ' ')
         if not any(char.isalpha() for char in question):
             return True, True
 

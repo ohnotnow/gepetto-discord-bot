@@ -7,7 +7,7 @@ from unittest.mock import AsyncMock, MagicMock, patch
 import pytest
 
 from src.platforms.base import ChatMessage, Channel, Platform
-from src.utils.guard import BotGuard
+from src.utils.guard import BotGuard, extract_question
 
 
 class TestChatMessage:
@@ -175,6 +175,37 @@ class TestWrapMessage:
         assert wrapped.server_id == "789"
         assert wrapped.raw is mock_msg
 
+    def test_reply_to_author_id_empty_for_ordinary_message(self):
+        from src.platforms.discord_adapter import _wrap_message
+        mock_msg = MagicMock()
+        mock_msg.content = "hello"
+        mock_msg.author.id = 123
+        mock_msg.reference = None
+        wrapped = _wrap_message(mock_msg)
+        assert wrapped.reply_to_author_id == ""
+
+    def test_reply_to_author_id_populated_for_reply(self):
+        from src.platforms.discord_adapter import _wrap_message
+        mock_msg = MagicMock()
+        mock_msg.content = "are you sure?"
+        mock_msg.author.id = 123
+        mock_msg.reference.resolved.author.id = 999
+        wrapped = _wrap_message(mock_msg)
+        assert wrapped.reply_to_author_id == "999"
+
+    def test_reply_to_author_id_empty_when_referenced_message_deleted(self):
+        from src.platforms.discord_adapter import _wrap_message
+        # discord.py resolves a reply to a deleted message as a
+        # DeletedReferencedMessage, which has no .author attribute.
+        class DeletedRef:
+            pass
+        mock_msg = MagicMock()
+        mock_msg.content = "are you sure?"
+        mock_msg.author.id = 123
+        mock_msg.reference.resolved = DeletedRef()
+        wrapped = _wrap_message(mock_msg)
+        assert wrapped.reply_to_author_id == ""
+
     def test_wraps_dm_message_with_no_guild(self):
         from src.platforms.discord_adapter import _wrap_message
         mock_msg = MagicMock()
@@ -278,6 +309,40 @@ class TestBotGuardWithChatMessage:
 
         # 4th mention should be blocked
         msg = _make_message()
+        blocked, abusive = guard.should_block(msg, BOT_ID, SERVER_ID)
+        assert blocked is True
+        assert abusive is True
+
+    def test_allows_reply_to_bot_without_mention(self):
+        """A Discord reply to the bot's message has no mention text in
+        content — the reply linkage is all it carries. Regression: this
+        worked pre-platform-refactor via message.mentions, then broke when
+        the guard fell back to a content substring check."""
+        guard = BotGuard()
+        msg = _make_message(content="are you sure?", reply_to_author_id=BOT_ID)
+        blocked, abusive = guard.should_block(msg, BOT_ID, SERVER_ID)
+        assert blocked is False
+        assert abusive is False
+
+    def test_allows_single_word_reply_to_bot(self):
+        # The old first-word chop treated one-word replies as contentless
+        # and answered them with abuse.
+        guard = BotGuard()
+        msg = _make_message(content="why?", reply_to_author_id=BOT_ID)
+        blocked, abusive = guard.should_block(msg, BOT_ID, SERVER_ID)
+        assert blocked is False
+        assert abusive is False
+
+    def test_blocks_reply_to_someone_else_without_mention(self):
+        guard = BotGuard()
+        msg = _make_message(content="are you sure?", reply_to_author_id="USER999")
+        blocked, abusive = guard.should_block(msg, BOT_ID, SERVER_ID)
+        assert blocked is True
+        assert abusive is False
+
+    def test_blocks_emoji_only_reply_to_bot(self):
+        guard = BotGuard()
+        msg = _make_message(content="🤔", reply_to_author_id=BOT_ID)
         blocked, abusive = guard.should_block(msg, BOT_ID, SERVER_ID)
         assert blocked is True
         assert abusive is True

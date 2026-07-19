@@ -41,6 +41,7 @@ from src.embeddings import get_embeddings_model
 
 # Utils
 from src.utils import BotGuard
+from src.utils.guard import extract_question
 from src.utils.constants import (
     HISTORY_HOURS, HISTORY_MAX_MESSAGES, MAX_WORDS_TRUNCATION,
     DISCORD_MESSAGE_LIMIT, MAX_DAILY_IMAGES, MAX_HORROR_HISTORY,
@@ -807,6 +808,7 @@ async def handle_message(message: ChatMessage):
             and message.server_id == server_id
             and os.getenv("FEATURE_RANDOM_CHAT", False)
             and platform.bot_user_id not in message.content
+            and message.reply_to_author_id != platform.bot_user_id
             and random.random() < RANDOM_CHAT_PROBABILITY):
         await random_chat(message)
 
@@ -818,7 +820,7 @@ async def handle_message(message: ChatMessage):
             await channel.send(f"{random.choice(ABUSIVE_RESPONSES)}.")
         return
 
-    question = message.content.split(' ', 1)[1][:500].replace('\r', ' ').replace('\n', ' ')
+    question = extract_question(message.content, platform.bot_user_id)
     logger.info(f'Question: {question}')
     if not any(char.isalpha() for char in question):
         channel = platform.get_channel(message.channel_id)

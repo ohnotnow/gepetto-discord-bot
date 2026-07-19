@@ -13,6 +13,14 @@ logger = logging.getLogger('discord')
 
 def _wrap_message(msg: discord.Message) -> ChatMessage:
     """Convert a discord.Message into a platform-agnostic ChatMessage."""
+    # resolved can be None or a DeletedReferencedMessage (which has no
+    # .author), hence the getattr dance.
+    reply_to_author_id = ""
+    resolved = msg.reference.resolved if msg.reference else None
+    author = getattr(resolved, "author", None)
+    if author is not None:
+        reply_to_author_id = str(author.id)
+
     message = ChatMessage(
         content=msg.content,
         author_id=str(msg.author.id),
@@ -24,6 +32,7 @@ def _wrap_message(msg: discord.Message) -> ChatMessage:
         server_id=str(msg.guild.id) if msg.guild else "",
         created_at=msg.created_at,
         raw=msg,
+        reply_to_author_id=reply_to_author_id,
     )
 
     async def reply(text: str, mention_author: bool = True) -> None:
