@@ -105,3 +105,43 @@ async def test_null_themes_normalised_to_empty_list():
     with patch("src.media.vlm.replicate_client.async_stream", _stream_returning(chunks)):
         result = await vlm.caption_image("https://example.com/x.png")
     assert result["themes"] == []
+
+
+@pytest.mark.asyncio
+async def test_critique_empty_url_returns_empty_string():
+    assert await vlm.critique_image("") == ""
+
+
+@pytest.mark.asyncio
+async def test_critique_returns_joined_stream_text():
+    chunks = ["A work of ", "unpardonable ", "sincerity."]
+    with patch("src.media.vlm.replicate_client.async_stream", _stream_returning(chunks)):
+        result = await vlm.critique_image("https://example.com/x.png")
+    assert result == "A work of unpardonable sincerity."
+
+
+@pytest.mark.asyncio
+async def test_critique_failure_returns_empty_string():
+    async def _boom(*_args, **_kwargs):
+        raise RuntimeError("nope")
+    with patch("src.media.vlm.replicate_client.async_stream", _boom):
+        result = await vlm.critique_image("https://example.com/x.png")
+    assert result == ""
+
+
+@pytest.mark.asyncio
+async def test_critique_is_blind_no_context_beyond_the_image():
+    """The critic must receive ONLY the image and the persona prompt —
+    no chat, no themes, no generation prompt. The blindness is the joke."""
+    captured = {}
+
+    async def _capturing_stream(model, input):
+        captured["model"] = model
+        captured["input"] = input
+        return _FakeAsyncIter(["review"])
+
+    with patch("src.media.vlm.replicate_client.async_stream", _capturing_stream):
+        await vlm.critique_image("https://example.com/x.png")
+
+    assert captured["input"]["images"] == ["https://example.com/x.png"]
+    assert captured["input"]["prompt"] == vlm.CRITIC_PROMPT

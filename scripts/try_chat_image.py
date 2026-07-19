@@ -106,7 +106,7 @@ def _save_image(image_url_or_path: str, dest: Path) -> None:
 
 
 async def _run(args: argparse.Namespace) -> int:
-    from src.media import image_prompt_corpse, images as images_module, get_image_model
+    from src.media import image_prompt_corpse, get_image_model
     from src.persistence import ImageStore, MemoryStore
 
     chat_path = Path(args.chat)
@@ -182,8 +182,7 @@ async def _run(args: argparse.Namespace) -> int:
     model_name = os.getenv("CHAT_IMAGE_MODEL", "") or os.getenv("IMAGE_MODEL", "") or None
     model = get_image_model(model_name)
     print(f"=== Generating image (model: {model.short_name}, cost: ~US${model.cost:.3f}) ===\n")
-    full_prompt = prompt_text + f"\n{images_module.get_extra_guidelines()}"
-    image_url = await model.generate(full_prompt)
+    image_url = await model.generate(prompt_text)
     if not image_url:
         print("Image generation returned no URL/path.", file=sys.stderr)
         return 2

@@ -115,3 +115,40 @@ async def caption_image(image_url_or_path: str) -> dict:
         "style": parsed.get("style", ""),
         "reasoning": parsed.get("reasoning", ""),
     }
+
+
+async def critique_image(image_url_or_path: str) -> str:
+    """Blind art-critic review via the OpenAI Responses API.
+
+    Same contract as vlm.critique_image: plain text out, empty string on
+    any failure. The prompt lives in vlm.py (single source for the voice).
+    """
+    from .vlm import CRITIC_PROMPT
+
+    if not image_url_or_path:
+        return ""
+
+    try:
+        image_input = _to_image_input(image_url_or_path)
+    except OSError as e:
+        logger.warning(f"VLM (openai) could not read image at {image_url_or_path!r}: {e}")
+        return ""
+
+    try:
+        response = await _client.responses.create(
+            model=MODEL,
+            input=[
+                {
+                    "role": "user",
+                    "content": [
+                        {"type": "input_text", "text": CRITIC_PROMPT},
+                        {"type": "input_image", "image_url": image_input},
+                    ],
+                }
+            ],
+        )
+    except Exception as e:
+        logger.warning(f"VLM (openai) critique call failed: {type(e).__name__}: {e}")
+        return ""
+
+    return (getattr(response, "output_text", "") or "").strip()

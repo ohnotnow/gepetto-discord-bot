@@ -36,6 +36,24 @@ or after) with exactly these keys:
 
 EMPTY_CAPTION = {"description": "", "themes": [], "style": "", "reasoning": ""}
 
+# The blind art critic. Deliberately given NO context — no chat, no themes,
+# no prompt — the same information-hiding joke as the corpse pipeline, told
+# one voice later. Voice modelled on the waspish, patrician school of
+# British art criticism.
+CRITIC_PROMPT = """You are a waspish, patrician British art critic of the old
+school — mellifluous, erudite, and quietly devastating. You are shown a single
+artwork with absolutely no context: no title, no artist, no provenance.
+
+Write a short review of it — two paragraphs, no more than 150 words in total.
+Treat the work with complete seriousness. Divine grand meaning in it — social
+commentary, art-historical lineage, some private sorrow of the artist — that
+the work cannot possibly support, and commit to your reading utterly. Include
+at least one barbed aside about technique, or about the state of contemporary
+art. Never break character, never mention AI or image generation, and never
+admit uncertainty about what you are looking at.
+
+Return only the review text — no title, no preamble, no sign-off."""
+
 
 def _strip_fences(raw: str) -> str:
     """Defensively strip ```json ... ``` fences if the model adds them."""
@@ -97,3 +115,40 @@ async def caption_image(image_url: str) -> dict:
         "style": parsed.get("style", ""),
         "reasoning": parsed.get("reasoning", ""),
     }
+
+
+async def critique_image(image_url: str) -> str:
+    """Review an image in the voice of the blind art critic (CRITIC_PROMPT).
+
+    Plain text out, empty string on any failure — the caller just skips the
+    critique and the daily image stands unreviewed, as most art must.
+
+    Routes to OpenAI's Responses API when VLM_PROVIDER=openai, same as
+    caption_image.
+    """
+    if not image_url:
+        return ""
+
+    if os.getenv("VLM_PROVIDER", "replicate") == "openai":
+        from . import vlm_openai
+        return await vlm_openai.critique_image(image_url)
+
+    chunks: list[str] = []
+    try:
+        stream = await replicate_client.async_stream(
+            MODEL,
+            input={
+                "prompt": CRITIC_PROMPT,
+                "images": [image_url],
+                "temperature": 0.9,
+                "thinking_level": "low",
+                "max_output_tokens": 2048,
+            },
+        )
+        async for event in stream:
+            chunks.append(str(event))
+    except Exception as e:
+        logger.warning(f"VLM critique call failed: {type(e).__name__}: {e}")
+        return ""
+
+    return "".join(chunks).strip()

@@ -45,12 +45,12 @@ def test_select_random_model_only_from_pool():
 
 
 def test_short_name_strips_hash():
-    model = ImageModel("fal-ai/flux-pro:abc123", {}, 0.04, "distill")
+    model = ImageModel("fal-ai/flux-pro:abc123", {}, 0.04)
     assert model.short_name == "fal-ai/flux-pro"
 
 
 def test_short_name_without_hash():
-    model = ImageModel("fal-ai/flux-pro/v1.1-ultra", {}, 0.04, "distill")
+    model = ImageModel("fal-ai/flux-pro/v1.1-ultra", {}, 0.04)
     assert model.short_name == "fal-ai/flux-pro/v1.1-ultra"
 
 
@@ -61,7 +61,7 @@ async def test_generate_calls_fal_subscribe():
         "images": [{"url": "https://fal.media/generated.png"}]
     }
 
-    model = ImageModel("fal-ai/flux-pro/v1.1-ultra", {"image_size": "square_hd"}, 0.04, "distill")
+    model = ImageModel("fal-ai/flux-pro/v1.1-ultra", {"image_size": "square_hd"}, 0.04)
 
     with patch("src.media.fal._client", mock_client):
         url = await model.generate("a cat in space")

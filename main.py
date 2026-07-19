@@ -23,7 +23,7 @@ from src.tools import calculator, ToolDispatcher, ToolResult
 from src.tools.definitions import tool_list, search_url_history_tool, catch_up_tool, twitter_search_tool, set_reminder_tool, manage_memories_tool, search_discogs_tool, explore_discogs_artist_tool, get_news_bulletins_tool
 
 # Media
-from src.media import images, images_direct, image_prompt_corpse, replicate, sora, vlm, get_image_model
+from src.media import image_prompt_corpse, replicate, sora, vlm, get_image_model
 
 # Content
 from src.content import summary, weather, sentry, discogs, news
@@ -47,7 +47,7 @@ from src.utils.constants import (
     DISCORD_MESSAGE_LIMIT, MAX_DAILY_IMAGES, MAX_HORROR_HISTORY,
     VIDEO_DURATION_SECONDS, RANDOM_CHAT_PROBABILITY, HORROR_CHAT_PROBABILITY,
     HORROR_CHAT_COOLDOWN_HOURS, LIZ_TRUSS_PROBABILITY, ALTERNATE_PROMPT_PROBABILITY,
-    MIN_MESSAGES_FOR_CHAT_IMAGE,
+    ART_CRITIC_PROBABILITY, MIN_MESSAGES_FOR_CHAT_IMAGE,
     DAY_START_HOUR, DAY_END_HOUR,
     UK_HOLIDAYS, ABUSIVE_RESPONSES,
     CATCH_UP_MAX_HOURS, CATCH_UP_MAX_MESSAGES, CATCH_UP_BUSY_THRESHOLD,
@@ -863,10 +863,9 @@ async def handle_message(message: ChatMessage):
                 return
             if '--reasoning' in lq:
                 # Try in-memory state first (current session), fall back to database.
-                # We deliberately do NOT include the raw prompt here — in the
-                # direct-strategy path the "prompt" is our instructional template
-                # which bakes in USER_LOCATIONS, CAT_DESCRIPTIONS, user bios, and
-                # previous themes. Leaking that to the channel exposes env/config.
+                # We deliberately do NOT include the raw prompt here — historically
+                # the prompt could embed USER_LOCATIONS, CAT_DESCRIPTIONS, user bios,
+                # and previous themes. Leaking that to the channel exposes env/config.
                 reasoning = bot_state.previous_image_reasoning
                 themes = bot_state.previous_image_themes
 
@@ -1071,95 +1070,38 @@ async def make_chat_image():
         quiet_day = len(history) < MIN_MESSAGES_FOR_CHAT_IMAGE
 
         model = get_image_model(CHAT_IMAGE_MODEL)
-        logger.info(f"Chat image strategy: {model.strategy} (model: {model.short_name})")
+        logger.info(f"Chat image model: {model.short_name}")
 
-        if model.strategy == "direct":
-            if quiet_day:
-                image_prompt = images_direct.get_creative_image_prompt(previous_themes_text, bios_text)
-            else:
-                image_prompt = images_direct.get_initial_chat_image_prompt(chat_text, previous_themes_text, bios_text)
+        # "On this day" occasion directive (e.g. the Brexit anniversary).
+        # get_occasion resolves the most specific match for today across this
+        # server and any global occasions; None on an ordinary day.
+        # See ant gepettodiscordbot-VXQvH.
+        occasion = image_store.get_occasion(server_id, datetime.now())
+        if occasion:
+            logger.info("Chat image occasion active: %r", occasion[:120])
 
-            logger.info("Calling image provider to generate image (direct strategy)")
-            image_url = await model.generate(image_prompt)
-            logger.info(f"Image URL: {image_url} - model: {model.short_name} - cost: {model.cost}")
+        if quiet_day:
+            # Quiet-day corpse pipeline: pickers source detail material from
+            # anonymised bios + memories + today's news bulletins, mood comes
+            # from the date. If all three ingredient sources are empty we skip
+            # the image entirely — no art for an empty room.
+            # See ant gepettodiscordbot-mjBCN for the news-on-quiet-days decision.
+            all_memories = []
+            for bio in all_bios:
+                all_memories.extend(memory_store.get_user_memories(server_id, bio.user_id))
 
-            if not image_url:
-                logger.info('We did not get a file from API')
-                await channel.send("Sorry, I tried to make an image but I failed (probably because of naughty words - tsk).")
-                return
+            try:
+                news_bulletins = await news.get_news_bulletins(chatbot, news_store=news_store)
+                logger.info(f"Quiet-day news fetch: {len(news_bulletins)} bulletins")
+            except Exception as exc:
+                logger.warning(f"Quiet-day news fetch failed ({exc}); proceeding without news")
+                news_bulletins = []
 
-            logger.info("Captioning generated image for themes/reasoning (VLM)")
-            caption = await vlm.caption_image(image_url)
-            llm_chat_themes = caption.get("themes") or []
-            llm_chat_reasoning = caption.get("reasoning", "") or caption.get("description", "")
-            # The direct path has no safe user-facing "prompt" to expose.
-            # Our instructional template bakes in USER_LOCATIONS, CAT_DESCRIPTIONS,
-            # user bios, and previous themes — all of which must never leak
-            # to Discord. Store a literal "Unknown" rather than anything
-            # derived from the generation pipeline.
-            display_prompt = "Unknown"
-        else:
-            # "On this day" occasion directive (e.g. the Brexit anniversary).
-            # get_occasion resolves the most specific match for today across this
-            # server and any global occasions; None on an ordinary day. Distill
-            # path only — see ant gepettodiscordbot-VXQvH.
-            occasion = image_store.get_occasion(server_id, datetime.now())
-            if occasion:
-                logger.info("Chat image occasion active: %r", occasion[:120])
-
-            if quiet_day:
-                # Quiet-day corpse pipeline: pickers source detail material from
-                # anonymised bios + memories + today's news bulletins, mood comes
-                # from the date. Falls back to the legacy "make something up from
-                # nothing" path only if all three ingredient sources are empty.
-                # See ant gepettodiscordbot-mjBCN for the news-on-quiet-days decision.
-                all_memories = []
-                for bio in all_bios:
-                    all_memories.extend(memory_store.get_user_memories(server_id, bio.user_id))
-
-                try:
-                    news_bulletins = await news.get_news_bulletins(chatbot, news_store=news_store)
-                    logger.info(f"Quiet-day news fetch: {len(news_bulletins)} bulletins")
-                except Exception as exc:
-                    logger.warning(f"Quiet-day news fetch failed ({exc}); proceeding without news")
-                    news_bulletins = []
-
-                if all_bios or all_memories or news_bulletins:
-                    decoded_response = await image_prompt_corpse.build_quiet(
-                        bios=all_bios,
-                        memories=all_memories,
-                        news_bulletins=news_bulletins,
-                        previous_themes_text=previous_themes_text,
-                        bios_text=bios_text,
-                        user_locations=os.getenv("USER_LOCATIONS", "").strip(),
-                        cat_descriptions=os.getenv("CAT_DESCRIPTIONS", "").strip(),
-                        server_id=server_id,
-                        image_store=image_store,
-                        chatbot=chatbot,
-                        occasion=occasion,
-                    )
-                else:
-                    logger.info("Quiet day with no bios/memories/news — falling back to legacy creative path")
-                    combined_chat = images.get_creative_image_prompt(previous_themes_text, bios_text)
-                    decoded_response = await images.get_image_response(combined_chat, chatbot)
-            else:
-                # Blind-pass "exquisite corpse" pipeline — see
-                # src/media/image_prompt_corpse.py and ant note gepettodiscordbot-AkRXV.
-                # News bulletins go into the decoy slot when the probability
-                # fires (see ant gepettodiscordbot-Ed6UZ). Fetch wrapped in
-                # try/except so a fetch blip falls back to the random-thing
-                # decoy rather than killing the image.
-                # To revert to the legacy single-pass distill, comment out the
-                # corpse call and uncomment the two lines beneath it.
-                try:
-                    chat_news_bulletins = await news.get_news_bulletins(chatbot, news_store=news_store)
-                except Exception as exc:
-                    logger.warning(f"Chat-day news fetch failed ({exc}); proceeding without news")
-                    chat_news_bulletins = []
-
-                decoded_response = await image_prompt_corpse.build(
-                    chat_text=chat_text,
-                    news_bulletins=chat_news_bulletins,
+            if all_bios or all_memories or news_bulletins:
+                decoded_response = await image_prompt_corpse.build_quiet(
+                    bios=all_bios,
+                    memories=all_memories,
+                    news_bulletins=news_bulletins,
                     previous_themes_text=previous_themes_text,
                     bios_text=bios_text,
                     user_locations=os.getenv("USER_LOCATIONS", "").strip(),
@@ -1169,23 +1111,50 @@ async def make_chat_image():
                     chatbot=chatbot,
                     occasion=occasion,
                 )
-                # combined_chat = images.get_initial_chat_image_prompt(chat_text, previous_themes_text, bios_text)
-                # decoded_response = await images.get_image_response(combined_chat, chatbot)
-            logger.info(f"Decoded response: {decoded_response}")
-
-            display_prompt = decoded_response.get("prompt", "") or str(decoded_response)
-            llm_chat_themes = decoded_response.get("themes", [])
-            llm_chat_reasoning = decoded_response.get("reasoning", "")
-
-            full_prompt = display_prompt + f"\n{images.get_extra_guidelines()}"
-            logger.info("Calling image provider to generate image (distill strategy)")
-            image_url = await model.generate(full_prompt)
-            logger.info(f"Image URL: {image_url} - model: {model.short_name} - cost: {model.cost}")
-
-            if not image_url:
-                logger.info('We did not get a file from API')
-                await channel.send("Sorry, I tried to make an image but I failed (probably because of naughty words - tsk).")
+            else:
+                # Nothing to draw from and no-one around to see the result —
+                # don't spend GPU time on an image for an empty room.
+                logger.info("Quiet day with no bios/memories/news — skipping the image entirely")
                 return
+        else:
+            # Blind-pass "exquisite corpse" pipeline — see
+            # src/media/image_prompt_corpse.py and ant note gepettodiscordbot-AkRXV.
+            # News bulletins go into the decoy slot when the probability
+            # fires (see ant gepettodiscordbot-Ed6UZ). Fetch wrapped in
+            # try/except so a fetch blip falls back to the random-thing
+            # decoy rather than killing the image.
+            try:
+                chat_news_bulletins = await news.get_news_bulletins(chatbot, news_store=news_store)
+            except Exception as exc:
+                logger.warning(f"Chat-day news fetch failed ({exc}); proceeding without news")
+                chat_news_bulletins = []
+
+            decoded_response = await image_prompt_corpse.build(
+                chat_text=chat_text,
+                news_bulletins=chat_news_bulletins,
+                previous_themes_text=previous_themes_text,
+                bios_text=bios_text,
+                user_locations=os.getenv("USER_LOCATIONS", "").strip(),
+                cat_descriptions=os.getenv("CAT_DESCRIPTIONS", "").strip(),
+                server_id=server_id,
+                image_store=image_store,
+                chatbot=chatbot,
+                occasion=occasion,
+            )
+        logger.info(f"Decoded response: {decoded_response}")
+
+        display_prompt = decoded_response.get("prompt", "") or str(decoded_response)
+        llm_chat_themes = decoded_response.get("themes", [])
+        llm_chat_reasoning = decoded_response.get("reasoning", "")
+
+        logger.info("Calling image provider to generate image")
+        image_url = await model.generate(display_prompt)
+        logger.info(f"Image URL: {image_url} - model: {model.short_name} - cost: {model.cost}")
+
+        if not image_url:
+            logger.info('We did not get a file from API')
+            await channel.send("Sorry, I tried to make an image but I failed (probably because of naughty words - tsk).")
+            return
 
         bot_state.previous_image_prompt = display_prompt
         bot_state.previous_image_themes = llm_chat_themes
@@ -1202,6 +1171,14 @@ async def make_chat_image():
         prompt=display_prompt,
         image_url=image_url
     )
+
+    # Occasionally, a pretentious art critic reviews the image — blind, with
+    # no knowledge of the chat or prompt, which is the whole joke. The preface
+    # makes clear it isn't the bot critiquing its own work.
+    if random.random() < ART_CRITIC_PROBABILITY:
+        critique = await vlm.critique_image(image_url)
+        if critique:
+            await channel.send(f'_An art critic opines:_\n\n{critique}'[:DISCORD_MESSAGE_LIMIT])
 
 
 async def make_chat_video():

@@ -22,6 +22,9 @@ HORROR_CHAT_PROBABILITY = 0.1
 HORROR_CHAT_COOLDOWN_HOURS = 8
 LIZ_TRUSS_PROBABILITY = 0.05
 ALTERNATE_PROMPT_PROBABILITY = 0.1
+# Chance that a pretentious art critic reviews the daily image, blind.
+# Kept occasional on purpose — a treat, not a fixture.
+ART_CRITIC_PROBABILITY = 0.25
 
 # News bulletin cache TTL. The bulletins are global (server-agnostic) and the
 # fetch+synthesise pipeline is slow + LLM-costed, so we cache the latest fetch

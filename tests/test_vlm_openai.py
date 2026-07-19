@@ -143,3 +143,37 @@ async def test_dispatcher_routes_to_openai_when_env_set(monkeypatch):
 
     routed.assert_awaited_once_with("https://example.com/x.png")
     assert result == sentinel
+
+
+@pytest.mark.asyncio
+async def test_critique_returns_stripped_output_text():
+    with patch.object(
+        vlm_openai._client.responses,
+        "create",
+        new=AsyncMock(return_value=_fake_response("  Magnificent drivel.  ")),
+    ):
+        result = await vlm_openai.critique_image("https://example.com/x.png")
+    assert result == "Magnificent drivel."
+
+
+@pytest.mark.asyncio
+async def test_critique_failure_returns_empty_string():
+    with patch.object(
+        vlm_openai._client.responses,
+        "create",
+        new=AsyncMock(side_effect=RuntimeError("nope")),
+    ):
+        result = await vlm_openai.critique_image("https://example.com/x.png")
+    assert result == ""
+
+
+@pytest.mark.asyncio
+async def test_critique_dispatcher_routes_to_openai_when_env_set(monkeypatch):
+    from src.media import vlm
+
+    monkeypatch.setenv("VLM_PROVIDER", "openai")
+    with patch("src.media.vlm_openai.critique_image", new=AsyncMock(return_value="routed")) as routed:
+        result = await vlm.critique_image("https://example.com/x.png")
+
+    routed.assert_awaited_once_with("https://example.com/x.png")
+    assert result == "routed"

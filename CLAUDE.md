@@ -43,7 +43,7 @@ response = await chatbot.chat(messages)
 The model string format is `{provider}/{model}` (e.g., "openai/gpt-4o-mini"). You can pass a full LiteLLM model string directly to `chat()`.
 
 ### Image Generation (`src/media/`)
-> **Before changing anything here:** run `ant show gepettodiscordbot-AkRXV` for the full flow notes — `create_image` vs `make_chat_image`, distill vs direct strategy, and which traps to avoid. This is the most-tinkered-with part of the bot; the note will save you re-deriving it.
+> **Before changing anything here:** run `ant show gepettodiscordbot-AkRXV` for the full flow notes — `create_image` vs `make_chat_image`, the corpse pipeline, and which traps to avoid. This is the most-tinkered-with part of the bot; the note will save you re-deriving it.
 
 `IMAGE_PROVIDER` env var selects between `"replicate"` (default), `"fal"`, and `"openai"` (gpt-image-2 via the dedicated images.generate endpoint). All three expose the same `ImageModel` interface via a routing function:
 ```python
@@ -80,7 +80,7 @@ See README.md for full environment variable list.
 
 ## Design Decisions
 
-1. **"Random random" in image styles** - `get_extra_guidelines()` in `images.py` intentionally uses cascading random calls for variety, not a single roll.
+1. **Style variety is a curated catalogue, not an LLM pick** - the daily image's style comes from `random.choice` over `src/media/style_catalogue.py` with a globally shared anti-repetition history. Do not reintroduce LLM style-picking or bolt-on random style nudges: the LLM's style prior collapses to ~50 favourites, and extra nudges appended after the corpse assembler fight the style it committed to (both were removed 2026-07-19 — see ant gepettodiscordbot-AkRXV).
 
 2. **Broad exception handling** - Some try/except blocks are intentionally broad due to varied LLM response formats.
 

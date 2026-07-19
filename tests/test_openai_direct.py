@@ -94,6 +94,5 @@ async def test_generate_raises_when_no_image_returned():
 
 def test_image_model_interface_matches_other_providers():
     model = openai_direct.get_image_model()
-    assert model.strategy == "distill"
     assert model.short_name == "openai/gpt-image-2"
     assert isinstance(model.cost, float)
