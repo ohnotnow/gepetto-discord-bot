@@ -63,6 +63,13 @@ MODEL_CONFIGS = {
         "in_pool": True,
         "strategy": "direct",
     },
+    "fal-ai/nano-banana-lite": {
+        "model": "google/nano-banana-2-lite",
+        "cost": 0.04,
+        "params": {"num_images": 1, "aspect_ratio": "4:3", "output_format": "png", "safety_tolerance": "6", "resolution": "2K"},
+        "in_pool": True,
+        "strategy": "direct",
+    },
     "fal-ai/ideogram": {
         "model": "fal-ai/ideogram/v3",
         "cost": 0.06,
