@@ -19,13 +19,17 @@ A Discord bot that uses LLMs (via LiteLLM) to chat, generate images, summarise c
 ```bash
 uv sync                                      # Install dependencies
 uv run python main.py                        # Run the bot
-uv run pytest                                # Run all tests (56 tests)
+uv run pytest                                # Run all tests (568 tests)
 uv run pytest tests/test_helpers.py          # Run single test file
 uv run pytest tests/test_helpers.py::test_function_name -v  # Run single test
 
 # Iterate on the corpse image-prompt pipeline without waiting for the daily cron:
 uv run python scripts/try_chat_image.py samples/sample_chat.txt           # dry-run, free
 uv run python scripts/try_chat_image.py samples/sample_chat.txt --image   # actually generate
+
+# Inspect what the Met Office actually returns and what reaches the LLM:
+uv run python scripts/try_weather.py Glasgow --hourly                     # free
+uv run python scripts/try_weather.py Glasgow --hourly --llm               # + the friendly forecast
 ```
 
 ## Architecture
@@ -82,6 +86,8 @@ See README.md for full environment variable list.
 
 1. **Style variety is a curated catalogue, not an LLM pick** - the daily image's style comes from `random.choice` over `src/media/style_catalogue.py` with a globally shared anti-repetition history. Do not reintroduce LLM style-picking or bolt-on random style nudges: the LLM's style prior collapses to ~50 favourites, and extra nudges appended after the corpse assembler fight the style it committed to (both were removed 2026-07-19 — see ant gepettodiscordbot-AkRXV).
 
-2. **Broad exception handling** - Some try/except blocks are intentionally broad due to varied LLM response formats.
+2. **Weather forecasts use bucketed hourly data, not the daily endpoint** - `build_met_office_forecast()` in `src/content/weather.py` calls `/point/hourly` for today and tomorrow and summarises it into named local-time periods (Overnight/Morning/Afternoon/Evening), falling back to `/point/daily` only beyond the hourly feed's ~48-hour reach. Do not "simplify" this back to a single daily call: the daily endpoint collapses a day into day/night averages, so it cannot say "wet morning, bright afternoon" and the LLM invents the timing instead — forecasts read as plausible but wrong (fixed 2026-07-25 — see ant gepettodiscordbot-C8ggs for the traps, especially why tonight's rain needs its own tail section). Run `uv run python scripts/try_weather.py Glasgow --hourly` before changing anything here.
 
-3. **Config as code for Replicate** - Model configs in `replicate.py` use a dict pattern rather than if/elif chains.
+3. **Broad exception handling** - Some try/except blocks are intentionally broad due to varied LLM response formats.
+
+4. **Config as code for Replicate** - Model configs in `replicate.py` use a dict pattern rather than if/elif chains.
