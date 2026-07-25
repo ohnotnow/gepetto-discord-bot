@@ -274,7 +274,7 @@ class TestBackupRestoreIntegration:
 
     def test_get_backup_stores(self, temp_dir):
         stores = get_backup_stores(os.path.join(temp_dir, "test.db"))
-        assert len(stores) == 5
+        assert len(stores) == 6
 
     def test_all_sections_unique(self, temp_dir):
         stores = get_backup_stores(os.path.join(temp_dir, "test.db"))

@@ -18,3 +18,7 @@ data/
 
 # Local outputs from scripts/try_chat_image.py — keep the dir, ignore runs.
 samples/
+
+# Real user data copied in locally for dev — never commit.
+gepetto.db
+music-entertainment.txt

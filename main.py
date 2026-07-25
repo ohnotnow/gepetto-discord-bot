@@ -20,20 +20,20 @@ from src.providers import split_for_discord
 
 # Tools
 from src.tools import calculator, ToolDispatcher, ToolResult
-from src.tools.definitions import tool_list, search_url_history_tool, catch_up_tool, twitter_search_tool, set_reminder_tool, manage_memories_tool, search_discogs_tool, explore_discogs_artist_tool, get_news_bulletins_tool
+from src.tools.definitions import tool_list, search_url_history_tool, catch_up_tool, twitter_search_tool, set_reminder_tool, manage_memories_tool, search_discogs_tool, explore_discogs_artist_tool, get_news_bulletins_tool, get_music_profile_tool
 
 # Media
 from src.media import image_prompt_corpse, replicate, sora, vlm, get_image_model
 
 # Content
-from src.content import summary, weather, sentry, discogs, news
+from src.content import summary, weather, sentry, discogs, news, music
 
 # Tasks
 from src.tasks import birthdays
 from src.tasks import memories as memory_tasks
 
 # Persistence
-from src.persistence import ImageStore, MemoryStore, UrlStore, ActivityStore, ReminderStore, NewsStore
+from src.persistence import ImageStore, MemoryStore, UrlStore, ActivityStore, ReminderStore, NewsStore, MusicStore
 from src.persistence.url_store import rerank
 
 # Embeddings
@@ -108,6 +108,9 @@ def get_system_prompt(system_prompt=None, bot_name="Assistant"):
     if ENABLE_DISCOGS:
         persona += "\n\nYou have access to the Discogs music database. When users ask for music recommendations, ask about bands/musicians, or want to discover new music, you MUST use the search_discogs and explore_discogs_artist tools to ground your suggestions in real data. Search first, then explore the artist to find their members, side-projects, genres, and styles. Use that data to make your recommendations interesting and non-obvious - don't just list the usual suspects."
 
+    if ENABLE_MUSIC_PROFILE:
+        persona += "\n\nYou can also build playlists and per-user music recommendations from the server's music channel history. When a user asks for a playlist, or what music they or someone else might like, you MUST call get_music_profile first and anchor your picks in the profile it returns, using the included artist network data for adjacent discoveries. Present tracks with their URLs wrapped in <angle brackets> so Discord does not spam the channel with embeds."
+
     return persona
 
 MARVIN_SPELLCHECK_PROMPT = '''You are Marvin, the Paranoid Android from The Hitchhiker's Guide to the Galaxy,
@@ -148,6 +151,7 @@ bot_state = BotState()
 image_store = ImageStore()
 memory_store = MemoryStore()
 url_store = UrlStore()
+music_store = MusicStore()
 activity_store = ActivityStore()
 reminder_store = ReminderStore()
 news_store = NewsStore()
@@ -194,6 +198,12 @@ ENABLE_TWITTER_SEARCH = os.getenv("ENABLE_TWITTER_SEARCH", "false").lower() == "
 # Discogs music recommendations
 ENABLE_DISCOGS = os.getenv("DISCOGS_TOKEN", "") != ""
 
+# Music history / taste profiles (see ait epic gepetto-discord-bot-UkLWZ.2)
+MUSIC_HISTORY_CHANNELS = os.getenv("MUSIC_HISTORY_CHANNELS", "")  # Comma-separated channel IDs
+ENABLE_MUSIC_PROFILE = MUSIC_HISTORY_CHANNELS != ""
+music_history_hour = int(os.getenv("MUSIC_HISTORY_HOUR", "5"))
+MUSIC_BACKFILL_CHUNK_SIZE = 40  # links per batched LLM parse call
+
 # Build the active tool list based on feature flags
 active_tool_list = tool_list.copy()
 if ENABLE_URL_HISTORY:
@@ -209,6 +219,8 @@ if ENABLE_USER_MEMORY:
 if ENABLE_DISCOGS:
     active_tool_list.append(search_discogs_tool)
     active_tool_list.append(explore_discogs_artist_tool)
+if ENABLE_MUSIC_PROFILE:
+    active_tool_list.append(get_music_profile_tool)
 active_tool_list.append(get_news_bulletins_tool)
 
 location = os.getenv('BOT_LOCATION', 'dunno')
@@ -336,6 +348,9 @@ async def handle_ready():
     if ENABLE_URL_HISTORY_EXTRACTION:
         logger.info(f"Starting extract_url_history task at hour {url_history_extraction_hour}")
         platform.schedule_daily("url_history", extract_url_history, hour=url_history_extraction_hour, tz=uk_tz)
+    if ENABLE_MUSIC_PROFILE:
+        logger.info(f"Starting extract_music_history task at hour {music_history_hour}")
+        platform.schedule_daily("music_history", extract_music_history, hour=music_history_hour, tz=uk_tz)
     if ENABLE_REMINDERS:
         logger.info(f"Starting check_reminders task (every {REMINDER_FREQUENCY} minutes)")
         platform.schedule_interval("reminders", check_reminders, minutes=REMINDER_FREQUENCY)
@@ -675,6 +690,72 @@ async def handle_discogs_explore(message: ChatMessage, tool_call, arguments: dic
         await reply_to_message(message, followup.message + '\n' + followup.usage_short)
 
 
+DISCORD_MENTION_RE = re.compile(r'<@!?(\d+)>')
+
+
+def format_music_profile(name: str, counts: dict, entries: list) -> str:
+    """Render a user's music profile as plain text for the LLM.
+
+    URLs are wrapped in <> — Discord suppresses link-preview embeds inside
+    angle brackets, and an unwrapped playlist spams the channel.
+    """
+    lines = [f"Music profile for {name}:"]
+    artists = counts["artists"].most_common(15)
+    if artists:
+        lines.append("Top artists: " + ", ".join(f"{a} ({c})" if c > 1 else a for a, c in artists))
+    genres = counts["genres"].most_common(8)
+    if genres:
+        lines.append("Genres: " + ", ".join(f"{g} ({c})" for g, c in genres))
+    styles = counts["styles"].most_common(10)
+    if styles:
+        lines.append("Styles: " + ", ".join(f"{s} ({c})" for s, c in styles))
+    recent = [e for e in entries if e.artist and e.track][:15]
+    if recent:
+        lines.append("Recent tracks:")
+        for entry in recent:
+            lines.append(f"- {entry.artist} — {entry.track} (<{entry.url}>)")
+    return "\n".join(lines)
+
+
+async def handle_get_music_profile(message: ChatMessage, tool_call, arguments: dict, messages: list, temperature: float) -> None:
+    """Handle get_music_profile: profile + artist network data, then let the LLM synthesise.
+
+    The follow-up call deliberately passes tools=[] — main.py dispatches tool
+    calls once per message, so a tool call in the follow-up would be silently
+    dropped. Expansion material (explore_artist for the top artists) is
+    pre-fetched here instead.
+    """
+    channel = platform.get_channel(message.channel_id)
+    async with channel.typing():
+        user_name = (arguments.get('user_name') or '').strip()
+        if user_name:
+            display_name = user_name.lstrip('@').strip()
+            mention = DISCORD_MENTION_RE.fullmatch(user_name)
+            if mention:
+                user_id = mention.group(1)
+            else:
+                user_id = music_store.resolve_user_name(server_id, display_name)
+        else:
+            user_id = message.author_id
+            display_name = message.author_display_name or message.author_name
+
+        entries = music_store.get_user_history(server_id, user_id, limit=100) if user_id else []
+        if not entries:
+            tool_result = f"No music history found for {display_name}."
+        else:
+            counts = music_store.profile_counts(server_id, user_id)
+            tool_result = format_music_profile(display_name, counts, entries)
+            if ENABLE_DISCOGS:
+                top_artists = [a for a, _ in counts["artists"].most_common(2)]
+                explores = [await discogs.explore_artist(a) for a in top_artists]
+                if explores:
+                    tool_result += "\n\nArtist network data (for adjacent discoveries):\n\n" + "\n\n".join(explores)
+
+        messages.append({'role': 'user', 'content': f'[Music profile data — build the playlist or recommendation from this. Wrap every URL in <angle brackets>.]\n\n{tool_result}'})
+        followup = await chatbot.chat(messages, temperature=temperature, tools=[])
+        await reply_to_message(message, followup.message + '\n' + followup.usage_short)
+
+
 async def handle_get_news_bulletins(message: ChatMessage, messages: list, temperature: float) -> None:
     """Fetch today's news bulletins, then let the LLM relay them in its own
     voice — by appending to the existing `messages` list, the bot's persona
@@ -861,6 +942,12 @@ async def handle_message(message: ChatMessage):
             if lq.startswith("!reindex"):
                 await reindex_url_history(message)
                 return
+            if lq.startswith("!musicbackfill"):
+                await backfill_music_history(message, question)
+                return
+            if lq.startswith("!musichistory"):
+                await extract_music_history()
+                return
             if '--reasoning' in lq:
                 # Try in-memory state first (current session), fall back to database.
                 # We deliberately do NOT include the raw prompt here — historically
@@ -942,6 +1029,8 @@ async def handle_message(message: ChatMessage):
                     await handle_discogs_search(message, tool_call, arguments, messages, temperature)
                 elif fname == 'explore_discogs_artist':
                     await handle_discogs_explore(message, tool_call, arguments, messages, temperature)
+                elif fname == 'get_music_profile':
+                    await handle_get_music_profile(message, tool_call, arguments, messages, temperature)
                 elif fname == 'get_news_bulletins':
                     await handle_get_news_bulletins(message, messages, temperature)
                 else:
@@ -1471,6 +1560,158 @@ Content:
             continue
 
     logger.info(f"URL extraction complete: {urls_total} found, {urls_filtered} filtered, {urls_duplicate} duplicates, {urls_processed} processed, {urls_saved} saved")
+
+
+def _music_channel_ids() -> list:
+    """Parse MUSIC_HISTORY_CHANNELS into a list of channel IDs."""
+    return [ch.strip().strip('"\'') for ch in MUSIC_HISTORY_CHANNELS.strip('"\'').split(",") if ch.strip()]
+
+
+async def _collect_music_links(channel_id: str, after: datetime, limit: int) -> list:
+    """Scan one channel for YouTube links not already in music_history.
+
+    Returns link dicts ready for music.enrich_links(), carrying poster
+    attribution for the eventual save.
+    """
+    channel = platform.get_channel(channel_id)
+    if not channel:
+        logger.warning(f"Could not get channel {channel_id} for music extraction")
+        return []
+
+    links = []
+    seen = set()
+    history_msgs = await channel.history(limit=limit, after=after)
+    for msg in history_msgs:
+        if msg.author_is_bot:
+            continue
+        for url in music.YOUTUBE_URL_RE.findall(msg.content):
+            if url in seen or music_store.url_exists(server_id, url):
+                continue
+            seen.add(url)
+            links.append({
+                "url": url,
+                "channel_id": channel_id,
+                "posted_by_id": msg.author_id,
+                "posted_by_name": msg.author_display_name,
+                "posted_at": msg.created_at,
+            })
+    return links
+
+
+def _save_music_links(links: list) -> tuple:
+    """Save enriched links to music_store. Returns (music_count, non_music_count)."""
+    saved_music = 0
+    saved_other = 0
+    for link in links:
+        result = music_store.save(
+            server_id=server_id,
+            channel_id=link["channel_id"],
+            url=link["url"],
+            video_title=link.get("title", ""),
+            video_channel=link.get("channel", ""),
+            posted_by_id=link["posted_by_id"],
+            posted_by_name=link["posted_by_name"],
+            posted_at=link["posted_at"],
+            artist=link.get("artist"),
+            collaborators=link.get("collaborators"),
+            track=link.get("track"),
+            genres=link.get("genres"),
+            styles=link.get("styles"),
+            is_music=bool(link.get("is_music")),
+        )
+        if result is not None:
+            if link.get("is_music"):
+                saved_music += 1
+            else:
+                saved_other += 1
+    return saved_music, saved_other
+
+
+async def extract_music_history():
+    """Daily scan of the music channel(s) into music_history.
+
+    Mirrors extract_url_history. On a failed LLM parse, saves NOTHING from
+    the scan — unsaved links retry tomorrow. A swallowed failure would save
+    is_music=0 rows that url_exists() then makes permanent.
+    """
+    logger.info("In extract_music_history")
+    if not ENABLE_MUSIC_PROFILE:
+        logger.info("No MUSIC_HISTORY_CHANNELS configured, skipping")
+        return
+
+    total_new = 0
+    saved_music = 0
+    saved_other = 0
+    for channel_id in _music_channel_ids():
+        try:
+            links = await _collect_music_links(channel_id, after=datetime.now() - timedelta(days=1), limit=500)
+            total_new += len(links)
+            if not links:
+                continue
+            try:
+                await music.enrich_links(links, chatbot)
+            except music.MusicParseError as e:
+                logger.error(f"Music parse failed for channel {channel_id}, saving nothing from this scan: {e}")
+                continue
+            music_count, other_count = _save_music_links(links)
+            saved_music += music_count
+            saved_other += other_count
+        except Exception as channel_error:
+            logger.error(f"Error processing music channel {channel_id}: {channel_error}")
+            continue
+
+    logger.info(f"Music extraction complete: {total_new} new links, {saved_music} music, {saved_other} non-music saved")
+
+
+async def backfill_music_history(message: ChatMessage, command_text: str) -> None:
+    """!musicbackfill [days] — load historical music-channel links.
+
+    Idempotent via url_exists(); the LLM parse is chunked so one bad
+    response only skips that chunk (skipped links stay unsaved and are
+    picked up on a re-run).
+    """
+    if not ENABLE_MUSIC_PROFILE:
+        await message.reply("No MUSIC_HISTORY_CHANNELS configured.")
+        return
+
+    days = 365
+    parts = command_text.split()
+    if len(parts) > 1:
+        try:
+            days = int(parts[1])
+        except ValueError:
+            pass
+
+    await message.reply(f"Starting music backfill over the last {days} days — this may take a few minutes.")
+
+    total_new = 0
+    saved_music = 0
+    saved_other = 0
+    failed_chunks = 0
+    for channel_id in _music_channel_ids():
+        try:
+            links = await _collect_music_links(channel_id, after=datetime.now() - timedelta(days=days), limit=5000)
+        except Exception as channel_error:
+            logger.error(f"Error scanning music channel {channel_id} for backfill: {channel_error}")
+            continue
+        total_new += len(links)
+        for start in range(0, len(links), MUSIC_BACKFILL_CHUNK_SIZE):
+            chunk = links[start:start + MUSIC_BACKFILL_CHUNK_SIZE]
+            try:
+                await music.enrich_links(chunk, chatbot)
+            except music.MusicParseError as e:
+                failed_chunks += 1
+                logger.error(f"Music parse failed for backfill chunk at offset {start}, skipping chunk: {e}")
+                continue
+            music_count, other_count = _save_music_links(chunk)
+            saved_music += music_count
+            saved_other += other_count
+            logger.info(f"Music backfill progress: {min(start + MUSIC_BACKFILL_CHUNK_SIZE, len(links))}/{len(links)} links in channel {channel_id}")
+
+    summary_text = f"Music backfill complete: {total_new} new links found, {saved_music} music and {saved_other} non-music saved."
+    if failed_chunks:
+        summary_text += f" {failed_chunks} chunk(s) failed parsing and will be picked up on a re-run."
+    await message.reply(summary_text)
 
 
 async def reindex_url_history(message: ChatMessage) -> None:

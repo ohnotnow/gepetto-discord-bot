@@ -81,6 +81,9 @@ The script uses the following environment variables (* indicates required):
 | ENABLE_URL_HISTORY_EXTRACTION | Enable scheduled URL extraction (requires EMBEDDING_PROVIDER) | False | "true" |
 | URL_HISTORY_CHANNELS | Comma-separated channel IDs to scan for URLs | - | "123456789,987654321" |
 | URL_HISTORY_EXTRACTION_HOUR | Hour (0-23) when URL extraction runs | 4 | "4" (4 AM) |
+| MUSIC_HISTORY_CHANNELS | Comma-separated channel IDs to scan for music (YouTube) links — setting this enables the music profile/playlist feature | - | "123456789" |
+| MUSIC_HISTORY_HOUR | Hour (0-23) when the daily music extraction runs | 5 | "5" (5 AM) |
+| MUSIC_PARSE_MODEL | Optional cheap LiteLLM model for parsing music link titles; falls back to the main bot model | - | "openai/gpt-5.6-luna" |
 | ENABLE_CATCH_UP | Enable the "catch me up" tool so bot can respond to requests | False | "true" |
 | ENABLE_CATCH_UP_TRACKING | Enable activity tracking (only one bot instance should do this) | False | "true" |
 | ENABLE_TWITTER_SEARCH | Enable Twitter/X search via Grok (requires OPENROUTER_API_KEY) | False | "true" |

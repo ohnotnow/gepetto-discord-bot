@@ -165,6 +165,25 @@ explore_discogs_artist_tool = {
     }
 }
 
+# Tool for per-user music profiles - conditionally added based on MUSIC_HISTORY_CHANNELS
+get_music_profile_tool = {
+    "type": "function",
+    "function": {
+        "name": "get_music_profile",
+        "description": "Fetches a user's music taste profile built from links they posted in the music channel: their most-posted artists, genre and style tallies, and recent tracks. You MUST call this before building a playlist or answering what music a user might like. If no user is named, the profile is for the requesting user.",
+        "parameters": {
+            "type": "object",
+            "properties": {
+                "user_name": {
+                    "type": "string",
+                    "description": "Display name of the user to profile, as mentioned in chat. Omit for the requesting user."
+                }
+            },
+            "required": []
+        }
+    }
+}
+
 # Tool for searching URL history - conditionally added based on ENABLE_URL_HISTORY
 search_url_history_tool = {
     "type": "function",
