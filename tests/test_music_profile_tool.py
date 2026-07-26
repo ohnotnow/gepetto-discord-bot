@@ -104,6 +104,12 @@ class TestToolDefinition:
         assert "user_name" in fn["parameters"]["properties"]
         assert fn["parameters"]["required"] == []
 
+    def test_description_names_the_describe_taste_use_case(self):
+        """'What's my musical taste?' must be an instructed trigger, not one the
+        model has to infer — cheap BOT_MODELs won't reliably make the leap."""
+        description = get_music_profile_tool["function"]["description"]
+        assert "musical taste" in description
+
 
 class TestFormatMusicProfile:
 

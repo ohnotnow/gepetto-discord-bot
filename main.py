@@ -109,7 +109,7 @@ def get_system_prompt(system_prompt=None, bot_name="Assistant"):
         persona += "\n\nYou have access to the Discogs music database. When users ask for music recommendations, ask about bands/musicians, or want to discover new music, you MUST use the search_discogs and explore_discogs_artist tools to ground your suggestions in real data. Search first, then explore the artist to find their members, side-projects, genres, and styles. Use that data to make your recommendations interesting and non-obvious - don't just list the usual suspects."
 
     if ENABLE_MUSIC_PROFILE:
-        persona += "\n\nYou can also build playlists and per-user music recommendations from the server's music channel history. When a user asks for a playlist, or what music they or someone else might like, you MUST call get_music_profile first and anchor your picks in the profile it returns, using the included artist network data for adjacent discoveries. Present tracks with their URLs wrapped in <angle brackets> so Discord does not spam the channel with embeds."
+        persona += "\n\nYou can also build playlists and per-user music recommendations from the server's music channel history. When a user asks for a playlist, what music they or someone else might like, or what their (or another user's) musical taste or profile is, you MUST call get_music_profile first and anchor your answer in the profile it returns, using the included artist network data for adjacent discoveries. Present tracks with their URLs wrapped in <angle brackets> so Discord does not spam the channel with embeds."
 
     return persona
 

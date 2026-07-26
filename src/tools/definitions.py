@@ -170,7 +170,7 @@ get_music_profile_tool = {
     "type": "function",
     "function": {
         "name": "get_music_profile",
-        "description": "Fetches a user's music taste profile built from links they posted in the music channel: their most-posted artists, genre and style tallies, and recent tracks. You MUST call this before building a playlist or answering what music a user might like. If no user is named, the profile is for the requesting user.",
+        "description": "Fetches a user's music taste profile built from links they posted in the music channel: their most-posted artists, genre and style tallies, and recent tracks. You MUST call this before building a playlist, answering what music a user might like, or describing a user's musical taste or profile (e.g. 'what's my musical taste?', 'what is @bob's music profile?'). If no user is named, the profile is for the requesting user.",
         "parameters": {
             "type": "object",
             "properties": {
