@@ -30,7 +30,7 @@ class StubChatbot:
         self.reply = reply
         self.calls = []
 
-    async def chat(self, messages, model="", temperature=1.0, json_mode=False, tools=None):
+    async def chat(self, messages, model="", json_mode=False, tools=None):
         self.calls.append({
             "messages": messages,
             "model": model,

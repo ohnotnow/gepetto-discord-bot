@@ -149,7 +149,6 @@ async def extract_memories_from_history(
     try:
         response = await chatbot.chat(
             messages=llm_messages,
-            temperature=0.3,  # Lower temperature for more consistent extraction
             json_mode=True
         )
 
@@ -258,7 +257,6 @@ async def synthesise_bio(
     try:
         response = await chatbot.chat(
             messages=llm_messages,
-            temperature=0.3,
         )
         return response.message.strip()
     except Exception as e:

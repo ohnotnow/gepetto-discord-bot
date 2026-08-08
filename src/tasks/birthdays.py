@@ -38,7 +38,6 @@ async def get_birthday_message(platform, chatbot):
 
             response = await chatbot.chat(
                 messages=messages,
-                temperature=1.0,
             )
 
             message = response.message[:1900]

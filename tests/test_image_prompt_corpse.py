@@ -28,7 +28,7 @@ class FakeChat:
         self.replies = list(replies)
         self.calls = []
 
-    async def chat(self, messages, tools=None, temperature=1.0, model="", **_):
+    async def chat(self, messages, tools=None, model="", **_):
         self.calls.append({"messages": messages, "tools": tools, "model": model})
         if not self.replies:
             raise AssertionError("FakeChat ran out of scripted replies")

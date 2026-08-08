@@ -30,9 +30,7 @@ class BaseModel:
     async def chat(
         self,
         messages: List[Dict[str, str]],
-        temperature: float = 1.0,
         model: Optional[str] = "",
-        top_p: float = 0.6,
         json_mode: bool = False,
         tools: List[Dict[str, Any]] = []
     ) -> ChatResponse:
@@ -44,10 +42,11 @@ class BaseModel:
         if "/" not in model:
             model = self.get_model_string(model)
         print(f"Using model: {model}")
+        # No sampling params (temperature/top_p) - the newer Anthropic and
+        # OpenAI models reject them, so we let every provider use its default.
         params = {
             "model": model,
             "messages": messages,
-            "temperature": temperature,
         }
 
         if model.startswith("openai/"):
@@ -115,7 +114,6 @@ class BaseModel:
         self,
         messages: List[Dict[str, str]] = [],
         tools: List[Dict[str, Any]] = [],
-        temperature: float = 0.7,
         model: Optional[str] = None
     ) -> FunctionResponse:
         """Generic function call implementation using LiteLLM"""
@@ -126,7 +124,6 @@ class BaseModel:
             "messages": messages,
             "tools": tools,
             "tool_choice": {"type": "function", "function": {"name": tools[0]["function"]["name"]}},
-            "temperature": temperature,
         }
         if self.requires_disabled_reasoning_for_tools(model):
             params["reasoning_effort"] = "none"

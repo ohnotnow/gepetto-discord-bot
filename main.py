@@ -413,7 +413,7 @@ async def summarise_sentry_issue(message: ChatMessage, url: str) -> None:
             'content': f'{llm_prompt}'
         },
     ]
-    response = await chatbot.chat(messages, temperature=1.0)
+    response = await chatbot.chat(messages)
     reply_text = response.message.strip()[:DISCORD_MESSAGE_LIMIT] + "\n" + response.usage
     await message.reply(f'{message.author_mention} {reply_text}', mention_author=True)
 
@@ -451,7 +451,7 @@ async def summarise_webpage_content(message: ChatMessage, prompt: str, url: str)
             'content': f'{prompt}? :: <text-to-summarise>\n\n{original_text}\n\n</text-to-summarise>.  **Important**  Keep your summary brief and to the point!'
         },
     ]
-    response = await chatbot.chat(messages, temperature=1.0)
+    response = await chatbot.chat(messages)
     await reply_to_message(message, response.message)
     if was_truncated:
         await message.reply(f"[Note: The summary is based on a truncated version of the original text as it was too long.]", mention_author=True)
@@ -522,7 +522,7 @@ async def search_url_history(message: ChatMessage, query: str, recency: str = "a
     ]
 
     try:
-        llm_response = await chatbot.chat(summary_messages, temperature=0.3, tools=[])
+        llm_response = await chatbot.chat(summary_messages, tools=[])
         response_text = llm_response.message.strip()[:DISCORD_MESSAGE_LIMIT]
         # Safety net: wrap any bare URLs that the LLM didn't angle-bracket
         response_text = re.sub(r'(?<![<])(https?://\S+)(?![>])', r'<\1>', response_text)
@@ -572,7 +572,7 @@ def process_set_reminder(message: ChatMessage, reminder_text: str, remind_at: st
     return f"Reminder saved. Will remind on {formatted_time}: \"{reminder_text}\". Note: reminders are checked every {REMINDER_FREQUENCY} minutes, so the actual reminder may be up to {REMINDER_FREQUENCY} minutes late."
 
 
-async def handle_set_reminder(message: ChatMessage, tool_call, arguments: dict, messages: list, temperature: float) -> None:
+async def handle_set_reminder(message: ChatMessage, tool_call, arguments: dict, messages: list) -> None:
     """Handle set_reminder tool call: save the reminder, then let the LLM confirm in its own voice."""
     tool_result = process_set_reminder(message, arguments.get('reminder_text', ''), arguments.get('remind_at', ''))
     messages.append({
@@ -585,7 +585,7 @@ async def handle_set_reminder(message: ChatMessage, tool_call, arguments: dict, 
         }]
     })
     messages.append({'role': 'tool', 'tool_call_id': tool_call.id, 'content': tool_result})
-    followup = await chatbot.chat(messages, temperature=temperature, tools=[])
+    followup = await chatbot.chat(messages, tools=[])
     await reply_to_message(message, followup.message + '\n' + followup.usage_short)
 
 
@@ -636,7 +636,7 @@ def process_manage_memories(message: ChatMessage, action: str, memory_id: int = 
     return "Error: Unknown action."
 
 
-async def handle_manage_memories(message: ChatMessage, tool_call, arguments: dict, messages: list, temperature: float) -> None:
+async def handle_manage_memories(message: ChatMessage, tool_call, arguments: dict, messages: list) -> None:
     """Handle manage_memories tool call: perform action, then let the LLM relay in its own voice."""
     memory_id = arguments.get('memory_id')
     if memory_id is not None:
@@ -652,7 +652,7 @@ async def handle_manage_memories(message: ChatMessage, tool_call, arguments: dic
         }]
     })
     messages.append({'role': 'tool', 'tool_call_id': tool_call.id, 'content': tool_result})
-    followup = await chatbot.chat(messages, temperature=temperature, tools=[])
+    followup = await chatbot.chat(messages, tools=[])
     await reply_to_message(message, followup.message + '\n' + followup.usage_short)
 
 
@@ -669,24 +669,24 @@ if ENABLE_CATCH_UP:
     tool_dispatcher.register('catch_up', lambda msg, **args: handle_catch_up(msg, **args))
 if ENABLE_TWITTER_SEARCH:
     tool_dispatcher.register('twitter_search', lambda msg, **args: twitter_search(msg, args.get('query', '')))
-async def handle_discogs_search(message: ChatMessage, tool_call, arguments: dict, messages: list, temperature: float) -> None:
+async def handle_discogs_search(message: ChatMessage, tool_call, arguments: dict, messages: list) -> None:
     """Handle search_discogs: search, then explore the top result, then let the LLM synthesise."""
     channel = platform.get_channel(message.channel_id)
     async with channel.typing():
         search_result = await discogs.search_artist(arguments.get('query', ''))
         explore_result = await discogs.explore_artist(arguments.get('query', ''))
         messages.append({'role': 'user', 'content': f'[Discogs data — recommend specific artists, side-projects, and releases from this data. Include artists the user is unlikely to already know.]\n\n{search_result}\n\n{explore_result}'})
-        followup = await chatbot.chat(messages, temperature=temperature, tools=[])
+        followup = await chatbot.chat(messages, tools=[])
         await reply_to_message(message, followup.message + '\n' + followup.usage_short)
 
 
-async def handle_discogs_explore(message: ChatMessage, tool_call, arguments: dict, messages: list, temperature: float) -> None:
+async def handle_discogs_explore(message: ChatMessage, tool_call, arguments: dict, messages: list) -> None:
     """Handle explore_discogs_artist: fetch artist network, then let the LLM synthesise."""
     channel = platform.get_channel(message.channel_id)
     async with channel.typing():
         explore_result = await discogs.explore_artist(arguments.get('artist', ''))
         messages.append({'role': 'user', 'content': f'[Discogs data — recommend specific artists, side-projects, and releases from this data. Include artists the user is unlikely to already know.]\n\n{explore_result}'})
-        followup = await chatbot.chat(messages, temperature=temperature, tools=[])
+        followup = await chatbot.chat(messages, tools=[])
         await reply_to_message(message, followup.message + '\n' + followup.usage_short)
 
 
@@ -717,7 +717,7 @@ def format_music_profile(name: str, counts: dict, entries: list) -> str:
     return "\n".join(lines)
 
 
-async def handle_get_music_profile(message: ChatMessage, tool_call, arguments: dict, messages: list, temperature: float) -> None:
+async def handle_get_music_profile(message: ChatMessage, tool_call, arguments: dict, messages: list) -> None:
     """Handle get_music_profile: profile + artist network data, then let the LLM synthesise.
 
     The follow-up call deliberately passes tools=[] — main.py dispatches tool
@@ -752,11 +752,11 @@ async def handle_get_music_profile(message: ChatMessage, tool_call, arguments: d
                     tool_result += "\n\nArtist network data (for adjacent discoveries):\n\n" + "\n\n".join(explores)
 
         messages.append({'role': 'user', 'content': f'[Music profile data — build the playlist or recommendation from this. Wrap every URL in <angle brackets>.]\n\n{tool_result}'})
-        followup = await chatbot.chat(messages, temperature=temperature, tools=[])
+        followup = await chatbot.chat(messages, tools=[])
         await reply_to_message(message, followup.message + '\n' + followup.usage_short)
 
 
-async def handle_get_news_bulletins(message: ChatMessage, messages: list, temperature: float) -> None:
+async def handle_get_news_bulletins(message: ChatMessage, messages: list) -> None:
     """Fetch today's news bulletins, then let the LLM relay them in its own
     voice — by appending to the existing `messages` list, the bot's persona
     system prompt stays in scope. Reuses the daily image pipeline's cache.
@@ -791,7 +791,7 @@ async def handle_get_news_bulletins(message: ChatMessage, messages: list, temper
                 f"{formatted}"
             )
         })
-        followup = await chatbot.chat(messages, temperature=temperature, tools=[])
+        followup = await chatbot.chat(messages, tools=[])
         await reply_to_message(message, followup.message + '\n' + followup.usage_short)
 
 
@@ -867,7 +867,7 @@ Keep your personality - if the chat was mundane, say so dismissively. If it was 
 
     channel = platform.get_channel(message.channel_id)
     async with channel.typing():
-        response = await chatbot.chat(llm_messages, temperature=0.8, tools=[])
+        response = await chatbot.chat(llm_messages, tools=[])
         summary_text = wrap_urls_for_discord(response.message.strip())
         await reply_to_message(message, summary_text)
 
@@ -907,8 +907,6 @@ async def handle_message(message: ChatMessage):
         channel = platform.get_channel(message.channel_id)
         await channel.send(f'{message.author_mention} {random.choice(ABUSIVE_RESPONSES)}.')
         return
-
-    temperature = 1.0
 
     try:
         lq = question.lower().strip()
@@ -982,7 +980,6 @@ async def handle_message(message: ChatMessage):
                 )
                 response = await chatbot.chat(
                     spellcheck_messages,
-                    temperature=0.7,
                     model=spellcheck_model,  # None falls through to chatbot.default_model
                     tools=[]  # No tools for spell check
                 )
@@ -996,7 +993,7 @@ async def handle_message(message: ChatMessage):
                     user_bio = bio.bio
 
             messages = build_messages(question_with_context, context, system_prompt=system_prompt, user_bio=user_bio)
-            response = await chatbot.chat(messages, temperature=temperature, tools=active_tool_list)
+            response = await chatbot.chat(messages, tools=active_tool_list)
             if response.reasoning_content:
                 bot_state.previous_reasoning_content = response.reasoning_content[:DISCORD_MESSAGE_LIMIT]
             if response.tool_calls:
@@ -1014,7 +1011,7 @@ async def handle_message(message: ChatMessage):
                     recipe_url = arguments.get('url', '')
                     if ('example.com' in recipe_url) or ('http' not in lq):
                         original_usage = response.usage
-                        response = await chatbot.chat(messages, temperature=temperature, tools=[])
+                        response = await chatbot.chat(messages, tools=[])
                         response = response.message.strip()[:DISCORD_MESSAGE_LIMIT] + "\n" + response.usage + "\n" + original_usage
                         await message.reply(f'{message.author_mention} {response}')
                     else:
@@ -1022,17 +1019,17 @@ async def handle_message(message: ChatMessage):
                 elif fname == 'create_image':
                     await create_image(message, arguments.get('prompt', ''))
                 elif fname == 'set_reminder':
-                    await handle_set_reminder(message, tool_call, arguments, messages, temperature)
+                    await handle_set_reminder(message, tool_call, arguments, messages)
                 elif fname == 'manage_memories':
-                    await handle_manage_memories(message, tool_call, arguments, messages, temperature)
+                    await handle_manage_memories(message, tool_call, arguments, messages)
                 elif fname == 'search_discogs':
-                    await handle_discogs_search(message, tool_call, arguments, messages, temperature)
+                    await handle_discogs_search(message, tool_call, arguments, messages)
                 elif fname == 'explore_discogs_artist':
-                    await handle_discogs_explore(message, tool_call, arguments, messages, temperature)
+                    await handle_discogs_explore(message, tool_call, arguments, messages)
                 elif fname == 'get_music_profile':
-                    await handle_get_music_profile(message, tool_call, arguments, messages, temperature)
+                    await handle_get_music_profile(message, tool_call, arguments, messages)
                 elif fname == 'get_news_bulletins':
-                    await handle_get_news_bulletins(message, messages, temperature)
+                    await handle_get_news_bulletins(message, messages)
                 else:
                     logger.info(f'Unknown tool call: {fname}')
                     await message.reply(f'{message.author_mention} I am a silly sausage and don\'t know how to do that.', mention_author=True)
@@ -1067,7 +1064,7 @@ async def random_chat(trigger_message: ChatMessage):
                    f"Keep it to one sentence. Do not summarise the conversation."
                    f"If you have nothing to say, reply with just 'SKIP'.  It is perfectly natural not to reply to every message :-)"
     })
-    response = await chatbot.chat(context, temperature=0.8)
+    response = await chatbot.chat(context)
     response_text = response.message.strip()
     if 'SKIP' in response_text.upper() and len(response_text) < 10:
         logger.info("Random chat chose to skip")
@@ -1116,7 +1113,7 @@ async def horror_chat():
             'content': f"It is {formatted_date_time}. Please give me a horror line - the creepier, the more unsettling, the more disturbing the better. It should NOT repeat any of the following:\n<previous-sentences>\n- " + "\n- ".join(previous_horror_history_messages) + "\n</previous-sentences>",
         }
     ]
-    response = await chatbot.chat(context, temperature=1.0)
+    response = await chatbot.chat(context)
     bot_state.horror_history.append({
         "message": response.message,
         "timestamp": formatted_date_time
@@ -1507,7 +1504,7 @@ Content:
                             }
                         ]
 
-                        response = await chatbot.chat(summary_messages, temperature=0.3, tools=[])
+                        response = await chatbot.chat(summary_messages, tools=[])
                         response_text = response.message.strip()
 
                         # Parse JSON response
@@ -1752,7 +1749,7 @@ Content:
                 }
             ]
 
-            response = await chatbot.chat(summary_messages, temperature=0.3, tools=[])
+            response = await chatbot.chat(summary_messages, tools=[])
             response_text = response.message.strip()
 
             # Parse JSON response
@@ -1798,7 +1795,7 @@ async def check_reminders():
                             {'role': 'system', 'content': get_system_prompt(bot_name=chatbot.name)},
                             {'role': 'user', 'content': f'You previously set a reminder for a user and it is now due. Deliver this reminder to them in your own voice and style: "{reminder.reminder_text}".{delay_note}'}
                         ]
-                        llm_response = await chatbot.chat(remind_messages, temperature=1.0, tools=[])
+                        llm_response = await chatbot.chat(remind_messages, tools=[])
                         reminder_text = llm_response.message.strip()[:DISCORD_MESSAGE_LIMIT]
                     except Exception as e:
                         logger.warning(f"LLM reminder delivery failed, using fallback: {e}")

@@ -192,7 +192,6 @@ async def summarise_with_gemini(url: str, prompt: str) -> str | None:
             model=GEMINI_SCRAPER_MODEL,
             messages=messages,
             tools=tools,
-            temperature=1.0,
         )
         result = response.choices[0].message.content
         if result and len(result.strip()) > 0:

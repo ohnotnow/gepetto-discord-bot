@@ -207,7 +207,7 @@ async def synthesise_bulletins(
         },
         {"role": "user", "content": f"<items>\n{numbered}\n</items>"},
     ]
-    chat_kwargs = {"json_mode": True, "temperature": 0.4}
+    chat_kwargs = {"json_mode": True}
     if model:
         chat_kwargs["model"] = model
     response = await chatbot.chat(messages, **chat_kwargs)

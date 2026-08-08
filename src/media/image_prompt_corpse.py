@@ -122,7 +122,6 @@ async def _pick(
     user: str,
     *,
     stage: str,
-    temperature: float = 1.0,
 ) -> str:
     """Run a one-shot LLM pick and return the cleaned reply."""
     messages = [
@@ -131,9 +130,9 @@ async def _pick(
     ]
     model_override = os.getenv("IMAGE_PROMPT_MODEL", None)
     if model_override:
-        response = await chatbot.chat(messages, temperature=temperature, model=model_override)
+        response = await chatbot.chat(messages, model=model_override)
     else:
-        response = await chatbot.chat(messages, temperature=temperature)
+        response = await chatbot.chat(messages)
     raw = getattr(response, "message", str(response))
     pick = _clean_pick(raw)
     logger.info("[corpse:%s] picked: %r (raw: %r)", stage, pick, raw[:200])
@@ -171,7 +170,6 @@ async def _pick_detail_with_reason(
     user: str,
     *,
     stage: str,
-    temperature: float = 1.0,
 ) -> tuple[str, str]:
     """Ask for a detail AND a one-sentence reason. Returns (detail, reason)."""
     messages = [
@@ -180,9 +178,9 @@ async def _pick_detail_with_reason(
     ]
     model_override = os.getenv("IMAGE_PROMPT_MODEL", None)
     if model_override:
-        response = await chatbot.chat(messages, temperature=temperature, model=model_override)
+        response = await chatbot.chat(messages, model=model_override)
     else:
-        response = await chatbot.chat(messages, temperature=temperature)
+        response = await chatbot.chat(messages)
     raw = getattr(response, "message", str(response))
     detail, reason = _split_detail_and_reason(raw)
     logger.info(
@@ -241,7 +239,7 @@ async def _pick_decoy(chatbot, exclude: list[str]) -> str:
     )
     user = "Pick a wildly unrelated random thing."
     user += _exclude_clause("Forbidden (overused or recently used)", full_exclude)
-    return await _pick(chatbot, system, user, stage="decoy", temperature=1.2)
+    return await _pick(chatbot, system, user, stage="decoy")
 
 
 async def _pick_news_decoy(chatbot, news_bulletins, exclude: list[str]) -> str:
@@ -271,7 +269,7 @@ async def _pick_news_decoy(chatbot, news_bulletins, exclude: list[str]) -> str:
     )
     user = f"<news>\n{bulletins_text}\n</news>"
     user += _exclude_clause("Forbidden (overused or recently used)", full_exclude)
-    return await _pick(chatbot, system, user, stage="news_decoy", temperature=1.0)
+    return await _pick(chatbot, system, user, stage="news_decoy")
 
 
 async def _pick_mood(chatbot, chat_text: str, exclude: list[str]) -> str:

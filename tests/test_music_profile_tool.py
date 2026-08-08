@@ -51,7 +51,7 @@ class RecordingChatbot:
     def __init__(self):
         self.calls = []
 
-    async def chat(self, messages, temperature=1.0, model="", json_mode=False, tools=None):
+    async def chat(self, messages, model="", json_mode=False, tools=None):
         self.calls.append({"messages": list(messages), "tools": tools})
         return SimpleNamespace(message="Here is a playlist.", usage_short="[usage]")
 
@@ -154,7 +154,7 @@ class TestHandleGetMusicProfile:
 
     async def run_handler(self, ctx, arguments, message=None):
         message = message or FakeChatMessage()
-        await main.handle_get_music_profile(message, tool_call_stub(), arguments, [], 0.7)
+        await main.handle_get_music_profile(message, tool_call_stub(), arguments, [])
         return message
 
     async def test_no_history_is_graceful_with_no_tools(self, profile_env):

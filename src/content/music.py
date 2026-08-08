@@ -99,7 +99,6 @@ async def parse_titles(links: list[dict], chatbot) -> None:
             {"role": "user", "content": "\n".join(numbered)},
         ],
         model=model,
-        temperature=0.3,
         json_mode=True,
         tools=[],
     )
