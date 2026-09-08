@@ -77,6 +77,12 @@ MODEL_CONFIGS = {
         "params": {"image_size": {"width": 1536, "height": 1024}, "quality": "medium", "output_format": "png"},
         "in_pool": False,
     },
+    "openai/gpt-image-2.5/sunburst/text-to-image": {
+        "model": "openai/gpt-image-2.5/sunburst/text-to-image",
+        "cost": 0.01,
+        "params": {"image_size": {"width": 1536, "height": 1024}, "quality": "medium", "output_format": "png"},
+        "in_pool": False,
+    },
 }
 
 # Default fallback config
