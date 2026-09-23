@@ -38,7 +38,10 @@ async def test_chat_disables_reasoning_for_tools(model_name):
         completion.return_value = _chat_response()
         await model.chat([{"role": "user", "content": "hello"}], tools=[TOOL])
 
-    assert completion.await_args.kwargs["reasoning_effort"] == "none"
+    kwargs = completion.await_args.kwargs
+    assert kwargs["reasoning_effort"] == "none"
+    # litellm's drop_params would otherwise strip it for gpt-6 names
+    assert kwargs["allowed_openai_params"] == ["reasoning_effort"]
 
 
 @pytest.mark.asyncio
@@ -50,6 +53,7 @@ async def test_chat_does_not_disable_reasoning_without_tools():
         await model.chat([{"role": "user", "content": "hello"}])
 
     assert "reasoning_effort" not in completion.await_args.kwargs
+    assert "allowed_openai_params" not in completion.await_args.kwargs
 
 
 @pytest.mark.asyncio
@@ -61,6 +65,7 @@ async def test_chat_does_not_disable_reasoning_for_other_models():
         await model.chat([{"role": "user", "content": "hello"}], tools=[TOOL])
 
     assert "reasoning_effort" not in completion.await_args.kwargs
+    assert "allowed_openai_params" not in completion.await_args.kwargs
 
 
 @pytest.mark.asyncio
@@ -76,8 +81,9 @@ async def test_chat_does_not_match_longer_version_numbers(model_name):
 
 
 @pytest.mark.asyncio
-async def test_function_call_disables_reasoning_for_gpt_5_6_variant():
-    model = GPTModel(model="gpt-5.6-sol")
+@pytest.mark.parametrize("model_name", ["gpt-5.6-sol", "gpt-6-luna"])
+async def test_function_call_disables_reasoning(model_name):
+    model = GPTModel(model=model_name)
 
     with patch("src.providers.base.acompletion", new_callable=AsyncMock) as completion:
         completion.return_value = _chat_response('{"value": 42}')
@@ -87,4 +93,5 @@ async def test_function_call_disables_reasoning_for_gpt_5_6_variant():
         )
 
     assert completion.await_args.kwargs["reasoning_effort"] == "none"
+    assert completion.await_args.kwargs["allowed_openai_params"] == ["reasoning_effort"]
     assert response.parameters == {"value": 42}

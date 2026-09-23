@@ -60,6 +60,9 @@ class BaseModel:
             params["tool_choice"] = "auto"
             if self.requires_disabled_reasoning_for_tools(model):
                 params["reasoning_effort"] = "none"
+                # litellm (1.81) only treats "gpt-5*" names as reasoning models, so
+                # drop_params would silently strip this for gpt-6 without the allow-list.
+                params["allowed_openai_params"] = ["reasoning_effort"]
 
         if "gemini" in model:
             params["safety_settings"] = [
@@ -130,6 +133,7 @@ class BaseModel:
         }
         if self.requires_disabled_reasoning_for_tools(model):
             params["reasoning_effort"] = "none"
+            params["allowed_openai_params"] = ["reasoning_effort"]
 
         response = await acompletion(**params)
 
