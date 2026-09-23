@@ -22,3 +22,4 @@ samples/
 # Real user data copied in locally for dev — never commit.
 gepetto.db
 music-entertainment.txt
+/stack_trace.txt

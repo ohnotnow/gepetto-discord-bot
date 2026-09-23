@@ -30,8 +30,8 @@ def _chat_response(arguments="{}"):
 
 
 @pytest.mark.asyncio
-@pytest.mark.parametrize("model_name", ["gpt-5.6", "gpt-5.6-sol", "gpt-5.6-pro"])
-async def test_chat_disables_reasoning_for_gpt_5_6_tools(model_name):
+@pytest.mark.parametrize("model_name", ["gpt-5.6", "gpt-5.6-sol", "gpt-5.6-pro", "gpt-6", "gpt-6-luna"])
+async def test_chat_disables_reasoning_for_tools(model_name):
     model = GPTModel(model=model_name)
 
     with patch("src.providers.base.acompletion", new_callable=AsyncMock) as completion:
@@ -64,8 +64,9 @@ async def test_chat_does_not_disable_reasoning_for_other_models():
 
 
 @pytest.mark.asyncio
-async def test_chat_does_not_treat_gpt_5_60_as_gpt_5_6():
-    model = GPTModel(model="gpt-5.60")
+@pytest.mark.parametrize("model_name", ["gpt-5.60", "gpt-60"])
+async def test_chat_does_not_match_longer_version_numbers(model_name):
+    model = GPTModel(model=model_name)
 
     with patch("src.providers.base.acompletion", new_callable=AsyncMock) as completion:
         completion.return_value = _chat_response()

@@ -107,7 +107,10 @@ class BaseModel:
         return (
             separator == "/"
             and provider == "openai"
-            and (model_name == "gpt-5.6" or model_name.startswith("gpt-5.6-"))
+            and any(
+                model_name == family or model_name.startswith(f"{family}-")
+                for family in ("gpt-5.6", "gpt-6")
+            )
         )
 
     async def function_call(
