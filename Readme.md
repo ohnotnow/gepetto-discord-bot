@@ -61,6 +61,7 @@ The script uses the following environment variables (* indicates required):
 | VLM_OPENAI_MODEL | OpenAI model used when VLM_PROVIDER="openai" | "gpt-4.1" | "gpt-4.1" |
 | SENTRY_AUTH_TOKEN | Sentry API authentication | - | "your-sentry-auth-token" |
 | BOT_OMNILISTENS | Enabling/disabling omnilistens feature | "false" | "true" |
+| CHANNEL_HISTORY_ENABLED | Include recent channel messages as context when replying (turn off to save input tokens) | "true" | "false" or "0" |
 | MET_OFFICE_API_KEY | Weather API authentication | - | "your-met-office-api-key" |
 | DISCORD_BOT_BIRTHDAYS | Storing birthday information about users (user-id:day/month) | - | "123456789:25/12,987654321:01/01" |
 | ANYSCALE_API_KEY | Anyscale API authentication | - | "your-anyscale-api-key" |

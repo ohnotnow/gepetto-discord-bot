@@ -21,6 +21,7 @@ class BaseModel:
         self.model = model or self.default_model
         self.name = os.getenv("BOT_NAME", "Base")
         self.omnilistens = os.getenv("BOT_OMNILISTENS", "false").lower() == "true"
+        self.uses_logs = os.getenv("CHANNEL_HISTORY_ENABLED", "true").lower() in ("true", "1")
 
     def get_model_string(self, model: Optional[str] = None) -> str:
         """Convert model name to LiteLLM format"""
