@@ -71,3 +71,29 @@ async def test_history_context_uses_most_recent_messages_before_current_message(
         f"'recentuser' said: recent message {idx}"
         for idx in range(10)
     ]
+
+
+@pytest.mark.asyncio
+async def test_history_context_strips_sweary_words_when_nsfw_filter_is_on():
+    main.platform.bot_user_id = "bot"
+    now = datetime.now(timezone.utc)
+    channel = FakeChannel([make_message("what a shit day", "user", now - timedelta(minutes=1))])
+
+    history = await main.get_history_as_openai_messages(
+        channel, nsfw_filter=True, include_timestamps=False,
+    )
+
+    assert history[0]["content"] == "'user' said: what a  day"
+
+
+@pytest.mark.asyncio
+async def test_history_context_keeps_sweary_words_when_nsfw_filter_is_off():
+    main.platform.bot_user_id = "bot"
+    now = datetime.now(timezone.utc)
+    channel = FakeChannel([make_message("what a shit day", "user", now - timedelta(minutes=1))])
+
+    history = await main.get_history_as_openai_messages(
+        channel, include_timestamps=False,
+    )
+
+    assert history[0]["content"] == "'user' said: what a shit day"

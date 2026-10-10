@@ -276,7 +276,7 @@ async def get_history_as_openai_messages(
         else:
             message_content = f"'{msg.author_name}' said: {content}"
         message_content = re.sub(r'\[tokens used.+Estimated cost.+]', '', message_content, flags=re.MULTILINE)
-        message_content = remove_nsfw_words(message_content)
+        message_content = remove_nsfw_words(message_content) if nsfw_filter else message_content
         message_length = len(message_content)
         messages.append({
             "role": role,
