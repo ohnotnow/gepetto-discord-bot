@@ -11,7 +11,7 @@ class ChatResponse:
         duration (float): The duration of the request in seconds.
         tokens_per_second (float): The number of tokens per second.
     """
-    def __init__(self, message, tokens, cost, model="Unknown", uses_logs=False, tool_calls=None, reasoning_content=None, duration=None, completion_tokens=None):
+    def __init__(self, message, tokens, cost, model="Unknown", tool_calls=None, reasoning_content=None, duration=None, completion_tokens=None):
         self.message = message
         self.tokens = tokens
         self.cost = cost
