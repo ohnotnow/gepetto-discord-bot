@@ -19,7 +19,7 @@ A Discord bot that uses LLMs (via LiteLLM) to chat, generate images, summarise c
 ```bash
 uv sync                                      # Install dependencies
 uv run python main.py                        # Run the bot
-uv run pytest                                # Run all tests (568 tests)
+uv run pytest                                # Run all tests (643 tests)
 uv run pytest tests/test_helpers.py          # Run single test file
 uv run pytest tests/test_helpers.py::test_function_name -v  # Run single test
 

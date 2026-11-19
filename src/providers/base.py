@@ -50,20 +50,33 @@ class BaseModel:
             "messages": messages,
         }
 
-        if model.startswith("openai/"):
-            params["verbosity"] ="low"
-
-        if json_mode:
-            params["response_format"] = {"type": "json_object"}
+        if self.uses_responses_api(model):
+            # These models refuse function tools alongside reasoning on
+            # /v1/chat/completions, so litellm's "responses/" prefix routes the
+            # call through /v1/responses instead.
+            params["model"] = model.replace("openai/", "openai/responses/", 1)
+            params["reasoning_effort"] = "low"
+            # litellm (1.81) only treats "gpt-5*" names as reasoning models, so
+            # drop_params would silently strip these without the allow-list.
+            params["allowed_openai_params"] = ["reasoning_effort", "store"]
+            # Chat completions doesn't keep requests by default; the Responses
+            # API does unless told not to.
+            params["store"] = False
+            # The Responses API takes verbosity and the JSON format under one
+            # "text" key; litellm's response_format mapping would be overwritten
+            # by it, so build it ourselves.
+            params["text"] = {"verbosity": "low"}
+            if json_mode:
+                params["text"]["format"] = {"type": "json_object"}
+        else:
+            if model.startswith("openai/"):
+                params["verbosity"] = "low"
+            if json_mode:
+                params["response_format"] = {"type": "json_object"}
 
         if tools and self.model_supports_tools(model):
             params["tools"] = tools
             params["tool_choice"] = "auto"
-            if self.requires_disabled_reasoning_for_tools(model):
-                params["reasoning_effort"] = "none"
-                # litellm (1.81) only treats "gpt-5*" names as reasoning models, so
-                # drop_params would silently strip this for gpt-6 without the allow-list.
-                params["allowed_openai_params"] = ["reasoning_effort"]
 
         if "gemini" in model:
             params["safety_settings"] = [
@@ -96,23 +109,31 @@ class BaseModel:
             cost = 0
         tokens = response.usage.total_tokens
         completion_tokens = response.usage.completion_tokens
-        message = str(response.choices[0].message.content)
-        tool_calls = response.choices[0].message.tool_calls
+        # The Responses API bridge returns text and tool calls as separate
+        # choices when the model does both, so look across all of them.
+        replies = [choice.message for choice in response.choices]
+        text_reply = next((m for m in replies if m.content), replies[0])
+        message = str(text_reply.content)
+        tool_calls = next((m.tool_calls for m in replies if m.tool_calls), None)
         # check if we have model 'reasoning'
-        reasoning_content = getattr(response.choices[0].message, "reasoning_content", None)
+        reasoning_content = next(
+            (r for r in (getattr(m, "reasoning_content", None) for m in replies) if r),
+            None,
+        )
         return ChatResponse(message, tokens, cost, model, tool_calls=tool_calls, reasoning_content=reasoning_content, duration=duration, completion_tokens=completion_tokens)
 
     def model_supports_tools(self, model: str) -> bool:
         models_with_tools = ["openai", "anthropic", "gemini", "google"]
         return any(m in model for m in models_with_tools)
 
-    def requires_disabled_reasoning_for_tools(self, model: str) -> bool:
+    def uses_responses_api(self, model: str) -> bool:
         provider, separator, model_name = model.partition("/")
         return (
             separator == "/"
             and provider == "openai"
             and any(
-                model_name == family or model_name.startswith(f"{family}-")
+                model_name == family
+                or model_name.startswith((f"{family}-", f"{family}."))
                 for family in ("gpt-5.6", "gpt-6")
             )
         )
@@ -132,7 +153,7 @@ class BaseModel:
             "tools": tools,
             "tool_choice": {"type": "function", "function": {"name": tools[0]["function"]["name"]}},
         }
-        if self.requires_disabled_reasoning_for_tools(model):
+        if self.uses_responses_api(model):
             params["reasoning_effort"] = "none"
             params["allowed_openai_params"] = ["reasoning_effort"]
 
