@@ -1123,6 +1123,13 @@ async def horror_chat():
     await channel.send(f"{response.message[:DISCORD_MESSAGE_LIMIT]}\n{response.usage_short}")
 
 
+def should_run_art_critic() -> bool:
+    """Off unless ART_CRITIC_ENABLED is true/1; then fires on ART_CRITIC_PROBABILITY of images."""
+    if os.getenv("ART_CRITIC_ENABLED", "false").lower() not in ("true", "1"):
+        return False
+    return random.random() < ART_CRITIC_PROBABILITY
+
+
 async def make_chat_image():
     logger.info("In make_chat_image")
 
@@ -1261,7 +1268,7 @@ async def make_chat_image():
     # Occasionally, a pretentious art critic reviews the image — blind, with
     # no knowledge of the chat or prompt, which is the whole joke. The preface
     # makes clear it isn't the bot critiquing its own work.
-    if random.random() < ART_CRITIC_PROBABILITY:
+    if should_run_art_critic():
         critique = await vlm.critique_image(image_url)
         if critique:
             await channel.send(f'_An art critic opines:_\n\n{critique}'[:DISCORD_MESSAGE_LIMIT])
