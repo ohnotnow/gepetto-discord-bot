@@ -54,6 +54,7 @@ The script uses the following environment variables (* indicates required):
 | FEATURE_RANDOM_CHAT | Enabling/disabling random chat feature | False | "true" |
 | FEATURE_HORROR_CHAT | Enabling/disabling horror chat feature | False | "true" |
 | CHAT_IMAGE_ENABLED | Enabling/disabling chat image generation | False | "true" |
+| ART_CRITIC_ENABLED | Let the blind art critic review about a quarter of daily chat images | "false" | "true" or "1" |
 | IMAGE_PROVIDER | Image generation API provider | "replicate" | "replicate", "fal", or "openai" |
 | IMAGE_MODEL | Override image model for user-requested images | Random | "openai/gpt-image-1.5" |
 | CHAT_IMAGE_MODEL | Override image model for daily chat image (falls back to IMAGE_MODEL) | IMAGE_MODEL | "black-forest-labs/flux-2-pro" |
@@ -105,9 +106,9 @@ How each provider treats the model name:
 
 - **`replicate`** — `IMAGE_MODEL` / `CHAT_IMAGE_MODEL` pick a specific entry from `MODEL_CONFIGS` in `src/media/replicate.py` (e.g. `"black-forest-labs/flux-2-pro"`). If unset, a random model is picked from the configured pool — handy for variety on the daily image.
 - **`fal`** — same behaviour as Replicate, against the FAL `MODEL_CONFIGS` pool.
-- **`openai`** — there's only one model (`gpt-image-2` via the direct images endpoint), so `IMAGE_MODEL` and `CHAT_IMAGE_MODEL` only affect the display label in Discord. You can leave them unset.
+- **`openai`**: `IMAGE_MODEL` / `CHAT_IMAGE_MODEL` name the OpenAI image model, sent to the direct images endpoint. There's no random pool. A leading `provider/` is stripped, so `"openai/gpt-image-2"` (the FAL-style name) and `"gpt-image-2"` both work. If unset, it uses `gpt-image-2.5-sunburst`. OpenAI returns a local file rather than a URL, so set `VLM_PROVIDER="openai"` too, or the art critic won't be able to see the image.
 
-For the daily chat image, you can also tune `CHAT_IMAGE_ENABLED`, `CHAT_IMAGE_HOUR`, and the VLM hop that extracts themes/reasoning (`VLM_PROVIDER`, `VLM_OPENAI_MODEL`).
+For the daily chat image, you can also tune `CHAT_IMAGE_ENABLED`, `CHAT_IMAGE_HOUR`, and the blind art critic: set `ART_CRITIC_ENABLED` to `"true"` or `"1"` and it reviews about a quarter of daily images (it's off by default), using the VLM chosen by `VLM_PROVIDER` / `VLM_OPENAI_MODEL`.
 
 ### "On this day" image occasions
 

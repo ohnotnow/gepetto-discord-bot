@@ -19,7 +19,7 @@ A Discord bot that uses LLMs (via LiteLLM) to chat, generate images, summarise c
 ```bash
 uv sync                                      # Install dependencies
 uv run python main.py                        # Run the bot
-uv run pytest                                # Run all tests (643 tests)
+uv run pytest                                # Run all tests (654 tests)
 uv run pytest tests/test_helpers.py          # Run single test file
 uv run pytest tests/test_helpers.py::test_function_name -v  # Run single test
 
@@ -49,7 +49,7 @@ The model string format is `{provider}/{model}` (e.g., "openai/gpt-4o-mini"). Yo
 ### Image Generation (`src/media/`)
 > **Before changing anything here:** run `ant show gepettodiscordbot-AkRXV` for the full flow notes — `create_image` vs `make_chat_image`, the corpse pipeline, and which traps to avoid. This is the most-tinkered-with part of the bot; the note will save you re-deriving it.
 
-`IMAGE_PROVIDER` env var selects between `"replicate"` (default), `"fal"`, and `"openai"` (gpt-image-2 via the dedicated images.generate endpoint). All three expose the same `ImageModel` interface via a routing function:
+`IMAGE_PROVIDER` env var selects between `"replicate"` (default), `"fal"`, and `"openai"` (the dedicated images.generate endpoint; model comes from `IMAGE_MODEL`/`CHAT_IMAGE_MODEL` with any leading `provider/` stripped, defaulting to `gpt-image-2.5-sunburst`). All three expose the same `ImageModel` interface via a routing function:
 ```python
 from src.media import get_image_model
 model = get_image_model()  # Random from enabled models on the active provider
