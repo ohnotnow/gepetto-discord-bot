@@ -7,11 +7,10 @@ import uuid
 from openai import AsyncOpenAI
 
 
-# We talk to OpenAI's dedicated images.generate endpoint and request gpt-image-2
-# directly. The Responses API + image_generation tool route still pins to
-# gpt-image-1 under the hood (as of 2026-05) and produces noticeably weaker
-# results than gpt-image-2; until OpenAI lets the orchestrator pick gpt-image-2,
-# the direct endpoint is the only way to get the better model.
+# We talk to OpenAI's dedicated images.generate endpoint and request the image
+# model by name. The Responses API + image_generation tool route pinned to
+# gpt-image-1 under the hood (as of 2026-05) and produced noticeably weaker
+# results; the direct endpoint lets us choose the model ourselves.
 #
 # Trade-off: we lose the `revised_prompt` field that the Responses API
 # exposes. Not a problem: the corpse pipeline's LLM crafts the prompt and
@@ -20,11 +19,12 @@ from openai import AsyncOpenAI
 # Note: some scraped/leaked API docs mention a `thinking="medium"` kwarg
 # (gpt-5.5-style prompt rewriting). The Python SDK rejects it as an
 # unexpected keyword — don't add it back without checking the SDK source.
-MODEL = "gpt-image-2"
-DISPLAY_NAME = "openai/gpt-image-2"
+# Used when IMAGE_MODEL / CHAT_IMAGE_MODEL is unset.
+MODEL = "gpt-image-2.5-sunburst"
 
-# Rough cost for high-quality 1536x1024 — tune as real billing data lands.
-COST = 0.10
+# OpenAI's pricing calculator for gpt-image-2.5-sunburst, medium quality,
+# 1536x1024: $0.03396 per image (2026-11).
+COST = 0.03
 
 PARAMS = {
     "size": "1536x1024",
@@ -60,8 +60,9 @@ class ImageModel:
     the local path; the platform adapters know how to send a local path.
     """
 
-    def __init__(self, name: str = DISPLAY_NAME):
-        self.name = name
+    def __init__(self, model: str = MODEL):
+        self.model = model
+        self.name = f"openai/{model}"
         self._cost = COST
 
     @property
@@ -75,7 +76,7 @@ class ImageModel:
     async def generate(self, prompt: str) -> str:
         logger.info(f"Using OpenAI image model: {self.name}")
         result = await _client.images.generate(
-            model=MODEL,
+            model=self.model,
             prompt=prompt,
             **PARAMS,
         )
@@ -97,7 +98,9 @@ class ImageModel:
 def get_image_model(model_name: str | None = None) -> ImageModel:
     """Factory: returns an ImageModel ready to generate images.
 
-    There's only one OpenAI image model surface to support, so model_name is
-    accepted for interface symmetry but only affects the display label.
+    A leading "provider/" is stripped, so the same IMAGE_MODEL value works
+    for FAL ("openai/gpt-image-2") and OpenAI direct ("gpt-image-2").
     """
-    return ImageModel(model_name or DISPLAY_NAME)
+    if not model_name:
+        return ImageModel()
+    return ImageModel(model_name.split("/", 1)[-1])

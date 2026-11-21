@@ -1,7 +1,7 @@
 """Unit tests for the OpenAI direct image provider.
 
 Network-free — the AsyncOpenAI client is patched out. The point of these
-tests is to lock in the call shape (gpt-image-2 + quality=medium) and the
+tests is to lock in the call shape (model name + quality=medium) and the
 magic-byte sniff that protects us from gpt-image-2 lying about its
 output_format.
 """
@@ -57,7 +57,7 @@ async def test_generate_writes_png_with_correct_extension(tmp_path, monkeypatch)
         assert f.read() == PNG_BYTES
 
     call_kwargs = mocked.await_args.kwargs
-    assert call_kwargs["model"] == "gpt-image-2"
+    assert call_kwargs["model"] == openai_direct.MODEL
     assert call_kwargs["prompt"] == "a cat in a hat"
     assert call_kwargs["size"] == "1536x1024"
     assert call_kwargs["quality"] == "medium"
@@ -94,5 +94,29 @@ async def test_generate_raises_when_no_image_returned():
 
 def test_image_model_interface_matches_other_providers():
     model = openai_direct.get_image_model()
-    assert model.short_name == "openai/gpt-image-2"
+    assert model.short_name == "openai/gpt-image-2.5-sunburst"
     assert isinstance(model.cost, float)
+
+
+@pytest.mark.parametrize(
+    "model_name,expected_model",
+    [
+        ("gpt-image-2", "gpt-image-2"),
+        ("openai/gpt-image-2", "gpt-image-2"),
+        (None, "gpt-image-2.5-sunburst"),
+    ],
+)
+@pytest.mark.asyncio
+async def test_requested_model_is_sent_to_openai(model_name, expected_model, tmp_path, monkeypatch):
+    monkeypatch.setattr("tempfile.gettempdir", lambda: str(tmp_path))
+
+    with patch.object(
+        openai_direct._client.images,
+        "generate",
+        new=AsyncMock(return_value=_fake_result(PNG_BYTES)),
+    ) as mocked:
+        model = openai_direct.get_image_model(model_name)
+        await model.generate("anything")
+
+    assert mocked.await_args.kwargs["model"] == expected_model
+    assert model.short_name == f"openai/{expected_model}"
